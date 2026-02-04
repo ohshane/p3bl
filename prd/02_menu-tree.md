@@ -30,7 +30,7 @@
 | A.5.1.1   | System Log               | Error & Traffic Monitoring           | Real-time system error logs and traffic load monitoring                        |
 | A.5.2     | Analytics                | Statistics                           | Usage analytics and reporting                                                  |
 | A.5.2.1   | Statistics               | Activity Reports & Export            | Detailed activity reports by user, team, and project with download support     |
-| E.0       | Waiting Lounge           | Waiting Lounge                       | Pre-entry state before joining projects                                        |
+| E.0       | Explorers                | Explorers                            | Entry point for learner-facing exploration and collaboration                   |
 | E.0.1     | Waiting Lounge           | Invitation Dashboard                 | Fixed list of project invitations                                              |
 | E.0.2     | Waiting Lounge           | Manual Join                          | Manual project join entry                                                      |
 | E.0.3     | Waiting Lounge           | Floating Bot Assistance              | Floating AI assistant for guidance                                             |
@@ -73,7 +73,7 @@
 | E.3.3.1   | Achievement Archive      | Badge Collection                     | Display of earned digital badges                                               |
 | E.3.3.2   | Achievement Archive      | Experience Synthesis                 | Auto-generated experience summary (portfolio/essay use)                        |
 | E.3.3.3   | Achievement Archive      | Feedback History                     | Positive AI-reframed growth feedback history                                   |
-| C.0       | Creator Home             | Creator Home                         | Global entry point for creators                                                |
+| C.0       | Creators                 | Creators                             | Global entry point for creators                                                |
 | C.0.1     | Navigation               | Creator Navigation                   | Navigation between Dashboard / Monitoring / Assessment                         |
 | C.0.2     | Global Action            | + New Project                        | Persistent global action button                                                |
 | C.1       | Dashboard                | Dashboard                            | Overview of projects and learner states                                        |
