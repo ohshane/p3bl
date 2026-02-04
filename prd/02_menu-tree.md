@@ -1,6 +1,6 @@
 # Menu Tree
 
-| ID        | Category                 | Menu / Feature Name                  | Description                                                                    |
+| ID        | Category                 | Name                                 | Description                                                                    |
 | --------- | ------------------------ | ------------------------------------ | ------------------------------------------------------------------------------ |
 | A         | Admin Panel              | Admin Panel                          | Entry point for administrative configuration and monitoring                    |
 | A.1       | Dashboard                | Dashboard                            | High-level overview of system activity                                         |
@@ -34,20 +34,20 @@
 | E.0.1     | Waiting Lounge           | Invitation Dashboard                 | Fixed list of project invitations                                              |
 | E.0.2     | Waiting Lounge           | Manual Join                          | Manual project join entry                                                      |
 | E.0.3     | Waiting Lounge           | Floating Bot Assistance              | Floating AI assistant for guidance                                             |
+| E.1       | Workspace                | Workspace                            | Main workspace for active participation                                        |
 | E.1.0     | State Manager            | State Manager                        | Manages onboarding vs active states                                            |
 | E.1.1     | Onboarding               | Invitation Card                      | Fixed project invitation card                                                  |
 | E.1.2     | Onboarding               | Manual Code Input                    | Manual invitation code input widget                                            |
 | E.1.3     | Onboarding               | Floating Bot Assistance (Onboarding) | AI-guided onboarding assistance                                                |
 | E.1.4     | Active State             | Global Project Bar                   | Global project bar with synced notifications                                   |
-| E.1       | Workspace                | Workspace                            | Main workspace for active participation                                        |
 | E.1.5     | Workspace                | My Project List                      | List of joined projects                                                        |
 | E.1.5.1   | Workspace                | Active Projects Tab                  | Tab for active projects                                                        |
 | E.1.5.2   | Workspace                | Completed Projects Tab               | Tab for completed projects                                                     |
 | E.1.6     | Workspace                | My Profile & Growth                  | User profile, level, badges, and portfolio access                              |
 | E.1.7     | Workspace                | Group Chat                           | Always-on fixed group chat panel (peers + AI personas)                         |
 | E.1.8     | Workspace                | Hall of Fame                         | Recognition and featured achievements                                          |
-| E.2.0     | Activity Zone            | Intelligent Voyage Navigator         | AI-powered learning/navigation guidance                                        |
 | E.2       | Activity Zone            | Activity Zone                        | Core activity execution area                                                   |
+| E.2.0     | Activity Zone            | Intelligent Voyage Navigator         | AI-powered learning/navigation guidance                                        |
 | E.2.1     | Activity Zone            | Reflection Node (n-1)                | Retrospective reflection on previous activities                                |
 | E.2.2     | Activity Zone            | Cockpit (Present)                    | Current activity control panel                                                 |
 | E.2.3     | Activity Zone            | Preview Node (n+1)                   | Preview of upcoming activities                                                 |
