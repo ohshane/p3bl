@@ -3,23 +3,23 @@
 | ID        | Category                 | Name                                 | Description                                                                    |
 | --------- | ------------------------ | ------------------------------------ | ------------------------------------------------------------------------------ |
 | A         | Admin Panel              | Admin Panel                          | Entry point for administrative configuration and monitoring                    |
-| A.1       | Dashboard                | Dashboard                            | High-level overview of system activity                                         |
+| A.1       | Dashboard                | System Dashboard                     | High-level overview of system activity, traffic, and AI utilization            |
 | A.1.1     | Dashboard                | Traffic & Active Projects Overview   | Overall traffic, active projects, and AI utilization status                    |
-| A.2       | User & Organization      | User & Organization                  | Management of users and organizational structures                              |
+| A.2       | User & Organization      | User & Organization Management       | Management of users and organizational structures                              |
 | A.2.1     | User & Organization      | Integration                          | External identity and system integration                                       |
 | A.2.1.1   | Integration              | SSO & Unified Account Management     | SSO integration and unified user account management                            |
 | A.2.2     | User & Organization      | Bulk Action                          | Bulk user management operations                                                |
 | A.2.2.1   | Bulk Action              | CSV / Excel User Import & Update     | Bulk user creation and updates via CSV/Excel                                   |
 | A.2.3     | User & Organization      | Hierarchy                            | Organizational hierarchy management                                            |
 | A.2.3.1   | Hierarchy                | Organization Structure & Roles       | Hierarchical structure (school → department → class) and role assignment       |
-| A.3       | Infrastructure & Cost    | Infrastructure & Cost                | Infrastructure, deployment, and cost control                                   |
+| A.3       | Infrastructure & Cost    | Infrastructure & Cost Management     | Infrastructure, deployment, and cost control                                   |
 | A.3.1     | Infrastructure           | Deployment                           | API and system deployment management                                           |
 | A.3.1.1   | Deployment               | Internal / External API Deployment   | Deployment and version control of internal and external APIs                   |
 | A.3.2     | Infrastructure           | Token Control                        | AI token usage and cost limits                                                 |
 | A.3.2.1   | Token Control            | Token Quota & Cost Limits            | Token quotas and cost limits per project or session                            |
 | A.3.3     | Infrastructure           | Group Chat                           | Group chat–related AI resource control                                         |
 | A.3.3.1   | Group Chat               | AI Token Monitoring & Model Control  | Monitoring AI token usage in group chat and controlling recommended LLM models |
-| A.4       | Security & Ethics        | Security & Ethics                    | Security, privacy, and ethical governance                                      |
+| A.4       | Security & Ethics        | Security & Ethics Guidelines         | Security, privacy, and ethical governance                                      |
 | A.4.1     | Security & Ethics        | Policy                               | Policy and compliance management                                               |
 | A.4.1.1   | Policy                   | Terms & Privacy Policy Management    | Management of service terms, privacy policies, and disclosure settings         |
 | A.4.1.2   | Policy                   | AI Ethics & Content Guardrails       | AI ethics compliance (bias, harmful content) and filtering policies            |
@@ -31,7 +31,7 @@
 | A.5.2     | Analytics                | Statistics                           | Usage analytics and reporting                                                  |
 | A.5.2.1   | Statistics               | Activity Reports & Export            | Detailed activity reports by user, team, and project with download support     |
 | E.0       | Explorers                | Explorers                            | Entry point for learner-facing exploration and collaboration                   |
-| E.0.1     | Waiting Lounge           | Invitation Dashboard                 | Fixed list of project invitations                                              |
+| E.0.1     | Waiting Lounge           | Project Entry & Onboarding           | Fixed list of project invitations and onboarding state                         |
 | E.0.2     | Waiting Lounge           | Manual Join                          | Manual project join entry                                                      |
 | E.0.3     | Waiting Lounge           | Floating Bot Assistance              | Floating AI assistant for guidance                                             |
 | E.1       | Workspace                | Workspace                            | Main workspace for active participation                                        |
@@ -62,9 +62,9 @@
 | E.2.6.2   | Feedback Loop            | Expert Review                        | External expert feedback and threaded discussion                               |
 | E.2.6.3   | Feedback Loop            | Submission Versioning                | Versioned submissions (v1.0, v1.1, etc.)                                       |
 | E.3       | Growth Portfolio         | Growth Portfolio                     | Long-term growth and achievement tracking                                      |
-| E.3.1     | Growth Portfolio         | Output Gallery                       | Archive of all created outputs                                                 |
-| E.3.1.1   | Output Gallery           | Showcase Link                        | Public shareable link with expiration                                          |
-| E.3.1.2   | Output Gallery           | Share to Team                        | Share outputs to group chat as rich cards                                      |
+| E.3.1     | Growth Portfolio         | Artifact Gallery                     | Archive of all created artifacts                                               |
+| E.3.1.1   | Artifact Gallery         | Showcase Link                        | Public shareable link with expiration                                          |
+| E.3.1.2   | Artifact Gallery         | Share to Team                        | Share outputs to group chat as rich cards                                      |
 | E.3.2     | Growth Portfolio         | Competency Dashboard                 | Visualization of skill development                                             |
 | E.3.2.1   | Competency Dashboard     | Radar Chart                          | Radar chart of core competencies                                               |
 | E.3.2.2   | Competency Dashboard     | Growth Overlay                       | Pre vs post competency comparison                                              |
@@ -76,7 +76,7 @@
 | C.0       | Creators                 | Creators                             | Global entry point for creators                                                |
 | C.0.1     | Navigation               | Creator Navigation                   | Navigation between Dashboard / Monitoring / Assessment                         |
 | C.0.2     | Global Action            | + New Project                        | Persistent global action button                                                |
-| C.1       | Dashboard                | Dashboard                            | Overview of projects and learner states                                        |
+| C.1       | Dashboard                | Project Dashboard                    | Overview of projects and learner states                                        |
 | C.1.0     | Dashboard State          | Empty State                          | Initial state when no active projects exist                                    |
 | C.1.0.1   | Dashboard State          | Onboarding Message                   | Welcome illustration and message                                               |
 | C.1.0.2   | Dashboard State          | Create Project CTA                   | Highlighted “+ Create Project” button (calls C.2 Wizard)                       |
@@ -89,7 +89,7 @@
 | C.1.3.1   | Dip Chart                | AI Efficacy Gap Visualization        | Comparison of traditional vs AI-supported learning curves                      |
 | C.1.3.2   | Dip Chart                | Affective Forecast Bars              | Predictive risk bars with AI recovery simulation                               |
 | C.1.3.3   | Dip Chart                | AI Intervention Markers              | Event markers showing AI intervention timing                                   |
-| C.1.4     | People & Organization    | People & Organization                | Learner, team, and expert management                                           |
+| C.1.4     | People & Organization    | People & Organization Management     | Learner, team, and expert management                                           |
 | C.1.4.1   | Enrollment               | Bulk Enrollment                      | CSV/Excel bulk enrollment                                                      |
 | C.1.4.2   | Explorer                 | Member / Team Explorer               | Filterable list by team, status, risk                                          |
 | C.1.4.3   | Student Profile          | Student Growth Profile               | Detailed student profile                                                       |
@@ -102,7 +102,7 @@
 | C.2.0.A   | Wizard Mode              | Manual Builder                       | Fully manual project creation                                                  |
 | C.2.0.B   | Wizard Mode              | Keyword Generator                    | Keyword-based AI ideation                                                      |
 | C.2.0.C   | Wizard Mode              | AI Generator (Document-driven)       | Auto design from lecture materials                                             |
-| C.2.1     | Step 1                   | Content Analysis & Basic Info        | Lecture-driven project grounding                                               |
+| C.2.1     | Step 1                   | Content Analysis & Setup             | Lecture-driven project grounding                                               |
 | C.2.1.1   | Step 1                   | Lecture Upload                       | Upload syllabus/materials (PDF, PPT, etc.)                                     |
 | C.2.1.2   | Step 1                   | RAG Processing                       | Extract goals, schedule, assignments                                           |
 | C.2.1.3   | Step 1                   | Basic Info Editor                    | Edit title, background, driving question                                       |

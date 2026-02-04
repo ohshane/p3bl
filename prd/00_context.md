@@ -5,7 +5,7 @@
 - Develop an AI-driven learning platform that personalizes educational content based on individual learner needs and preferences
 - Create an interactive learning environment that fosters engagement through gamification, quizzes, and real-time feedback
 - Ensure accessibility for learners of all backgrounds, including those with disabilities
-- Integrate a community hub for peer-to-peer learning, discussion forums, and collaborative projects
+- Integrate collaborative spaces like the Activity Zone for peer-to-peer learning and multi-persona collaboration
 
 ## Non-Goals
 
@@ -15,54 +15,33 @@
 
 ## Definitions
 
-| Term           | Definition                                                             |
-| -------------- | ---------------------------------------------------------------------- |
-| Admin Panel    | Administrative area for configuration, monitoring, and control.        |
-| User           | Individual account holder on the platform.                             |
-| Organization   | Grouping of users under a shared structure and policies.               |
-| Access Control | Rules that govern who can view or modify resources.                    |
-| Role           | Permission set assigned to a user.                                     |
-| Policy         | Formal rule set for compliance, privacy, or usage.                     |
-| Onboarding     | Initial setup flow to join a project or workspace.                     |
-| Hierarchy      | Structured levels of organization (e.g., school → department → class). |
-| Infrastructure | System resources and services that run the platform.                   |
-| Deployment     | Process of releasing and configuring system or APIs.                   |
-| Token          | Unit of AI usage tracked for cost and quota.                           |
-| Cost Control   | Limits and monitoring for usage expenses.                              |
-| Security       | Protections against unauthorized access or misuse.                     |
-| Ethics         | Standards governing safe and responsible AI use.                       |
-| Anonymization  | Process of removing personal identifiers from data.                    |
-| Logging        | Collection of system events for auditing and diagnostics.              |
-| Analytics      | Measurement and reporting of usage and performance.                    |
-| Reports        | Structured summaries of activity, outcomes, or performance.            |
-| Creators       | Users who design and manage projects.                                  |
-| Explorers      | Learners who participate in activities and collaboration.              |
-| Project        | Structured learning experience with goals, timeline, and activities.   |
-| Dashboard      | Overview screen showing status, metrics, or alerts.                    |
-| Performance    | Measured outcomes such as achievement or engagement.                   |
-| Discovery      | Search and exploration of users, teams, or capabilities.               |
-| Persona        | AI or learner role definition used in collaboration.                   |
-| Timeline       | Scheduled sequence of sessions or milestones.                          |
-| Schedule       | Planned timing and weighting of sessions.                              |
-| Activity       | Task or mission within a project.                                      |
-| Rubric         | Evaluation criteria for assessing outputs.                             |
-| Validation     | Review step before publishing or activation.                           |
-| Risk           | Indicator of issues such as delays or conflicts.                       |
-| Intervention   | Automated or guided response to risks.                                 |
-| Evaluation     | Assessment process for performance and outcomes.                       |
-| Expert         | External reviewer providing feedback or scoring.                       |
-| Feedback       | Guidance, critique, or scoring on outputs.                             |
-| Workspace      | Primary area where learners collaborate and work.                      |
-| Collaboration  | Shared work among multiple participants or personas.                   |
-| Conversation   | Threaded exchange in group or multi-persona chat.                      |
-| Resource       | Supporting material or reference for activities.                       |
-| RAG            | Retrieval-augmented generation for personalized resources.             |
-| AI Agent       | AI participant assisting collaboration and tasks.                      |
-| Sandbox        | Safe space for experimentation and co-editing.                         |
-| OCR            | Optical character recognition for image text extraction.               |
-| STT            | Speech-to-text conversion for audio ingestion.                         |
-| Artifact       | Submitted output or deliverable.                                       |
-| Portfolio      | Curated collection of artifacts and achievements.                      |
-| Gallery        | Display of completed outputs.                                          |
-| Radar Chart    | Visual representation of capability levels.                            |
-| Metrics        | Quantified measures such as engagement or achievement.                 |
+| Term                             | Definition                                                                                             |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Admin Panel                      | Entry point for system-wide configuration, monitoring, and administrative control.                     |
+| System Dashboard                 | High-level overview of system activity, traffic, and AI utilization metrics.                           |
+| User & Organization Management   | Management of users, organizational hierarchies (School → Dept → Class), and access control (SSO/IAM). |
+| Infrastructure & Cost Management | Control of system resources, API deployments, and AI token usage/quotas per session or project.        |
+| Security & Ethics Guidelines     | Enforcement of AI ethics standards, content guardrails, and data anonymization protocols.              |
+| Data Logging & Analytics         | Collection of system logs and user-level activity reports for auditing and performance analysis.       |
+| Creators                         | Users (instructors/designers) who design and manage projects using generative AI tools.                |
+| Project Dashboard                | Overview of active projects, featuring live progress cards and risk signaling.                         |
+| The Dip Chart                    | Visualization of learner confidence/engagement trends and AI efficacy gaps.                            |
+| People & Org Management          | AI-assisted tools for team building, enrollment, and member/team discovery.                            |
+| Project Creation Wizard          | AI-powered workflow for generating projects from keywords, documents, or manual inputs.                |
+| Monitoring & Assessment          | Real-time tracking of project health (Signal & Risk Center) and AI-assisted evaluation/grading.        |
+| Signal & Risk Center             | Visualization of project/team risks using a "Traffic Light" system (Red/Yellow/Green).                 |
+| Explorers                        | Learners who participate in missions, collaboration, and personal growth tracking.                     |
+| Waiting Lounge                   | Pre-project state for invitation management, manual join codes, and onboarding assistance.             |
+| Workspace                        | Primary area for learners to manage their projects, identity (roles/badges), and exploration roadmap.  |
+| Exploration Roadmap              | Summary of past, current, and future missions with milestone alerts and D-day indicators.              |
+| Activity Zone                    | Core execution area featuring multi-persona collaboration and AI-assisted content creation.            |
+| Intelligent Voyage Navigator     | AI-powered guidance system for navigating through reflection (past) and preview (future) nodes.        |
+| Smart Output Builder             | Collaborative space with AI Copilot (Ghost Typing) and multimodal processing for artifact creation.    |
+| Feedback & Submission Loop       | Integrated workflow for AI pre-checks, expert reviews, and versioned artifact submission.              |
+| Growth Portfolio                 | Personal archive for tracking achievements, artifacts, and competency growth over time.                |
+| Artifact Gallery                 | Curated collection of completed project outputs with auto-curation and shareable links.                |
+| Competency Dashboard             | Visualization of skill development using Radar Charts and AI-generated growth insights.                |
+| Achievement Archive              | Storage of earned badges, experience synthesis, and positive feedback history.                         |
+| Persona                          | AI or learner role definition (badges/roles) used in multi-body collaboration.                         |
+| Artifact                         | Any submitted output or deliverable created within the Smart Output Builder.                           |
+| RAG                              | Retrieval-augmented generation used to provide personalized resources from uploaded materials.         |
