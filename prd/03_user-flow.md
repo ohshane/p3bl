@@ -12,9 +12,7 @@ flowchart TD
     G0 --> G11 --> RC
 
     %% Admin Path
-    RC -->|Admin| A2FA{"2FA Certification"}
-    A2FA -->|Pass| A1["A.1 Admin Dashboard"]
-    A2FA -->|Fail| AFail["Authentication Failure Notice"]
+    RC -->|Admin| A1["A.1 Admin Dashboard"]
 
     %% Creator Path
     RC -->|Creator| CStatus{"Status Check"}
@@ -119,4 +117,45 @@ flowchart TD
     Gallery --> Share{Share it?}
     Share -->|Share to Team| Rich[Send Rich Card in Group Chat]
     Share -->|External Share Link| Public[Generate Public Link]
+```
+
+## Admin Management Flow
+
+```mermaid
+flowchart TD
+    A1["A.1 Admin Dashboard"]
+    AMode{"Management Area?"}
+
+    A1 --> AMode
+
+    %% User & Org Path
+    AMode -->|"User & Org"| A2["A.2 User & Org Management"]
+    A2 --> A2Bulk["A.2.2.1 Bulk Import (CSV/Excel)"]
+    A2 --> A2Hier["A.2.3.1 Hierarchy & Role Setup"]
+
+    %% Infrastructure Path
+    AMode -->|"Infra & Cost"| A3["A.3 Infrastructure & Cost"]
+    A3 --> A3Deploy["A.3.1.1 API Deployment"]
+    A3 --> A3Token["A.3.2.1 Token Quota & Limits"]
+
+    %% Security & Ethics Path
+    AMode -->|"Security"| A4["A.4 Security & Ethics"]
+    A4 --> A4Policy["A.4.1.1 Policy & Ethics Guardrails"]
+    A4 --> A4Anon["A.4.2.1 Data Anonymization"]
+```
+
+## Expert Review Flow
+
+```mermaid
+flowchart TD
+    E2["E.2.6 Feedback Loop"]
+    Req["Request Expert Review"]
+    ExpNotif["Expert Notified (Email/Push)"]
+    ExpLogin["Expert Login / Access"]
+    ExpReview["Expert: Provide Feedback & Grades"]
+    ExplNotif["Explorer Notified"]
+    ExplRevise["Explorer: Review & Revise Output"]
+
+    E2 --> Req --> ExpNotif --> ExpLogin --> ExpReview --> ExplNotif --> ExplRevise
+    ExplRevise --> E2
 ```
