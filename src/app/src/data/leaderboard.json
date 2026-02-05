@@ -1,0 +1,12 @@
+[
+  { "rank": 1, "anonymizedName": "Explorer_M789", "level": 6, "xpThisMonth": 485, "isCurrentUser": false },
+  { "rank": 2, "anonymizedName": "Explorer_K234", "level": 5, "xpThisMonth": 420, "isCurrentUser": false },
+  { "rank": 3, "anonymizedName": "Explorer_S789", "level": 5, "xpThisMonth": 380, "isCurrentUser": false },
+  { "rank": 4, "anonymizedName": "Explorer_T567", "level": 5, "xpThisMonth": 345, "isCurrentUser": false },
+  { "rank": 5, "anonymizedName": "Explorer_R123", "level": 4, "xpThisMonth": 310, "isCurrentUser": false },
+  { "rank": 6, "anonymizedName": "Explorer_A123", "level": 3, "xpThisMonth": 285, "isCurrentUser": true },
+  { "rank": 7, "anonymizedName": "Explorer_B456", "level": 4, "xpThisMonth": 265, "isCurrentUser": false },
+  { "rank": 8, "anonymizedName": "Explorer_C789", "level": 3, "xpThisMonth": 240, "isCurrentUser": false },
+  { "rank": 9, "anonymizedName": "Explorer_D012", "level": 3, "xpThisMonth": 225, "isCurrentUser": false },
+  { "rank": 10, "anonymizedName": "Explorer_E345", "level": 3, "xpThisMonth": 210, "isCurrentUser": false }
+]

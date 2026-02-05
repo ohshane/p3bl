@@ -1,0 +1,403 @@
+import { createServerFn } from '@tanstack/react-start'
+import { eq, desc, and, gte, sql } from 'drizzle-orm'
+import { db } from '@/db'
+import { users, userBadges, badges, competencyScores, xpTransactions } from '@/db/schema'
+import { z } from 'zod'
+
+// Validation schemas
+const getUserSchema = z.object({
+  userId: z.string(),
+})
+
+const updateUserSchema = z.object({
+  userId: z.string(),
+  name: z.string().min(2).max(100).optional(),
+  avatarUrl: z.string().url().optional().nullable(),
+  hallOfFameOptIn: z.boolean().optional(),
+})
+
+const addXpSchema = z.object({
+  userId: z.string(),
+  amount: z.number().int(),
+  reason: z.string(),
+  entityType: z.string().optional(),
+  entityId: z.string().optional(),
+})
+
+// Level thresholds
+const LEVEL_THRESHOLDS = [0, 100, 300, 600, 1000, 1500]
+const LEVEL_NAMES = ['Newcomer', 'Learner', 'Explorer', 'Navigator', 'Pioneer', 'Master']
+
+function calculateLevel(xp: number): { level: number; name: string; progress: number } {
+  let level = 1
+  for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
+    if (xp >= LEVEL_THRESHOLDS[i]) {
+      level = i + 1
+      break
+    }
+  }
+  
+  const currentThreshold = LEVEL_THRESHOLDS[level - 1] || 0
+  const nextThreshold = LEVEL_THRESHOLDS[level] || LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1]
+  const progress = Math.min(100, ((xp - currentThreshold) / (nextThreshold - currentThreshold)) * 100)
+  
+  return {
+    level,
+    name: LEVEL_NAMES[level - 1] || 'Master',
+    progress,
+  }
+}
+
+/**
+ * Get user by ID
+ */
+export const getUser = createServerFn({ method: 'GET' })
+  .inputValidator((data: unknown) => {
+    return getUserSchema.parse(data)
+  })
+  .handler(async ({ data }) => {
+    try {
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, data.userId),
+      })
+
+      if (!user) {
+        return { success: false, error: 'User not found' }
+      }
+
+      const levelInfo = calculateLevel(user.xp)
+
+      return {
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          avatarUrl: user.avatarUrl,
+          xp: user.xp,
+          level: levelInfo.level,
+          levelName: levelInfo.name,
+          levelProgress: levelInfo.progress,
+          hallOfFameOptIn: user.hallOfFameOptIn,
+          anonymizedName: user.anonymizedName,
+          createdAt: user.createdAt.toISOString(),
+        },
+      }
+    } catch (error) {
+      console.error('Get user error:', error)
+      return { success: false, error: 'Failed to get user' }
+    }
+  })
+
+/**
+ * Update user profile
+ */
+export const updateUser = createServerFn({ method: 'POST' })
+  .inputValidator((data: unknown) => {
+    return updateUserSchema.parse(data)
+  })
+  .handler(async ({ data }) => {
+    try {
+      const { userId, ...updates } = data
+      
+      await db.update(users)
+        .set({
+          ...updates,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId))
+
+      const updatedUser = await db.query.users.findFirst({
+        where: eq(users.id, userId),
+      })
+
+      if (!updatedUser) {
+        return { success: false, error: 'User not found' }
+      }
+
+      const levelInfo = calculateLevel(updatedUser.xp)
+
+      return {
+        success: true,
+        user: {
+          id: updatedUser.id,
+          email: updatedUser.email,
+          name: updatedUser.name,
+          role: updatedUser.role,
+          avatarUrl: updatedUser.avatarUrl,
+          xp: updatedUser.xp,
+          level: levelInfo.level,
+          levelName: levelInfo.name,
+          hallOfFameOptIn: updatedUser.hallOfFameOptIn,
+        },
+      }
+    } catch (error) {
+      console.error('Update user error:', error)
+      return { success: false, error: 'Failed to update user' }
+    }
+  })
+
+/**
+ * Get user badges
+ */
+export const getUserBadges = createServerFn({ method: 'GET' })
+  .inputValidator((data: { userId: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      const earnedBadges = await db
+        .select({
+          badge: badges,
+          earnedAt: userBadges.earnedAt,
+          context: userBadges.context,
+        })
+        .from(userBadges)
+        .innerJoin(badges, eq(userBadges.badgeId, badges.id))
+        .where(eq(userBadges.userId, data.userId))
+        .orderBy(desc(userBadges.earnedAt))
+
+      const allBadges = await db.query.badges.findMany({
+        where: eq(badges.isActive, true),
+      })
+
+      const earnedIds = new Set(earnedBadges.map(b => b.badge.id))
+
+      return {
+        success: true,
+        earned: earnedBadges.map(b => ({
+          ...b.badge,
+          earnedAt: b.earnedAt.toISOString(),
+          context: b.context ? JSON.parse(b.context) : null,
+        })),
+        available: allBadges.filter(b => !earnedIds.has(b.id)),
+      }
+    } catch (error) {
+      console.error('Get user badges error:', error)
+      return { success: false, error: 'Failed to get badges' }
+    }
+  })
+
+/**
+ * Get user competency scores
+ */
+export const getUserCompetencies = createServerFn({ method: 'GET' })
+  .inputValidator((data: { userId: string; projectId?: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      const query = data.projectId
+        ? db.query.competencyScores.findMany({
+            where: (scores, { and, eq }) => and(
+              eq(scores.userId, data.userId),
+              eq(scores.projectId, data.projectId!)
+            ),
+          })
+        : db.query.competencyScores.findMany({
+            where: eq(competencyScores.userId, data.userId),
+          })
+
+      const scores = await query
+
+      return {
+        success: true,
+        competencies: scores.map(s => ({
+          ...s,
+          lastCalculatedAt: s.lastCalculatedAt.toISOString(),
+          createdAt: s.createdAt.toISOString(),
+        })),
+      }
+    } catch (error) {
+      console.error('Get user competencies error:', error)
+      return { success: false, error: 'Failed to get competencies' }
+    }
+  })
+
+/**
+ * Add XP to user
+ */
+export const addUserXp = createServerFn({ method: 'POST' })
+  .inputValidator((data: unknown) => {
+    return addXpSchema.parse(data)
+  })
+  .handler(async ({ data }) => {
+    try {
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, data.userId),
+      })
+
+      if (!user) {
+        return { success: false, error: 'User not found' }
+      }
+
+      const newXp = user.xp + data.amount
+      const levelInfo = calculateLevel(newXp)
+      const previousLevel = calculateLevel(user.xp).level
+      const leveledUp = levelInfo.level > previousLevel
+
+      // Update user XP and level
+      await db.update(users)
+        .set({
+          xp: newXp,
+          level: levelInfo.level,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, data.userId))
+
+      // Record XP transaction
+      await db.insert(xpTransactions).values({
+        id: crypto.randomUUID(),
+        userId: data.userId,
+        amount: data.amount,
+        reason: data.reason,
+        entityType: data.entityType,
+        entityId: data.entityId,
+        createdAt: new Date(),
+      })
+
+      return {
+        success: true,
+        xp: newXp,
+        level: levelInfo.level,
+        levelName: levelInfo.name,
+        leveledUp,
+      }
+    } catch (error) {
+      console.error('Add XP error:', error)
+      return { success: false, error: 'Failed to add XP' }
+    }
+  })
+
+/**
+ * Get user XP history
+ */
+export const getUserXpHistory = createServerFn({ method: 'GET' })
+  .inputValidator((data: { userId: string; limit?: number }) => data)
+  .handler(async ({ data }) => {
+    try {
+      const transactions = await db.query.xpTransactions.findMany({
+        where: eq(xpTransactions.userId, data.userId),
+        orderBy: desc(xpTransactions.createdAt),
+        limit: data.limit || 50,
+      })
+
+      return {
+        success: true,
+        transactions: transactions.map(t => ({
+          ...t,
+          createdAt: t.createdAt.toISOString(),
+        })),
+      }
+    } catch (error) {
+      console.error('Get XP history error:', error)
+      return { success: false, error: 'Failed to get XP history' }
+    }
+  })
+
+/**
+ * Get leaderboard (Hall of Fame)
+ * Returns top users who have opted in, sorted by XP earned this month
+ */
+export const getLeaderboard = createServerFn({ method: 'GET' })
+  .inputValidator((data: { limit?: number; currentUserId?: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      const limit = data.limit || 10
+      
+      // Get the start of the current month
+      const now = new Date()
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      
+      // Get users who have opted in to Hall of Fame, sorted by total XP
+      const leaderboardUsers = await db.query.users.findMany({
+        where: and(
+          eq(users.hallOfFameOptIn, true),
+          eq(users.role, 'explorer')
+        ),
+        orderBy: desc(users.xp),
+        limit: limit,
+      })
+      
+      // Calculate XP earned this month for each user
+      const usersWithMonthlyXp = await Promise.all(
+        leaderboardUsers.map(async (user, index) => {
+          // Get XP transactions from this month
+          const monthlyTransactions = await db.query.xpTransactions.findMany({
+            where: and(
+              eq(xpTransactions.userId, user.id),
+              gte(xpTransactions.createdAt, startOfMonth)
+            ),
+          })
+          
+          const xpThisMonth = monthlyTransactions.reduce((sum, t) => sum + t.amount, 0)
+          const levelInfo = calculateLevel(user.xp)
+          
+          return {
+            rank: index + 1,
+            anonymizedName: user.anonymizedName || `Explorer${user.id.slice(0, 4)}`,
+            level: levelInfo.level,
+            xpThisMonth,
+            totalXp: user.xp,
+            isCurrentUser: user.id === data.currentUserId,
+          }
+        })
+      )
+      
+      // Sort by XP this month for the leaderboard
+      usersWithMonthlyXp.sort((a, b) => b.xpThisMonth - a.xpThisMonth)
+      
+      // Re-assign ranks after sorting by monthly XP
+      usersWithMonthlyXp.forEach((user, index) => {
+        user.rank = index + 1
+      })
+      
+      // If current user is opted in but not in top N, get their rank
+      let currentUserRank = null
+      if (data.currentUserId) {
+        const currentUser = await db.query.users.findFirst({
+          where: eq(users.id, data.currentUserId),
+        })
+        
+        if (currentUser && currentUser.hallOfFameOptIn) {
+          const isInTop = usersWithMonthlyXp.some(u => u.isCurrentUser)
+          
+          if (!isInTop) {
+            // Get user's monthly XP
+            const monthlyTransactions = await db.query.xpTransactions.findMany({
+              where: and(
+                eq(xpTransactions.userId, data.currentUserId),
+                gte(xpTransactions.createdAt, startOfMonth)
+              ),
+            })
+            const xpThisMonth = monthlyTransactions.reduce((sum, t) => sum + t.amount, 0)
+            
+            // Count users with more XP this month
+            const allOptedInUsers = await db.query.users.findMany({
+              where: and(
+                eq(users.hallOfFameOptIn, true),
+                eq(users.role, 'explorer')
+              ),
+            })
+            
+            // This is a simplified rank calculation
+            const levelInfo = calculateLevel(currentUser.xp)
+            currentUserRank = {
+              rank: allOptedInUsers.length, // Approximate rank
+              anonymizedName: currentUser.anonymizedName || `Explorer${currentUser.id.slice(0, 4)}`,
+              level: levelInfo.level,
+              xpThisMonth,
+              totalXp: currentUser.xp,
+              isCurrentUser: true,
+            }
+          }
+        }
+      }
+      
+      return {
+        success: true,
+        leaderboard: usersWithMonthlyXp,
+        currentUserRank,
+      }
+    } catch (error) {
+      console.error('Get leaderboard error:', error)
+      return { success: false, error: 'Failed to get leaderboard' }
+    }
+  })

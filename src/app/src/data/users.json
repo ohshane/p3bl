@@ -1,0 +1,142 @@
+[
+  {
+    "id": "user_001",
+    "name": "Alex Explorer",
+    "email": "alex@example.com",
+    "avatar": null,
+    "role": "explorer",
+    "level": 3,
+    "xp": 450,
+    "anonymizedName": "Explorer_A123",
+    "hallOfFameOptIn": true,
+    "joinedProjectIds": ["proj_001", "proj_002", "proj_003"],
+    "earnedBadgeIds": ["first-steps", "early-bird", "team-player"],
+    "pendingInvitations": [],
+    "competencies": {
+      "criticalThinking": { "current": 65, "baseline": 45, "lastUpdated": "2024-02-01", "insight": "Your analytical skills have improved significantly. Your recent essay on AI ethics showed strong evidence evaluation." },
+      "communication": { "current": 72, "baseline": 50, "lastUpdated": "2024-02-01", "insight": "Excellent progress in written communication. Your arguments are becoming clearer and more structured." },
+      "collaboration": { "current": 58, "baseline": 40, "lastUpdated": "2024-02-01", "insight": "Good team participation. Consider engaging more in peer feedback to boost this score." },
+      "creativity": { "current": 61, "baseline": 55, "lastUpdated": "2024-02-01", "insight": "Your creative approaches are emerging. The visualization in your last project was particularly innovative." },
+      "problemSolving": { "current": 68, "baseline": 48, "lastUpdated": "2024-02-01", "insight": "Strong improvement in problem decomposition. Keep practicing systematic approaches." }
+    },
+    "createdAt": "2024-01-01T00:00:00Z"
+  },
+  {
+    "id": "user_002",
+    "name": "Jordan Newcomer",
+    "email": "jordan@example.com",
+    "avatar": null,
+    "role": "explorer",
+    "level": 1,
+    "xp": 0,
+    "anonymizedName": "Explorer_J456",
+    "hallOfFameOptIn": false,
+    "joinedProjectIds": [],
+    "earnedBadgeIds": [],
+    "pendingInvitations": [
+      {
+        "id": "inv_001",
+        "projectId": "proj_001",
+        "projectName": "Introduction to AI Ethics",
+        "invitedAt": "2024-02-01T00:00:00Z",
+        "expiresAt": null
+      }
+    ],
+    "competencies": {
+      "criticalThinking": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "Complete your first artifact to establish your baseline." },
+      "communication": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "Complete your first artifact to establish your baseline." },
+      "collaboration": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "Complete your first artifact to establish your baseline." },
+      "creativity": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "Complete your first artifact to establish your baseline." },
+      "problemSolving": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "Complete your first artifact to establish your baseline." }
+    },
+    "createdAt": "2024-02-01T00:00:00Z"
+  },
+  {
+    "id": "user_003",
+    "name": "Sam Veteran",
+    "email": "sam@example.com",
+    "avatar": null,
+    "role": "explorer",
+    "level": 5,
+    "xp": 1250,
+    "anonymizedName": "Explorer_S789",
+    "hallOfFameOptIn": true,
+    "joinedProjectIds": ["proj_003", "proj_004", "proj_005"],
+    "earnedBadgeIds": ["first-steps", "project-pioneer", "seasoned-explorer", "early-bird", "consistent-contributor", "team-player", "helping-hand", "critical-thinker", "communicator"],
+    "pendingInvitations": [],
+    "competencies": {
+      "criticalThinking": { "current": 82, "baseline": 50, "lastUpdated": "2024-02-01", "insight": "Outstanding critical analysis skills. Your work consistently demonstrates deep evaluation and synthesis." },
+      "communication": { "current": 78, "baseline": 52, "lastUpdated": "2024-02-01", "insight": "Excellent communication. Your writing is clear, well-organized, and persuasive." },
+      "collaboration": { "current": 75, "baseline": 45, "lastUpdated": "2024-02-01", "insight": "Great team player. Your peer feedback has been particularly helpful to others." },
+      "creativity": { "current": 69, "baseline": 48, "lastUpdated": "2024-02-01", "insight": "Creative solutions are your strength. Continue exploring unconventional approaches." },
+      "problemSolving": { "current": 80, "baseline": 55, "lastUpdated": "2024-02-01", "insight": "Exceptional problem-solving abilities. You excel at breaking down complex challenges." }
+    },
+    "createdAt": "2023-09-01T00:00:00Z"
+  },
+  {
+    "id": "creator_001",
+    "name": "Dr. Morgan Chen",
+    "email": "morgan.chen@example.com",
+    "avatar": null,
+    "role": "creator",
+    "level": 1,
+    "xp": 0,
+    "anonymizedName": "Creator_M001",
+    "hallOfFameOptIn": false,
+    "joinedProjectIds": [],
+    "earnedBadgeIds": [],
+    "pendingInvitations": [],
+    "competencies": {
+      "criticalThinking": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "" },
+      "communication": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "" },
+      "collaboration": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "" },
+      "creativity": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "" },
+      "problemSolving": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "" }
+    },
+    "createdAt": "2023-06-01T00:00:00Z"
+  },
+  {
+    "id": "creator_002",
+    "name": "Prof. Jamie Rivera",
+    "email": "jamie.rivera@example.com",
+    "avatar": null,
+    "role": "creator",
+    "level": 1,
+    "xp": 0,
+    "anonymizedName": "Creator_J002",
+    "hallOfFameOptIn": false,
+    "joinedProjectIds": [],
+    "earnedBadgeIds": [],
+    "pendingInvitations": [],
+    "competencies": {
+      "criticalThinking": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "" },
+      "communication": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "" },
+      "collaboration": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "" },
+      "creativity": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "" },
+      "problemSolving": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "" }
+    },
+    "createdAt": "2023-08-01T00:00:00Z"
+  },
+  {
+    "id": "admin_001",
+    "name": "Admin User",
+    "email": "admin@p3bl.local",
+    "avatar": null,
+    "role": "admin",
+    "level": 1,
+    "xp": 0,
+    "anonymizedName": "Admin_001",
+    "hallOfFameOptIn": false,
+    "joinedProjectIds": [],
+    "earnedBadgeIds": [],
+    "pendingInvitations": [],
+    "competencies": {
+      "criticalThinking": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "" },
+      "communication": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "" },
+      "collaboration": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "" },
+      "creativity": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "" },
+      "problemSolving": { "current": 0, "baseline": null, "lastUpdated": "2024-02-01", "insight": "" }
+    },
+    "createdAt": "2023-01-01T00:00:00Z"
+  }
+]

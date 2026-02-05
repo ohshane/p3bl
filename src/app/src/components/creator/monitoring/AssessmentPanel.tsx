@@ -1,0 +1,294 @@
+import { useState, useEffect } from 'react'
+import { ClipboardCheck, Star, Trophy, Search, Loader2 } from 'lucide-react'
+import { useCreatorStore } from '@/stores/creatorStore'
+import { getProjectSubmissions } from '@/server/api'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
+
+interface AssessmentPanelProps {
+  projectId: string
+}
+
+interface Submission {
+  id: string
+  teamId: string
+  teamName: string
+  studentId: string
+  studentName: string
+  sessionId: string
+  sessionIndex: number
+  sessionTitle: string
+  aiScore: number
+  status: 'pending' | 'graded'
+  submittedAt: string
+  precheckPassed: boolean | null
+}
+
+interface SubmissionStats {
+  total: number
+  pending: number
+  graded: number
+  avgScore: number
+}
+
+export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
+  const { getProject } = useCreatorStore()
+  const project = getProject(projectId)
+
+  const [submissions, setSubmissions] = useState<Submission[]>([])
+  const [stats, setStats] = useState<SubmissionStats>({ total: 0, pending: 0, graded: 0, avgScore: 0 })
+  const [isLoading, setIsLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedSession, setSelectedSession] = useState<string>('all')
+  const [selectedTeam, setSelectedTeam] = useState<string>('all')
+
+  // Fetch submissions on mount
+  useEffect(() => {
+    async function fetchSubmissions() {
+      setIsLoading(true)
+      try {
+        const result = await getProjectSubmissions({ data: { projectId } })
+        if (result.success) {
+          setSubmissions(result.submissions || [])
+          setStats(result.stats || { total: 0, pending: 0, graded: 0, avgScore: 0 })
+        }
+      } catch (error) {
+        console.error('Failed to fetch submissions:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchSubmissions()
+  }, [projectId])
+
+  if (!project) return null
+
+  const filteredSubmissions = submissions.filter((sub) => {
+    const matchesSearch = sub.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          sub.teamName.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSession = selectedSession === 'all' || sub.sessionIndex === parseInt(selectedSession)
+    const matchesTeam = selectedTeam === 'all' || sub.teamId === selectedTeam
+    return matchesSearch && matchesSession && matchesTeam
+  })
+
+  // Calculate top performers for Hall of Fame
+  const topPerformers = [...submissions]
+    .filter(s => s.status === 'graded' || s.aiScore > 0)
+    .sort((a, b) => b.aiScore - a.aiScore)
+    .slice(0, 5)
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-cyan-500 mr-2" />
+        <span className="text-muted-foreground">Loading submissions...</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-foreground">AI Assessment & Grading</h2>
+        <Button variant="outline" className="border-border">
+          <Trophy className="w-4 h-4 mr-2" />
+          Hall of Fame Selection
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-4">
+        <div className="flex-1 min-w-[200px]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search students or teams..."
+              className="pl-10 bg-background border-border"
+            />
+          </div>
+        </div>
+        <Select value={selectedSession} onValueChange={setSelectedSession}>
+          <SelectTrigger className="w-[180px] bg-background border-border">
+            <SelectValue placeholder="All Sessions" />
+          </SelectTrigger>
+          <SelectContent className="bg-popover border-border">
+            <SelectItem value="all">All Sessions</SelectItem>
+            {project.sessions.map((session, idx) => (
+              <SelectItem key={session.id || idx} value={idx.toString()}>
+                {session.title}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedTeam} onValueChange={setSelectedTeam}>
+          <SelectTrigger className="w-[180px] bg-background border-border">
+            <SelectValue placeholder="All Teams" />
+          </SelectTrigger>
+          <SelectContent className="bg-popover border-border">
+            <SelectItem value="all">All Teams</SelectItem>
+            {project.teams.map((team) => (
+              <SelectItem key={team.id} value={team.id}>
+                {team.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-card border border-border rounded-lg p-4">
+          <div className="text-2xl font-bold text-foreground">{stats.total}</div>
+          <div className="text-sm text-muted-foreground">Total Submissions</div>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <div className="text-2xl font-bold text-yellow-500">{stats.pending}</div>
+          <div className="text-sm text-muted-foreground">Pending Review</div>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <div className="text-2xl font-bold text-green-500">{stats.graded}</div>
+          <div className="text-sm text-muted-foreground">Graded</div>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-4">
+          <div className="text-2xl font-bold text-cyan-500">{stats.avgScore}%</div>
+          <div className="text-sm text-muted-foreground">Avg AI Score</div>
+        </div>
+      </div>
+
+      {/* Top Performers Card */}
+      {topPerformers.length > 0 && (
+        <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Trophy className="w-5 h-5 text-yellow-500" />
+            <h3 className="font-medium text-foreground">Top Performers</h3>
+            <Badge variant="outline" className="border-yellow-500/50 text-yellow-500 text-xs">
+              Hall of Fame Candidates
+            </Badge>
+          </div>
+          <div className="flex gap-4 overflow-x-auto pb-2">
+            {topPerformers.map((performer, idx) => (
+              <div
+                key={performer.id}
+                className="flex-shrink-0 bg-card rounded-lg p-3 min-w-[150px] border border-border"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={cn(
+                    'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
+                    idx === 0 ? 'bg-yellow-500 text-yellow-950' :
+                    idx === 1 ? 'bg-muted text-foreground' :
+                    idx === 2 ? 'bg-orange-500 text-orange-950' :
+                    'bg-muted text-muted-foreground'
+                  )}>
+                    {idx + 1}
+                  </div>
+                  <Star className="w-4 h-4 text-yellow-400" />
+                </div>
+                <div className="text-sm text-foreground font-medium">{performer.studentName}</div>
+                <div className="text-xs text-muted-foreground">{performer.teamName}</div>
+                <div className="text-lg font-bold text-cyan-500 mt-1">{performer.aiScore}%</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {submissions.length === 0 ? (
+        <div className="text-center py-12 bg-muted/40 rounded-lg border border-border">
+          <ClipboardCheck className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">No submissions yet.</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Submissions will appear here once learners start submitting their work.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Submissions Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr>
+                  <th className="text-left p-3 text-muted-foreground text-sm font-medium border-b border-border">
+                    Student
+                  </th>
+                  <th className="text-left p-3 text-muted-foreground text-sm font-medium border-b border-border">
+                    Team
+                  </th>
+                  <th className="text-left p-3 text-muted-foreground text-sm font-medium border-b border-border">
+                    Session
+                  </th>
+                  <th className="text-center p-3 text-muted-foreground text-sm font-medium border-b border-border">
+                    AI Score
+                  </th>
+                  <th className="text-center p-3 text-muted-foreground text-sm font-medium border-b border-border">
+                    Status
+                  </th>
+                  <th className="text-right p-3 text-muted-foreground text-sm font-medium border-b border-border">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredSubmissions.slice(0, 10).map((submission) => (
+                  <tr key={submission.id} className="border-b border-border/70 hover:bg-muted/60">
+                    <td className="p-3">
+                      <span className="text-foreground">{submission.studentName}</span>
+                    </td>
+                    <td className="p-3">
+                      <span className="text-muted-foreground">{submission.teamName}</span>
+                    </td>
+                    <td className="p-3">
+                      <span className="text-muted-foreground">{submission.sessionTitle}</span>
+                    </td>
+                    <td className="p-3 text-center">
+                      <span className={cn(
+                        'font-semibold',
+                        submission.aiScore >= 80 ? 'text-green-500' :
+                        submission.aiScore >= 60 ? 'text-yellow-500' : 'text-red-500'
+                      )}>
+                        {submission.aiScore}%
+                      </span>
+                    </td>
+                    <td className="p-3 text-center">
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          submission.status === 'graded'
+                            ? 'border-green-500/50 text-green-500'
+                            : 'border-yellow-500/50 text-yellow-500'
+                        )}
+                      >
+                        {submission.status}
+                      </Badge>
+                    </td>
+                    <td className="p-3 text-right">
+                      <Button size="sm" variant="outline" className="border-border">
+                        <ClipboardCheck className="w-3 h-3 mr-1" />
+                        Review
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {filteredSubmissions.length > 10 && (
+            <div className="text-center">
+              <Button variant="outline" className="border-border">
+                Load More ({filteredSubmissions.length - 10} remaining)
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}

@@ -1,0 +1,280 @@
+[
+  {
+    "id": "proj_001",
+    "name": "Introduction to AI Ethics",
+    "description": "Explore the ethical implications of artificial intelligence in modern society through collaborative discussions and case studies.",
+    "creatorId": "creator_001",
+    "creatorName": "Dr. Sarah Chen",
+    "status": "active",
+    "teamId": "team_001",
+    "currentSessionIndex": 2,
+    "joinCode": "AIE123",
+    "createdAt": "2024-01-15T00:00:00Z",
+    "completedAt": null,
+    "sessions": [
+      {
+        "id": "sess_001_1",
+        "index": 0,
+        "title": "Understanding AI Bias",
+        "topic": "Examine how bias enters AI systems and its real-world impacts",
+        "dueDate": "2024-01-25T23:59:59Z",
+        "deliverableType": "document",
+        "guide": "In this session, you will explore the concept of AI bias. Start by reading the provided articles on algorithmic bias in hiring and criminal justice systems. Then, analyze a real-world case study and write a 500-word reflection on the ethical implications.\n\n**Key Questions to Consider:**\n- How does bias enter AI systems?\n- What are the consequences of biased AI?\n- Who is responsible for addressing AI bias?",
+        "resources": [
+          { "id": "res_001", "title": "Introduction to AI Bias", "type": "pdf", "url": "/resources/ai-bias-intro.pdf" },
+          { "id": "res_002", "title": "Case Study: COMPAS Algorithm", "type": "link", "url": "https://example.com/compas" },
+          { "id": "res_003", "title": "Video: Algorithmic Justice", "type": "video", "url": "https://youtube.com/watch?v=example" }
+        ],
+        "rubric": [
+          { "id": "rub_001", "criterion": "Understanding of Bias", "description": "Demonstrates clear understanding of how bias enters AI systems", "maxScore": 25, "weight": 0.25 },
+          { "id": "rub_002", "criterion": "Analysis Quality", "description": "Provides thoughtful analysis of real-world implications", "maxScore": 30, "weight": 0.30 },
+          { "id": "rub_003", "criterion": "Critical Thinking", "description": "Shows evidence of critical evaluation and synthesis", "maxScore": 25, "weight": 0.25 },
+          { "id": "rub_004", "criterion": "Communication", "description": "Clear, well-organized writing with proper citations", "maxScore": 20, "weight": 0.20 }
+        ],
+        "templates": [
+          { "id": "tmpl_001", "name": "Reflection Essay Template", "content": "# AI Bias Reflection\n\n## Introduction\n[Introduce the topic and your thesis]\n\n## Analysis of AI Bias\n[Discuss how bias enters AI systems]\n\n## Real-World Impact\n[Analyze specific examples and consequences]\n\n## Ethical Implications\n[Discuss who is responsible and what should be done]\n\n## Conclusion\n[Summarize your key insights]\n\n## References\n[List your sources]" }
+        ],
+        "completedAt": "2024-01-24T15:30:00Z"
+      },
+      {
+        "id": "sess_001_2",
+        "index": 1,
+        "title": "Privacy in the Age of AI",
+        "topic": "Examine data privacy concerns and AI surveillance technologies",
+        "dueDate": "2024-02-05T23:59:59Z",
+        "deliverableType": "document",
+        "guide": "This session focuses on privacy implications of AI technologies. You will research current privacy regulations and analyze how AI systems collect, process, and use personal data.\n\n**Learning Objectives:**\n- Understand key privacy concepts (consent, data minimization, purpose limitation)\n- Analyze privacy policies of AI-powered services\n- Propose privacy-preserving AI practices",
+        "resources": [
+          { "id": "res_004", "title": "GDPR and AI Overview", "type": "pdf", "url": "/resources/gdpr-ai.pdf" },
+          { "id": "res_005", "title": "Facial Recognition Technology Guide", "type": "document", "url": "/resources/facial-rec.docx" }
+        ],
+        "rubric": [
+          { "id": "rub_005", "criterion": "Privacy Concepts", "description": "Demonstrates understanding of key privacy principles", "maxScore": 25, "weight": 0.25 },
+          { "id": "rub_006", "criterion": "Regulatory Knowledge", "description": "Shows awareness of relevant privacy regulations", "maxScore": 25, "weight": 0.25 },
+          { "id": "rub_007", "criterion": "Analysis", "description": "Provides thorough analysis of privacy implications", "maxScore": 30, "weight": 0.30 },
+          { "id": "rub_008", "criterion": "Recommendations", "description": "Offers practical privacy-preserving solutions", "maxScore": 20, "weight": 0.20 }
+        ],
+        "templates": [],
+        "completedAt": "2024-02-04T18:00:00Z"
+      },
+      {
+        "id": "sess_001_3",
+        "index": 2,
+        "title": "AI and Employment",
+        "topic": "Analyze the impact of AI automation on jobs and workforce",
+        "dueDate": "2024-02-15T23:59:59Z",
+        "deliverableType": "document",
+        "guide": "In this session, we examine how AI is transforming the job market. You will research automation trends, analyze job displacement concerns, and propose strategies for workforce adaptation.\n\n**Key Areas:**\n- Current state of AI automation\n- Jobs at risk vs. jobs created\n- Reskilling and education strategies",
+        "resources": [
+          { "id": "res_006", "title": "Future of Work Report", "type": "pdf", "url": "/resources/future-work.pdf" },
+          { "id": "res_007", "title": "Automation and Jobs Video", "type": "video", "url": "https://youtube.com/watch?v=jobs" }
+        ],
+        "rubric": [
+          { "id": "rub_009", "criterion": "Research Quality", "description": "Uses credible sources and current data", "maxScore": 25, "weight": 0.25 },
+          { "id": "rub_010", "criterion": "Analysis Depth", "description": "Provides comprehensive analysis of automation impact", "maxScore": 30, "weight": 0.30 },
+          { "id": "rub_011", "criterion": "Critical Perspective", "description": "Considers multiple stakeholder viewpoints", "maxScore": 25, "weight": 0.25 },
+          { "id": "rub_012", "criterion": "Solutions", "description": "Proposes actionable strategies", "maxScore": 20, "weight": 0.20 }
+        ],
+        "templates": [
+          { "id": "tmpl_002", "name": "Analysis Report Template", "content": "# AI and Employment Analysis\n\n## Executive Summary\n[Brief overview of findings]\n\n## Current State of AI Automation\n[Describe current trends]\n\n## Impact Analysis\n### Jobs at Risk\n[Identify vulnerable sectors]\n\n### New Opportunities\n[Discuss emerging roles]\n\n## Stakeholder Perspectives\n[Consider workers, employers, policymakers]\n\n## Recommendations\n[Propose strategies]\n\n## Conclusion\n[Final thoughts]" }
+        ],
+        "completedAt": null
+      },
+      {
+        "id": "sess_001_4",
+        "index": 3,
+        "title": "Responsible AI Development",
+        "topic": "Learn principles and practices for ethical AI development",
+        "dueDate": "2024-02-25T23:59:59Z",
+        "deliverableType": "code",
+        "guide": "This hands-on session introduces responsible AI development practices. You will implement basic fairness checks and documentation for an AI model.\n\n**Technical Objectives:**\n- Implement bias detection functions\n- Create model cards for documentation\n- Apply fairness metrics",
+        "resources": [
+          { "id": "res_008", "title": "AI Fairness 360 Documentation", "type": "link", "url": "https://aif360.readthedocs.io" },
+          { "id": "res_009", "title": "Model Cards Guide", "type": "pdf", "url": "/resources/model-cards.pdf" }
+        ],
+        "rubric": [
+          { "id": "rub_013", "criterion": "Code Quality", "description": "Clean, well-documented code", "maxScore": 25, "weight": 0.25 },
+          { "id": "rub_014", "criterion": "Fairness Implementation", "description": "Correctly implements fairness checks", "maxScore": 30, "weight": 0.30 },
+          { "id": "rub_015", "criterion": "Documentation", "description": "Complete and accurate model card", "maxScore": 25, "weight": 0.25 },
+          { "id": "rub_016", "criterion": "Testing", "description": "Includes appropriate tests", "maxScore": 20, "weight": 0.20 }
+        ],
+        "templates": [
+          { "id": "tmpl_003", "name": "Python Starter", "content": "# Responsible AI Development\n# Your implementation here\n\nimport numpy as np\n\ndef check_bias(predictions, protected_attribute):\n    \"\"\"\n    Check for bias in model predictions.\n    \n    Args:\n        predictions: Model predictions\n        protected_attribute: Protected attribute values\n    \n    Returns:\n        dict: Fairness metrics\n    \"\"\"\n    # TODO: Implement bias detection\n    pass\n\ndef create_model_card(model_info):\n    \"\"\"\n    Generate a model card for documentation.\n    \n    Args:\n        model_info: Dictionary with model details\n    \n    Returns:\n        str: Formatted model card\n    \"\"\"\n    # TODO: Implement model card generation\n    pass" }
+        ],
+        "completedAt": null
+      },
+      {
+        "id": "sess_001_5",
+        "index": 4,
+        "title": "AI Governance Frameworks",
+        "topic": "Study global AI governance approaches and policy frameworks",
+        "dueDate": "2024-03-05T23:59:59Z",
+        "deliverableType": "markdown",
+        "guide": "This session examines AI governance frameworks from around the world. You will compare different regulatory approaches and create a policy brief.\n\n**Focus Areas:**\n- EU AI Act\n- US AI governance\n- International coordination efforts",
+        "resources": [
+          { "id": "res_010", "title": "EU AI Act Summary", "type": "pdf", "url": "/resources/eu-ai-act.pdf" },
+          { "id": "res_011", "title": "Global AI Policy Tracker", "type": "link", "url": "https://example.com/ai-policy" }
+        ],
+        "rubric": [
+          { "id": "rub_017", "criterion": "Research", "description": "Thorough research of governance frameworks", "maxScore": 25, "weight": 0.25 },
+          { "id": "rub_018", "criterion": "Comparison", "description": "Effective comparison of approaches", "maxScore": 30, "weight": 0.30 },
+          { "id": "rub_019", "criterion": "Analysis", "description": "Critical analysis of strengths and weaknesses", "maxScore": 25, "weight": 0.25 },
+          { "id": "rub_020", "criterion": "Formatting", "description": "Professional markdown formatting", "maxScore": 20, "weight": 0.20 }
+        ],
+        "templates": [],
+        "completedAt": null
+      },
+      {
+        "id": "sess_001_6",
+        "index": 5,
+        "title": "Final Project: AI Ethics Case Study",
+        "topic": "Apply course concepts to analyze a comprehensive AI ethics case",
+        "dueDate": "2024-03-15T23:59:59Z",
+        "deliverableType": "document",
+        "guide": "For your final project, you will conduct an in-depth analysis of an AI ethics case of your choosing. Apply all concepts learned throughout the course.\n\n**Requirements:**\n- Select a real-world AI system or application\n- Analyze ethical implications across multiple dimensions\n- Propose improvements and governance recommendations\n- Minimum 2000 words",
+        "resources": [],
+        "rubric": [
+          { "id": "rub_021", "criterion": "Case Selection", "description": "Appropriate and relevant case choice", "maxScore": 15, "weight": 0.15 },
+          { "id": "rub_022", "criterion": "Comprehensive Analysis", "description": "Covers bias, privacy, employment, governance", "maxScore": 35, "weight": 0.35 },
+          { "id": "rub_023", "criterion": "Critical Thinking", "description": "Demonstrates sophisticated ethical reasoning", "maxScore": 25, "weight": 0.25 },
+          { "id": "rub_024", "criterion": "Recommendations", "description": "Practical, well-justified proposals", "maxScore": 15, "weight": 0.15 },
+          { "id": "rub_025", "criterion": "Writing Quality", "description": "Professional writing and formatting", "maxScore": 10, "weight": 0.10 }
+        ],
+        "templates": [],
+        "completedAt": null
+      }
+    ]
+  },
+  {
+    "id": "proj_002",
+    "name": "Data Visualization Fundamentals",
+    "description": "Learn to create compelling data visualizations that tell stories and drive insights.",
+    "creatorId": "creator_002",
+    "creatorName": "Prof. Michael Torres",
+    "status": "active",
+    "teamId": "team_002",
+    "currentSessionIndex": 1,
+    "joinCode": "DVF456",
+    "createdAt": "2024-01-20T00:00:00Z",
+    "completedAt": null,
+    "sessions": [
+      {
+        "id": "sess_002_1",
+        "index": 0,
+        "title": "Principles of Visual Design",
+        "topic": "Learn fundamental visual design principles for effective data communication",
+        "dueDate": "2024-02-01T23:59:59Z",
+        "deliverableType": "document",
+        "guide": "This session covers the foundational principles of visual design as they apply to data visualization.",
+        "resources": [
+          { "id": "res_020", "title": "Visual Design Basics", "type": "pdf", "url": "/resources/visual-design.pdf" }
+        ],
+        "rubric": [
+          { "id": "rub_030", "criterion": "Understanding", "description": "Demonstrates grasp of design principles", "maxScore": 50, "weight": 0.50 },
+          { "id": "rub_031", "criterion": "Application", "description": "Applies principles to examples", "maxScore": 50, "weight": 0.50 }
+        ],
+        "templates": [],
+        "completedAt": "2024-01-30T12:00:00Z"
+      },
+      {
+        "id": "sess_002_2",
+        "index": 1,
+        "title": "Choosing the Right Chart",
+        "topic": "Learn when to use different chart types for various data stories",
+        "dueDate": "2024-02-12T23:59:59Z",
+        "deliverableType": "document",
+        "guide": "Explore the strengths and weaknesses of different chart types.",
+        "resources": [],
+        "rubric": [
+          { "id": "rub_032", "criterion": "Chart Selection", "description": "Appropriate chart choices", "maxScore": 60, "weight": 0.60 },
+          { "id": "rub_033", "criterion": "Justification", "description": "Clear reasoning for choices", "maxScore": 40, "weight": 0.40 }
+        ],
+        "templates": [],
+        "completedAt": null
+      },
+      {
+        "id": "sess_002_3",
+        "index": 2,
+        "title": "Interactive Visualizations",
+        "topic": "Build interactive data visualizations with modern tools",
+        "dueDate": "2024-02-22T23:59:59Z",
+        "deliverableType": "code",
+        "guide": "Create interactive visualizations using JavaScript libraries.",
+        "resources": [],
+        "rubric": [
+          { "id": "rub_034", "criterion": "Functionality", "description": "Working interactive features", "maxScore": 50, "weight": 0.50 },
+          { "id": "rub_035", "criterion": "Design", "description": "Aesthetic and usable design", "maxScore": 50, "weight": 0.50 }
+        ],
+        "templates": [],
+        "completedAt": null
+      }
+    ]
+  },
+  {
+    "id": "proj_003",
+    "name": "Climate Change Communication",
+    "description": "Completed project on effectively communicating climate science to diverse audiences.",
+    "creatorId": "creator_001",
+    "creatorName": "Dr. Sarah Chen",
+    "status": "completed",
+    "teamId": "team_003",
+    "currentSessionIndex": 3,
+    "joinCode": "CCC789",
+    "createdAt": "2023-09-01T00:00:00Z",
+    "completedAt": "2023-12-15T00:00:00Z",
+    "sessions": [
+      {
+        "id": "sess_003_1",
+        "index": 0,
+        "title": "Climate Science Basics",
+        "topic": "Foundation of climate science for communication",
+        "dueDate": "2023-09-15T23:59:59Z",
+        "deliverableType": "document",
+        "guide": "Learn the fundamental climate science concepts needed for effective communication.",
+        "resources": [],
+        "rubric": [],
+        "templates": [],
+        "completedAt": "2023-09-14T10:00:00Z"
+      },
+      {
+        "id": "sess_003_2",
+        "index": 1,
+        "title": "Audience Analysis",
+        "topic": "Understanding and adapting to different audiences",
+        "dueDate": "2023-10-01T23:59:59Z",
+        "deliverableType": "document",
+        "guide": "Analyze different audience types and their climate communication needs.",
+        "resources": [],
+        "rubric": [],
+        "templates": [],
+        "completedAt": "2023-09-30T16:00:00Z"
+      },
+      {
+        "id": "sess_003_3",
+        "index": 2,
+        "title": "Visual Communication",
+        "topic": "Using visuals to communicate climate data",
+        "dueDate": "2023-10-15T23:59:59Z",
+        "deliverableType": "document",
+        "guide": "Create compelling visual representations of climate data.",
+        "resources": [],
+        "rubric": [],
+        "templates": [],
+        "completedAt": "2023-10-14T14:00:00Z"
+      },
+      {
+        "id": "sess_003_4",
+        "index": 3,
+        "title": "Final Campaign",
+        "topic": "Design a complete climate communication campaign",
+        "dueDate": "2023-12-15T23:59:59Z",
+        "deliverableType": "document",
+        "guide": "Apply all learned concepts to create a comprehensive climate communication campaign.",
+        "resources": [],
+        "rubric": [],
+        "templates": [],
+        "completedAt": "2023-12-14T11:00:00Z"
+      }
+    ]
+  }
+]

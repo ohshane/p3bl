@@ -1,0 +1,96 @@
+[
+  {
+    "id": "msg_001",
+    "teamId": "team_001",
+    "senderId": "user_001",
+    "senderName": "Alex Explorer",
+    "senderAvatar": null,
+    "senderType": "user",
+    "content": "Hey team! Just finished reading the COMPAS case study. Pretty eye-opening stuff about algorithmic bias.",
+    "timestamp": "2024-01-22T10:30:00Z",
+    "artifactCard": null
+  },
+  {
+    "id": "msg_002",
+    "teamId": "team_001",
+    "senderId": "ai_001",
+    "senderName": "Professor Sage",
+    "senderAvatar": null,
+    "senderType": "ai",
+    "content": "Great observation, Alex! The COMPAS case is indeed a landmark example. What aspects of the case do you find most concerning from an ethical standpoint? Consider thinking about the different stakeholders affected by such systems.",
+    "timestamp": "2024-01-22T10:32:00Z",
+    "artifactCard": null
+  },
+  {
+    "id": "msg_003",
+    "teamId": "team_001",
+    "senderId": "user_004",
+    "senderName": "Morgan Lee",
+    "senderAvatar": null,
+    "senderType": "user",
+    "content": "I think the most troubling part is how it reinforces existing inequalities. The system was trained on historical data that already reflected societal biases.",
+    "timestamp": "2024-01-22T10:45:00Z",
+    "artifactCard": null
+  },
+  {
+    "id": "msg_004",
+    "teamId": "team_001",
+    "senderId": "ai_002",
+    "senderName": "Tech Guide",
+    "senderAvatar": null,
+    "senderType": "ai",
+    "content": "Morgan makes an excellent point about training data. From a technical perspective, this is what we call 'garbage in, garbage out.' Even the most sophisticated algorithm can't overcome biased input data. Have you explored any technical solutions for detecting or mitigating such biases?",
+    "timestamp": "2024-01-22T10:48:00Z",
+    "artifactCard": null
+  },
+  {
+    "id": "msg_005",
+    "teamId": "team_001",
+    "senderId": "user_001",
+    "senderName": "Alex Explorer",
+    "senderAvatar": null,
+    "senderType": "user",
+    "content": "I've been looking into fairness metrics. There's this concept of 'equalized odds' that seems promising. But it's tricky because different definitions of fairness can conflict with each other.",
+    "timestamp": "2024-01-22T11:00:00Z",
+    "artifactCard": null
+  },
+  {
+    "id": "msg_006",
+    "teamId": "team_001",
+    "senderId": "ai_001",
+    "senderName": "Professor Sage",
+    "senderAvatar": null,
+    "senderType": "ai",
+    "content": "Excellent critical thinking, Alex! You've touched on one of the fundamental challenges in AI ethics - the impossibility theorem. Mathematically, you can't satisfy all fairness criteria simultaneously. This forces us to make value judgments about which type of fairness to prioritize. Consider discussing this tension in your reflection essay.",
+    "timestamp": "2024-01-22T11:05:00Z",
+    "artifactCard": null
+  },
+  {
+    "id": "msg_007",
+    "teamId": "team_001",
+    "senderId": "user_005",
+    "senderName": "Riley Chen",
+    "senderAvatar": null,
+    "senderType": "user",
+    "content": "Just shared my draft for peer review. Would love some feedback!",
+    "timestamp": "2024-01-23T14:00:00Z",
+    "artifactCard": {
+      "artifactId": "artifact_001",
+      "title": "Understanding AI Bias - Reflection Essay",
+      "thumbnail": null,
+      "sessionName": "Understanding AI Bias",
+      "snippet": "Artificial intelligence systems are increasingly making decisions that affect people's lives..."
+    }
+  },
+  {
+    "id": "msg_008",
+    "teamId": "team_001",
+    "senderId": "user_004",
+    "senderName": "Morgan Lee",
+    "senderAvatar": null,
+    "senderType": "user",
+    "content": "Looking good! I especially liked your analysis of the COMPAS case. One suggestion: maybe add more about potential solutions?",
+    "timestamp": "2024-01-23T15:30:00Z",
+    "artifactCard": null
+  }
+]

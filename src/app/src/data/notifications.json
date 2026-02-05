@@ -1,0 +1,42 @@
+[
+  {
+    "id": "notif_001",
+    "type": "new_feedback",
+    "title": "New feedback received",
+    "message": "Dr. Chen provided feedback on your 'Understanding AI Bias' essay",
+    "projectId": "proj_001",
+    "read": false,
+    "createdAt": "2024-01-25T10:00:00Z",
+    "actionUrl": "/activity/proj_001?session=0"
+  },
+  {
+    "id": "notif_002",
+    "type": "review_complete",
+    "title": "Submission approved",
+    "message": "Your 'Privacy in the Age of AI' analysis has been approved",
+    "projectId": "proj_001",
+    "read": true,
+    "createdAt": "2024-02-05T11:00:00Z",
+    "actionUrl": "/activity/proj_001?session=1"
+  },
+  {
+    "id": "notif_003",
+    "type": "deadline_reminder",
+    "title": "Deadline approaching",
+    "message": "AI and Employment analysis due in 2 days",
+    "projectId": "proj_001",
+    "read": false,
+    "createdAt": "2024-02-13T09:00:00Z",
+    "actionUrl": "/activity/proj_001?session=2"
+  },
+  {
+    "id": "notif_004",
+    "type": "badge_earned",
+    "title": "Badge earned!",
+    "message": "You earned the 'Team Player' badge",
+    "projectId": null,
+    "read": false,
+    "createdAt": "2024-02-10T14:00:00Z",
+    "actionUrl": "/portfolio/achievements"
+  }
+]

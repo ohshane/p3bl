@@ -1,0 +1,126 @@
+[
+  {
+    "id": "artifact_001",
+    "userId": "user_001",
+    "projectId": "proj_001",
+    "sessionId": "sess_001_1",
+    "title": "Understanding AI Bias - Reflection Essay",
+    "content": "# AI Bias Reflection\n\n## Introduction\n\nArtificial intelligence systems are increasingly making decisions that affect people's lives, from loan approvals to criminal sentencing recommendations. However, these systems can perpetuate and even amplify existing societal biases. This essay examines how bias enters AI systems and discusses the ethical implications of biased AI.\n\n## Analysis of AI Bias\n\nBias enters AI systems primarily through three channels: biased training data, biased algorithm design, and biased deployment contexts. Training data often reflects historical inequalities - for example, if a hiring algorithm is trained on past hiring decisions that favored certain demographics, it will learn to replicate those patterns.\n\n## Real-World Impact\n\nThe COMPAS algorithm case study illustrates the real-world consequences of AI bias. This system, used in criminal justice, was found to incorrectly flag Black defendants as higher risk at nearly twice the rate of white defendants. Such disparities in AI-driven decisions can perpetuate systemic discrimination.\n\n## Ethical Implications\n\nThe responsibility for addressing AI bias is shared among developers, deployers, regulators, and society at large. Developers must prioritize fairness in their systems, organizations must audit AI tools before deployment, and policymakers must establish appropriate oversight frameworks.\n\n## Conclusion\n\nAI bias is a significant ethical challenge that requires coordinated action across multiple stakeholders. By understanding how bias enters these systems and implementing appropriate safeguards, we can work toward more equitable AI technologies.\n\n## References\n\n1. Angwin, J., et al. (2016). Machine Bias. ProPublica.\n2. Buolamwini, J., & Gebru, T. (2018). Gender Shades. Conference on Fairness, Accountability and Transparency.",
+    "deliverableType": "document",
+    "status": "approved",
+    "versions": [
+      {
+        "id": "ver_001_1",
+        "version": "v1.0",
+        "content": "Initial submission content...",
+        "submittedAt": "2024-01-23T14:00:00Z",
+        "preCheckResult": {
+          "id": "pc_001",
+          "overallStatus": "needs_work",
+          "score": 72,
+          "items": [
+            { "id": "pci_001", "rubricItemId": "rub_001", "severity": "suggestion", "message": "Consider adding more specific examples of AI bias", "suggestion": "Include 2-3 concrete examples from different domains" }
+          ],
+          "generatedAt": "2024-01-23T14:05:00Z"
+        }
+      },
+      {
+        "id": "ver_001_2",
+        "version": "v1.1",
+        "content": "Revised submission with more examples...",
+        "submittedAt": "2024-01-24T15:00:00Z",
+        "preCheckResult": {
+          "id": "pc_002",
+          "overallStatus": "ready",
+          "score": 88,
+          "items": [],
+          "generatedAt": "2024-01-24T15:05:00Z"
+        }
+      }
+    ],
+    "currentVersion": "v1.1",
+    "preCheckResult": {
+      "id": "pc_002",
+      "overallStatus": "ready",
+      "score": 88,
+      "items": [],
+      "generatedAt": "2024-01-24T15:05:00Z"
+    },
+    "expertFeedback": [
+      {
+        "id": "ef_001",
+        "expertId": "expert_001",
+        "expertName": "Dr. Chen",
+        "comment": "Excellent analysis of the COMPAS case study. Your understanding of how bias enters AI systems is solid. For future work, consider exploring technical mitigation strategies as well.",
+        "status": "approved",
+        "createdAt": "2024-01-25T10:00:00Z"
+      }
+    ],
+    "createdAt": "2024-01-20T09:00:00Z",
+    "updatedAt": "2024-01-24T15:30:00Z",
+    "submittedAt": "2024-01-24T15:00:00Z"
+  },
+  {
+    "id": "artifact_002",
+    "userId": "user_001",
+    "projectId": "proj_001",
+    "sessionId": "sess_001_2",
+    "title": "Privacy in the Age of AI - Analysis",
+    "content": "# Privacy Analysis\n\nThis document analyzes privacy concerns related to AI technologies...",
+    "deliverableType": "document",
+    "status": "approved",
+    "versions": [
+      {
+        "id": "ver_002_1",
+        "version": "v1.0",
+        "content": "Privacy analysis content...",
+        "submittedAt": "2024-02-04T17:00:00Z",
+        "preCheckResult": {
+          "id": "pc_003",
+          "overallStatus": "ready",
+          "score": 85,
+          "items": [],
+          "generatedAt": "2024-02-04T17:05:00Z"
+        }
+      }
+    ],
+    "currentVersion": "v1.0",
+    "preCheckResult": {
+      "id": "pc_003",
+      "overallStatus": "ready",
+      "score": 85,
+      "items": [],
+      "generatedAt": "2024-02-04T17:05:00Z"
+    },
+    "expertFeedback": [
+      {
+        "id": "ef_002",
+        "expertId": "expert_001",
+        "expertName": "Dr. Chen",
+        "comment": "Strong understanding of privacy principles. Your comparison of GDPR and US approaches was particularly insightful.",
+        "status": "approved",
+        "createdAt": "2024-02-05T11:00:00Z"
+      }
+    ],
+    "createdAt": "2024-02-01T10:00:00Z",
+    "updatedAt": "2024-02-04T18:00:00Z",
+    "submittedAt": "2024-02-04T17:00:00Z"
+  },
+  {
+    "id": "artifact_003",
+    "userId": "user_001",
+    "projectId": "proj_001",
+    "sessionId": "sess_001_3",
+    "title": "AI and Employment - Draft",
+    "content": "# AI and Employment Analysis\n\n## Executive Summary\n\nThis report examines the impact of AI automation on employment...\n\n## Current State of AI Automation\n\n[Work in progress]",
+    "deliverableType": "document",
+    "status": "draft",
+    "versions": [],
+    "currentVersion": "draft",
+    "preCheckResult": null,
+    "expertFeedback": [],
+    "createdAt": "2024-02-10T09:00:00Z",
+    "updatedAt": "2024-02-10T11:30:00Z",
+    "submittedAt": null
+  }
+]

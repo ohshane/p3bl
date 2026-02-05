@@ -1,0 +1,23 @@
+[
+  {
+    "id": "team_001",
+    "name": "Ethics Explorers",
+    "projectId": "proj_001",
+    "memberIds": ["user_001", "user_004", "user_005"],
+    "aiPersonaIds": ["ai_001", "ai_002"]
+  },
+  {
+    "id": "team_002",
+    "name": "Data Wizards",
+    "projectId": "proj_002",
+    "memberIds": ["user_001", "user_006"],
+    "aiPersonaIds": ["ai_003"]
+  },
+  {
+    "id": "team_003",
+    "name": "Climate Champions",
+    "projectId": "proj_003",
+    "memberIds": ["user_001", "user_003", "user_007"],
+    "aiPersonaIds": ["ai_001"]
+  }
+]
