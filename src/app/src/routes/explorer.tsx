@@ -17,11 +17,13 @@ function ExplorerLayout() {
     }
   }, [isAuthenticated, navigate])
 
-  // Redirect creators to /creator - they can only access creator pages
+  // Redirect creators to /creator, admins to /admin
   // Note: Pioneers can access both explorer and creator views
   useEffect(() => {
     if (currentUser && currentUser.role === 'creator') {
       navigate({ to: '/creator' })
+    } else if (currentUser && currentUser.role === 'admin') {
+      navigate({ to: '/admin' })
     }
   }, [currentUser, navigate])
 
@@ -29,8 +31,8 @@ function ExplorerLayout() {
     return null
   }
 
-  // If creator, don't render - redirect is happening
-  if (currentUser.role === 'creator') {
+  // If creator or admin, don't render - redirect is happening
+  if (currentUser.role === 'creator' || currentUser.role === 'admin') {
     return null
   }
 

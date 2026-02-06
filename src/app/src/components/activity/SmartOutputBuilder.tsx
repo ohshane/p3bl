@@ -1,10 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { FileText, Save, Send, Sparkles, AlertTriangle, CheckCircle, Loader2, FileStack, Network, Ban } from 'lucide-react'
-import { useActivityStore, getGhostSuggestion } from '@/stores/activityStore'
+import { Send, Sparkles, AlertTriangle, CheckCircle, Loader2, X } from 'lucide-react'
+import { useActivityStore } from '@/stores/activityStore'
 import { useAuthStore } from '@/stores/authStore'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   Dialog,
   DialogContent,
@@ -13,18 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import { formatDistanceToNow } from 'date-fns'
-import type { Project, Session, DeliverableType, PreCheckResult } from '@/types'
+import type { Project, Session, PreCheckResult } from '@/types'
 
 import {
   getUserSessionArtifacts,
@@ -35,7 +24,6 @@ import {
 
 // Editor components (simplified for now)
 import { RichTextEditor } from './editors/RichTextEditor'
-import { MindmapEditor } from './editors/MindmapEditor'
 
 interface SmartOutputBuilderProps {
   project: Project
@@ -52,13 +40,12 @@ interface SessionArtifact {
   latestVersion: string | null
 }
 
-export function SmartOutputBuilder({ project, session, teamId }: SmartOutputBuilderProps) {
-  const [showSubmitDialog, setShowSubmitDialog] = useState(false)
+export function SmartOutputBuilder({ project: _project, session, teamId }: SmartOutputBuilderProps) {
   const [showPreCheckWarning, setShowPreCheckWarning] = useState(false)
   const [artifact, setArtifact] = useState<SessionArtifact | null>(null)
   const [isLoadingArtifact, setIsLoadingArtifact] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showSubmitted, setShowSubmitted] = useState(false)
   
   const { currentUser, addXP } = useAuthStore()
   const {
@@ -66,14 +53,11 @@ export function SmartOutputBuilder({ project, session, teamId }: SmartOutputBuil
     setEditorContent,
     isDirty,
     markSaved,
-    lastSaved,
     isRunningPreCheck,
     preCheckResult,
     runPreCheck,
     clearPreCheck,
-    ghostSuggestion,
-    setGhostSuggestion,
-    isGhostTypingEnabled,
+    setActionHandlers,
   } = useActivityStore()
 
   // Load artifact for this session
@@ -115,22 +99,6 @@ export function SmartOutputBuilder({ project, session, teamId }: SmartOutputBuil
     loadArtifact()
   }, [session.id, currentUser, setEditorContent, clearPreCheck])
 
-  // Ghost typing effect
-  useEffect(() => {
-    if (!isGhostTypingEnabled || !editorContent) return
-
-    const timeout = setTimeout(async () => {
-      if (editorContent.length > 50) {
-        const suggestion = await getGhostSuggestion(editorContent, session.title)
-        if (suggestion) {
-          setGhostSuggestion(suggestion)
-        }
-      }
-    }, 2000)
-
-    return () => clearTimeout(timeout)
-  }, [editorContent, isGhostTypingEnabled, setGhostSuggestion])
-
   // Auto-save
   useEffect(() => {
     if (!isDirty || !currentUser) return
@@ -145,7 +113,6 @@ export function SmartOutputBuilder({ project, session, teamId }: SmartOutputBuil
   const handleSave = useCallback(async () => {
     if (!currentUser || !teamId) return
     
-    setIsSaving(true)
     try {
       if (artifact) {
         // Update existing artifact
@@ -161,9 +128,6 @@ export function SmartOutputBuilder({ project, session, teamId }: SmartOutputBuil
         }
       } else {
         // Create new artifact
-        const contentType = session.deliverableType === 'mindmap' ? 'mindmap' 
-          : 'document'
-          
         const result = await apiCreateArtifact({
           data: {
             userId: currentUser.id,
@@ -171,7 +135,7 @@ export function SmartOutputBuilder({ project, session, teamId }: SmartOutputBuil
             teamId,
             title: `${session.title} - Draft`,
             content: editorContent,
-            contentType,
+            contentType: 'document',
           }
         })
         
@@ -192,12 +156,10 @@ export function SmartOutputBuilder({ project, session, teamId }: SmartOutputBuil
       }
     } catch (error) {
       toast.error('Failed to save')
-    } finally {
-      setIsSaving(false)
     }
   }, [artifact, editorContent, currentUser, session, teamId, markSaved])
 
-  const handleRunPreCheck = async () => {
+  const handleRunPreCheck = useCallback(async () => {
     const result = await runPreCheck()
     
     if (result.overallStatus === 'critical_issues') {
@@ -213,27 +175,23 @@ export function SmartOutputBuilder({ project, session, teamId }: SmartOutputBuil
         description: 'Your work is ready for submission.',
       })
     }
-  }
+  }, [runPreCheck])
 
-  const handleSubmit = () => {
+  const handleSubmit = useCallback(async () => {
     if (preCheckResult?.overallStatus === 'critical_issues') {
       setShowPreCheckWarning(true)
-    } else {
-      setShowSubmitDialog(true)
+      return
     }
-  }
-
-  const confirmSubmit = async () => {
+    
+    // Direct submit without modal
     if (!currentUser) return
     
     setIsSubmitting(true)
     try {
-      // Save first if needed
       if (!artifact || isDirty) {
         await handleSave()
       }
       
-      // Get the artifact ID (might have been created by handleSave)
       const artifactId = artifact?.id
       if (!artifactId) {
         toast.error('Please save your work first')
@@ -245,12 +203,10 @@ export function SmartOutputBuilder({ project, session, teamId }: SmartOutputBuil
       })
       
       if (result.success) {
-        addXP(20) // XP for submission
-        toast.success('Artifact submitted!', {
-          description: `Version ${result.version} submitted for review.`,
-        })
+        addXP(20)
+        setShowSubmitted(true)
+        setTimeout(() => setShowSubmitted(false), 2000)
         
-        // Update local state
         setArtifact(prev => prev ? {
           ...prev,
           status: 'submitted',
@@ -264,130 +220,136 @@ export function SmartOutputBuilder({ project, session, teamId }: SmartOutputBuil
       toast.error('Failed to submit')
     } finally {
       setIsSubmitting(false)
-      setShowSubmitDialog(false)
+    }
+  }, [preCheckResult, currentUser, artifact, isDirty, handleSave, addXP])
+
+  useEffect(() => {
+    setActionHandlers({
+      runPreCheck: handleRunPreCheck,
+      submit: handleSubmit,
+    })
+
+    return () => {
+      setActionHandlers({
+        runPreCheck: undefined,
+        submit: undefined,
+      })
+    }
+  }, [handleRunPreCheck, handleSubmit, setActionHandlers])
+
+  const confirmSubmitFromWarning = async () => {
+    if (!currentUser) return
+    
+    setIsSubmitting(true)
+    try {
+      if (!artifact || isDirty) {
+        await handleSave()
+      }
+      
+      const artifactId = artifact?.id
+      if (!artifactId) {
+        toast.error('Please save your work first')
+        return
+      }
+      
+      const result = await apiSubmitArtifact({
+        data: { artifactId, userId: currentUser.id }
+      })
+      
+      if (result.success) {
+        addXP(20)
+        setShowSubmitted(true)
+        setTimeout(() => setShowSubmitted(false), 2000)
+        
+        setArtifact(prev => prev ? {
+          ...prev,
+          status: 'submitted',
+          latestVersion: result.version || null,
+          versionCount: (prev.versionCount || 0) + 1,
+        } : null)
+      } else {
+        toast.error('Failed to submit', { description: result.error })
+      }
+    } catch (error) {
+      toast.error('Failed to submit')
+    } finally {
+      setIsSubmitting(false)
       setShowPreCheckWarning(false)
-    }
-  }
-
-  const handleTemplateInsert = (template: string) => {
-    setEditorContent(editorContent + '\n\n' + template)
-    toast.success('Template inserted')
-  }
-
-  const getEditorIcon = (type: DeliverableType) => {
-    switch (type) {
-      case 'mindmap':
-        return <Network className="w-4 h-4" />
-      case 'none':
-        return <Ban className="w-4 h-4" />
-      default:
-        return <FileText className="w-4 h-4" />
-    }
-  }
-
-  const getEditorLabel = (type: DeliverableType) => {
-    switch (type) {
-      case 'mindmap':
-        return 'Mindmap Editor'
-      case 'none':
-        return 'No Deliverable'
-      default:
-        return 'Rich Text Editor'
     }
   }
 
   if (isLoadingArtifact) {
     return (
-      <Card className="h-full flex items-center justify-center">
+      <div className="h-full flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground mx-auto mb-2" />
           <p className="text-sm text-muted-foreground">Loading...</p>
         </div>
-      </Card>
+      </div>
     )
   }
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader className="pb-3 border-b shrink-0">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              {getEditorIcon(session.deliverableType)}
-              Smart Output Builder
-            </CardTitle>
-            <Badge variant="outline" className="text-xs">
-              {getEditorLabel(session.deliverableType)}
-            </Badge>
-            {artifact?.latestVersion && (
-              <Badge variant="secondary" className="text-xs">
-                {artifact.latestVersion}
-              </Badge>
-            )}
-          </div>
+    <div className="h-full flex flex-col">
+      <div className="flex-1 flex flex-col p-0 min-h-0">
+        {/* Action Bar - Modern Card Design (Top) */}
+        <div className="shrink-0 pb-6">
+          <div className="rounded-xl border border-border bg-muted/30 p-3">
+            <div className="flex items-center justify-between">
+              {/* Pre-check Button - Generate Style */}
+              <button
+                onClick={handleRunPreCheck}
+                disabled={isRunningPreCheck || !editorContent.trim()}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                  "bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white",
+                  "disabled:opacity-40 disabled:cursor-not-allowed"
+                )}
+              >
+                {isRunningPreCheck ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Sparkles className="w-4 h-4" />
+                )}
+                <span>{isRunningPreCheck ? 'Checking...' : 'Pre-check'}</span>
+              </button>
 
-          <div className="flex items-center gap-2">
-            {/* Save Status */}
-            {lastSaved && (
-              <span className="text-xs text-muted-foreground">
-                Saved {formatDistanceToNow(new Date(lastSaved), { addSuffix: true })}
-              </span>
-            )}
-            {isDirty && (
-              <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/30">
-                Unsaved
-              </Badge>
-            )}
-
-            {/* Template Button */}
-            {session.templates.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <FileStack className="w-4 h-4" />
-                    Templates
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {session.templates.map(template => (
-                    <DropdownMenuItem
-                      key={template.id}
-                      onClick={() => handleTemplateInsert(template.content)}
-                    >
-                      {template.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-
-            {/* Save Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSave}
-              disabled={!isDirty || isSaving || !teamId}
-              className="gap-2"
-            >
-              {isSaving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              Save
-            </Button>
+              {/* Submit Button */}
+              <button
+                onClick={handleSubmit}
+                disabled={!editorContent.trim() || isSubmitting || !teamId || showSubmitted}
+                className={cn(
+                  "group flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                  "border border-border/50 bg-foreground text-background hover:bg-foreground/90",
+                  showSubmitted && "bg-emerald-500 border-emerald-500 text-white",
+                  "disabled:cursor-not-allowed",
+                  !showSubmitted && !isSubmitting && "disabled:opacity-40"
+                )}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : showSubmitted ? (
+                  <CheckCircle className="w-4 h-4" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                <span>
+                  {isSubmitting ? 'Submitting...' : showSubmitted ? 'Submitted!' : 'Submit'}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
-      </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col p-0 overflow-hidden">
-        <div className="flex-1 overflow-hidden p-2">
-          {session.deliverableType === 'mindmap' ? (
-            <MindmapEditor
-              value={editorContent}
-              onChange={setEditorContent}
-            />
-          ) : session.deliverableType === 'none' ? (
+        {/* Pre-check Results - Modern Card */}
+        {preCheckResult && (
+          <div className="shrink-0 pb-6">
+            <PreCheckResults result={preCheckResult} onClear={clearPreCheck} />
+          </div>
+        )}
+
+        <div className="flex-1 rounded-xl pb-6">
+          {session.deliverableType === 'none' ? (
             <div className="flex items-center justify-center h-full text-muted-foreground">
               <p>No deliverable required for this session.</p>
             </div>
@@ -395,164 +357,113 @@ export function SmartOutputBuilder({ project, session, teamId }: SmartOutputBuil
             <RichTextEditor
               value={editorContent}
               onChange={setEditorContent}
-              ghostSuggestion={ghostSuggestion}
             />
           )}
         </div>
+      </div>
 
-        {/* Pre-check Results */}
-        {preCheckResult && (
-          <div className="px-2 py-2 border-t shrink-0">
-            <PreCheckResults result={preCheckResult} />
-          </div>
-        )}
-
-        {/* Action Bar */}
-        <div className="px-2 py-2 border-t bg-muted/30 shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRunPreCheck}
-                disabled={isRunningPreCheck || !editorContent.trim()}
-                className="gap-2"
-              >
-                {isRunningPreCheck ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4" />
-                )}
-                Run Pre-check
-              </Button>
-            </div>
-
-            <Button
-              onClick={handleSubmit}
-              disabled={!editorContent.trim() || isSubmitting || !teamId}
-              className="gap-2"
-            >
-              {isSubmitting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-              Submit
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-
-      {/* Submit Confirmation Dialog */}
-      <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Submit your work?</DialogTitle>
-            <DialogDescription>
-              This will create a new version of your submission. You can still make changes and resubmit later.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSubmitDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={confirmSubmit} disabled={isSubmitting}>
-              {isSubmitting ? 'Submitting...' : 'Submit'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Pre-check Warning Dialog */}
+      {/* Pre-check Warning Dialog - Simple */}
       <Dialog open={showPreCheckWarning} onOpenChange={setShowPreCheckWarning}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-500">
-              <AlertTriangle className="w-5 h-5" />
-              Critical issues found
-            </DialogTitle>
-            <DialogDescription>
-              AI pre-check found critical issues in your work. Are you sure you want to submit anyway?
+            <DialogTitle className="text-amber-500">Issues detected</DialogTitle>
+            <DialogDescription className="text-sm">
+              Review the issues before submitting.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPreCheckWarning(false)}>
-              Review Issues
-            </Button>
-            <Button variant="destructive" onClick={confirmSubmit} disabled={isSubmitting}>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <button
+              onClick={() => setShowPreCheckWarning(false)}
+              className="px-4 py-2 rounded-lg text-sm font-medium border border-border hover:bg-accent transition-colors"
+            >
+              Review
+            </button>
+            <button
+              onClick={confirmSubmitFromWarning}
+              disabled={isSubmitting}
+              className={cn(
+                "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                "bg-amber-500 text-white hover:bg-amber-600",
+                "disabled:opacity-50 disabled:cursor-not-allowed"
+              )}
+            >
               {isSubmitting ? 'Submitting...' : 'Submit Anyway'}
-            </Button>
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Card>
+    </div>
   )
 }
 
-function PreCheckResults({ result }: { result: PreCheckResult }) {
-  const getStatusColor = (status: PreCheckResult['overallStatus']) => {
-    switch (status) {
-      case 'ready':
-        return 'text-green-500 border-green-500/30 bg-green-500/10'
-      case 'needs_work':
-        return 'text-amber-500 border-amber-500/30 bg-amber-500/10'
-      case 'critical_issues':
-        return 'text-red-500 border-red-500/30 bg-red-500/10'
-    }
+function PreCheckResults({ result, onClear }: { result: PreCheckResult; onClear: () => void }) {
+  const statusConfig = {
+    ready: {
+      accent: 'text-emerald-600 dark:text-emerald-400',
+      icon: <CheckCircle className="w-4 h-4" />,
+      label: 'Ready',
+    },
+    needs_work: {
+      accent: 'text-amber-600 dark:text-amber-400',
+      icon: <AlertTriangle className="w-4 h-4" />,
+      label: 'Needs Work',
+    },
+    critical_issues: {
+      accent: 'text-red-600 dark:text-red-400',
+      icon: <AlertTriangle className="w-4 h-4" />,
+      label: 'Critical',
+    },
   }
 
-  const getStatusIcon = (status: PreCheckResult['overallStatus']) => {
-    switch (status) {
-      case 'ready':
-        return <CheckCircle className="w-4 h-4" />
-      case 'needs_work':
-        return <AlertTriangle className="w-4 h-4" />
-      case 'critical_issues':
-        return <AlertTriangle className="w-4 h-4" />
-    }
-  }
-
-  const getStatusLabel = (status: PreCheckResult['overallStatus']) => {
-    switch (status) {
-      case 'ready':
-        return 'Ready to Submit'
-      case 'needs_work':
-        return 'Needs Work'
-      case 'critical_issues':
-        return 'Critical Issues'
-    }
-  }
+  const config = statusConfig[result.overallStatus]
 
   return (
-    <div className="space-y-3">
+    <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Badge className={cn('gap-1', getStatusColor(result.overallStatus))}>
-            {getStatusIcon(result.overallStatus)}
-            {getStatusLabel(result.overallStatus)}
-          </Badge>
+        <div className="flex items-center gap-3">
+          <div className={cn("flex items-center gap-2", config.accent)}>
+            {config.icon}
+            <span className="text-sm font-medium">{config.label}</span>
+          </div>
+          <div className="h-4 w-px bg-border/50" />
           <span className="text-sm text-muted-foreground">
-            Score: {result.score}/100
+            Score <span className="font-semibold text-foreground">{result.score}</span>/100
           </span>
         </div>
+        <button
+          onClick={onClear}
+          className="w-6 h-6 rounded-full hover:bg-background/60 flex items-center justify-center transition-colors"
+        >
+          <X className="h-3.5 w-3.5 text-muted-foreground" />
+        </button>
       </div>
 
+      {/* Feedback Items */}
       {result.items.length > 0 && (
         <div className="space-y-2">
           {result.items.map(item => (
-            <Alert
+            <div
               key={item.id}
-              variant={item.severity === 'critical' ? 'destructive' : 'default'}
-              className="py-2"
+              className={cn(
+                "rounded-lg px-3 py-2.5 bg-background border border-border/50",
+                item.severity === 'critical' && "border-red-500/30"
+              )}
             >
-              <AlertTitle className="text-sm flex items-center gap-2">
-                {item.severity === 'critical' && <AlertTriangle className="w-4 h-4" />}
-                {item.message}
-              </AlertTitle>
-              <AlertDescription className="text-xs mt-1">
-                {item.suggestion}
-              </AlertDescription>
-            </Alert>
+              <div className="flex items-start gap-2">
+                {item.severity === 'critical' && (
+                  <AlertTriangle className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
+                )}
+                <div className="space-y-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground leading-snug">
+                    {item.message}
+                  </p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {item.suggestion}
+                  </p>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
       )}

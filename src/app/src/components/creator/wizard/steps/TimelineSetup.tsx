@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Calendar, Clock } from 'lucide-react'
 import { format, addMinutes, addWeeks, differenceInMinutes } from 'date-fns'
 import { useCreatorStore } from '@/stores/creatorStore'
@@ -64,6 +64,20 @@ export function TimelineSetup() {
   const { wizardState, setTimeline } = useCreatorStore()
   const { timeline, validationErrors } = wizardState
 
+  // Initialize timeline if not set
+  useEffect(() => {
+    if (!isValidDate(timeline.startDate) || !isValidDate(timeline.endDate)) {
+      const now = new Date()
+      now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15, 0, 0)
+      const start = now
+      const end = addMinutes(start, 5)
+      setTimeline({
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+      })
+    }
+  }, [timeline.startDate, timeline.endDate, setTimeline])
+
   // Parse existing dates or use defaults
   const startDateTime = useMemo(() => {
     if (isValidDate(timeline.startDate)) {
@@ -79,8 +93,8 @@ export function TimelineSetup() {
     if (isValidDate(timeline.endDate)) {
       return new Date(timeline.endDate)
     }
-    // Default to 2 weeks from start
-    return addWeeks(startDateTime, 2)
+    // Default to 5 minutes from start
+    return addMinutes(startDateTime, 5)
   }, [timeline.endDate, startDateTime])
 
   // Calculate duration in minutes

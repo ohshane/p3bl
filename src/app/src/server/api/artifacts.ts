@@ -20,7 +20,7 @@ const createArtifactSchema = z.object({
   teamId: z.string(),
   title: z.string().min(1).max(500),
   content: z.string().optional(),
-  contentType: z.enum(['document', 'mindmap']).default('document'),
+  contentType: z.enum(['document']).default('document'),
 })
 
 const updateArtifactSchema = z.object({

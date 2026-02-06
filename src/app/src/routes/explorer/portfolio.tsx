@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { getUserArtifacts } from '@/server/api/artifacts'
 import { Loader2 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { FolderOpen, BarChart3, Trophy } from 'lucide-react'
+import { FolderOpen, BarChart3, Trophy, Briefcase } from 'lucide-react'
 import { ArtifactGallery } from '@/components/portfolio/ArtifactGallery'
 import { CompetencyDashboard } from '@/components/portfolio/CompetencyDashboard'
 import { AchievementArchive } from '@/components/portfolio/AchievementArchive'
@@ -87,10 +87,11 @@ function PortfolioPage() {
       <div className="max-w-6xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
+            <Briefcase className="w-8 h-8 text-cyan-500" />
             Growth Portfolio
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mt-1">
             Track your learning journey, competencies, and achievements
           </p>
         </div>

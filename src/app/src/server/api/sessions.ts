@@ -18,10 +18,11 @@ const createSessionSchema = z.object({
   topic: z.string().optional(),
   guide: z.string().optional(),
   weight: z.number().min(1).max(200).default(1),
-  deliverableType: z.enum(['document', 'code', 'markdown', 'presentation', 'mixed']).default('document'),
+  deliverableType: z.enum(['none', 'document']).default('document'),
   deliverableTitle: z.string().optional(),
   deliverableDescription: z.string().optional(),
-  dueDate: z.string().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
   llmModel: z.string().optional(),
 })
 
@@ -73,7 +74,8 @@ export const getSession = createServerFn({ method: 'GET' })
           ...session,
           createdAt: session.createdAt.toISOString(),
           updatedAt: session.updatedAt.toISOString(),
-          dueDate: session.dueDate?.toISOString(),
+          startDate: session.startDate?.toISOString(),
+          endDate: session.endDate?.toISOString(),
         },
       }
     } catch (error) {
@@ -104,7 +106,8 @@ export const getProjectSessions = createServerFn({ method: 'GET' })
           ...s,
           createdAt: s.createdAt.toISOString(),
           updatedAt: s.updatedAt.toISOString(),
-          dueDate: s.dueDate?.toISOString(),
+          startDate: s.startDate?.toISOString(),
+          endDate: s.endDate?.toISOString(),
         })),
       }
     } catch (error) {
@@ -141,7 +144,8 @@ export const createSession = createServerFn({ method: 'POST' })
         deliverableType: data.deliverableType,
         deliverableTitle: data.deliverableTitle,
         deliverableDescription: data.deliverableDescription,
-        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+        startDate: data.startDate ? new Date(data.startDate) : null,
+        endDate: data.endDate ? new Date(data.endDate) : null,
         llmModel: data.llmModel,
         createdAt: now,
         updatedAt: now,
@@ -163,8 +167,12 @@ export const updateSession = createServerFn({ method: 'POST' })
     try {
       const updates: any = { ...data.updates, updatedAt: new Date() }
       
-      if (data.updates.dueDate) {
-        updates.dueDate = new Date(data.updates.dueDate)
+      if (data.updates.startDate) {
+        updates.startDate = new Date(data.updates.startDate)
+      }
+      
+      if (data.updates.endDate) {
+        updates.endDate = new Date(data.updates.endDate)
       }
 
       await db.update(projectSessions)

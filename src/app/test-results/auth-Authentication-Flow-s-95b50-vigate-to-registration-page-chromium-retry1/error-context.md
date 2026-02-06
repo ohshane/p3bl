@@ -1,0 +1,43 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - link "Peabee" [ref=e6] [cursor=pointer]:
+          - /url: /
+          - img "Peabee" [ref=e7]
+        - heading "Create your account" [level=1] [ref=e8]
+        - paragraph [ref=e9]: Start your learning journey today
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - text: Full Name
+          - textbox "Full Name" [active] [ref=e13]:
+            - /placeholder: John Doe
+        - generic [ref=e14]:
+          - text: Email
+          - textbox "Email" [ref=e15]:
+            - /placeholder: you@example.com
+        - generic [ref=e16]:
+          - text: Password
+          - generic [ref=e17]:
+            - textbox "Password" [ref=e18]:
+              - /placeholder: Create a strong password
+            - button [ref=e19]:
+              - img [ref=e20]
+        - generic [ref=e23]:
+          - text: Confirm Password
+          - textbox "Confirm Password" [ref=e24]:
+            - /placeholder: Confirm your password
+        - button "Create account" [ref=e25]
+        - paragraph [ref=e26]:
+          - text: Already have an account?
+          - link "Sign in" [ref=e27] [cursor=pointer]:
+            - /url: /signin
+        - paragraph [ref=e28]: By creating an account, you agree to our Terms of Service and Privacy Policy.
+      - paragraph [ref=e29]: Peabee - Project-Based Learning Platform
+  - region "Notifications alt+T"
+  - button "Open TanStack Devtools" [ref=e30] [cursor=pointer]:
+    - img "TanStack Devtools" [ref=e31]
+```

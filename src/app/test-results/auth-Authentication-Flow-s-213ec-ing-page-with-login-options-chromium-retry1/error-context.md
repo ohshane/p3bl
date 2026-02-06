@@ -1,0 +1,50 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - main [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e6]:
+        - img "Peabee" [ref=e8]
+        - heading "Project-Based Learning, Reimagined" [level=1] [ref=e9]
+        - paragraph [ref=e10]: Join collaborative projects, work with AI teammates, and build real skills that matter. Your learning journey starts here.
+        - generic [ref=e11]:
+          - link "Get Started" [ref=e12] [cursor=pointer]:
+            - /url: /signup
+            - button "Get Started" [ref=e13]:
+              - text: Get Started
+              - img
+          - link "Sign In" [ref=e14] [cursor=pointer]:
+            - /url: /signin
+            - button "Sign In" [ref=e15]
+        - paragraph [ref=e16]: Free to join as an Explorer. Creators and admins are invited.
+      - generic [ref=e17]:
+        - heading "Everything you need to succeed" [level=2] [ref=e18]
+        - generic [ref=e19]:
+          - generic [ref=e20]:
+            - img [ref=e22]
+            - heading "Guided Learning Journey" [level=3] [ref=e25]
+            - paragraph [ref=e26]: Navigate through structured sessions with AI-powered assistance at every step.
+          - generic [ref=e27]:
+            - img [ref=e29]
+            - heading "Team Collaboration" [level=3] [ref=e34]
+            - paragraph [ref=e35]: Work together with peers and AI personas in dynamic group discussions.
+          - generic [ref=e36]:
+            - img [ref=e38]
+            - heading "Track Your Growth" [level=3] [ref=e44]
+            - paragraph [ref=e45]: Earn badges, level up, and build a portfolio that showcases your competencies.
+          - generic [ref=e46]:
+            - img [ref=e48]
+            - heading "AI-Powered Feedback" [level=3] [ref=e51]
+            - paragraph [ref=e52]: Get instant, rubric-aligned feedback to improve your work before submission.
+      - generic [ref=e55]:
+        - heading "Ready to start learning?" [level=2] [ref=e56]
+        - paragraph [ref=e57]: Create your free account and join thousands of learners building real-world skills through collaborative projects.
+        - link "Create Free Account" [ref=e58] [cursor=pointer]:
+          - /url: /signup
+          - button "Create Free Account" [ref=e59]
+      - paragraph [ref=e62]: Peabee - Project-Based Learning Platform
+  - region "Notifications alt+T"
+  - button "Open TanStack Devtools" [ref=e63] [cursor=pointer]:
+    - img "TanStack Devtools" [ref=e64]
+```

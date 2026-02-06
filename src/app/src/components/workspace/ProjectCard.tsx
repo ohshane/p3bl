@@ -1,10 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Star, Bell, Clock, Users, CheckCircle } from 'lucide-react'
+import { Bell, Clock, Users, User, Calendar } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
 import {
   Popover,
   PopoverContent,
@@ -12,19 +11,28 @@ import {
 } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { cn, getProjectTimeStatus } from '@/lib/utils'
-import { formatDistanceToNow, differenceInDays } from 'date-fns'
+import { cn, getProjectTimeStatus, safeFormatDate, getProjectProgress, getProjectTimeInfo } from '@/lib/utils'
+import { Progress } from '@/components/ui/progress'
+import { formatDistanceToNow } from 'date-fns'
 import type { UserProject } from '@/stores/projectStore'
 import type { ProjectStatus } from '@/types'
 
 interface ProjectCardProps {
   project: UserProject
-  isCurrent: boolean
 }
 
-export function ProjectCard({ project, isCurrent }: ProjectCardProps) {
+export function ProjectCard({ project }: ProjectCardProps) {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
+  const [, setTick] = useState(0)
   const { notifications, markNotificationRead } = useAuthStore()
+
+  // Force re-render every second to update progress and time info
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick(t => t + 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   // Get notifications for this project
   const projectNotifications = notifications.filter(
@@ -32,44 +40,19 @@ export function ProjectCard({ project, isCurrent }: ProjectCardProps) {
   )
   const notificationCount = projectNotifications.length
 
-  // Calculate progress based on sessions (if we have sessionCount)
-  // For now, assume session 1 of N if we have a currentSessionId
-  const currentSessionNum = project.currentSessionId ? 1 : 0 // We'd need more data to determine exact session number
-  const progressPercent = project.sessionCount > 0 
-    ? (currentSessionNum / project.sessionCount) * 100 
-    : 0
-
-  // Calculate time-based status
+  // Calculate time-based status (recalculated every second)
   const status: ProjectStatus = getProjectTimeStatus(project.startDate, project.endDate)
-
-  // Due date calculations (if project has an end date)
-  const dueDate = project.endDate ? new Date(project.endDate) : null
-  const daysUntilDue = dueDate ? differenceInDays(dueDate, new Date()) : null
-
-  const getDueDateText = () => {
-    if (!dueDate || daysUntilDue === null) return null
-    if (daysUntilDue < 0) return 'Overdue'
-    if (daysUntilDue === 0) return 'Due today'
-    if (daysUntilDue === 1) return 'Due tomorrow'
-    if (daysUntilDue < 7) return `Due in ${daysUntilDue} days`
-    return formatDistanceToNow(dueDate, { addSuffix: true })
-  }
+  const progress = getProjectProgress(project.startDate, project.endDate)
+  const timeInfo = getProjectTimeInfo(project.startDate, project.endDate)
+  const isIndividual = project.teamSize === 1
 
   return (
     <Card
       className={cn(
         'relative overflow-hidden transition-all hover:border-cyan-500/50',
-        isCurrent && 'border-cyan-500/50 bg-cyan-500/5',
         status === 'closed' && 'opacity-75'
       )}
     >
-      {/* Current indicator */}
-      {isCurrent && (
-        <div className="absolute top-3 right-3">
-          <Star className="w-5 h-5 text-cyan-400 fill-cyan-400" />
-        </div>
-      )}
-
       {/* Notification badge */}
       {notificationCount > 0 && (
         <Popover open={isNotificationOpen} onOpenChange={setIsNotificationOpen}>
@@ -122,56 +105,76 @@ export function ProjectCard({ project, isCurrent }: ProjectCardProps) {
       )}
 
       <Link to="/explorer/project/$projectId" params={{ projectId: project.id }}>
-        <CardContent className="p-5">
+        <CardContent className="pt-3 px-5 pb-5">
+          {/* Status Badge */}
+          <div className="flex items-center gap-2 mb-3">
+            {status === 'scheduled' && (
+              <Badge variant="outline" className="text-[10px] uppercase font-bold py-0 h-5 px-2 bg-amber-500/10 text-amber-500 border-amber-500/30">
+                Scheduled
+              </Badge>
+            )}
+            {status === 'opened' && (
+              <Badge variant="outline" className="text-[10px] uppercase font-bold py-0 h-5 px-2 bg-cyan-500/10 text-cyan-500 border-cyan-500/30">
+                Opened
+              </Badge>
+            )}
+            {status === 'closed' && (
+              <Badge variant="outline" className="text-[10px] uppercase font-bold py-0 h-5 px-2 bg-green-500/10 text-green-500 border-green-500/30">
+                Closed
+              </Badge>
+            )}
+          </div>
+
           {/* Project Name */}
-          <h3 className="font-semibold text-lg text-foreground mb-1 pr-8">
+          <h3 className="font-semibold text-lg text-foreground mb-1 pr-8 truncate">
             {project.title}
           </h3>
           
           {/* Creator */}
-          <p className="text-sm text-muted-foreground mb-3">
+          <p className="text-sm text-muted-foreground mb-4 line-clamp-1">
             By {project.creatorName}
           </p>
 
-          {/* Session Progress */}
-          <div className="flex items-center gap-2 mb-3">
-            {status === 'closed' ? (
-              <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/30">
-                <CheckCircle className="w-3 h-3 mr-1" />
-                Closed
-              </Badge>
-            ) : (
-              <span className="text-sm text-muted-foreground">
-                {project.sessionCount} session{project.sessionCount !== 1 ? 's' : ''}
+          {/* Project Info */}
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="flex items-center gap-2">
+                {isIndividual ? (
+                  <User className="w-4 h-4" />
+                ) : (
+                  <Users className="w-4 h-4" />
+                )}
+                Type
               </span>
-            )}
+              <span className="text-foreground">
+                {isIndividual ? 'Individual' : 'Group'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                Sessions
+              </span>
+              <span className="text-foreground">{project.sessionCount} sessions</span>
+            </div>
+            <div className="flex items-center justify-between text-muted-foreground">
+              <span className="flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                Duration
+              </span>
+              <span className="text-foreground">
+                {safeFormatDate(project.startDate, 'MMM d HH:mm', 'TBD')} - {safeFormatDate(project.endDate, 'MMM d HH:mm', 'TBD')}
+              </span>
+            </div>
           </div>
 
           {/* Progress Bar */}
-          <div className="mb-4">
-            <Progress value={progressPercent} className="h-2" />
-          </div>
-
-          {/* Footer Info */}
-          <div className="flex items-center justify-between text-sm">
-            {/* Due Date */}
-            {status === 'opened' && dueDate && (
-              <div
-                className={cn(
-                  'flex items-center gap-1',
-                  daysUntilDue !== null && daysUntilDue < 0 ? 'text-red-500' : 'text-muted-foreground'
-                )}
-              >
-                <Clock className="w-4 h-4" />
-                <span>{getDueDateText()}</span>
-              </div>
-            )}
-
-            {/* Team */}
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <Users className="w-4 h-4" />
-              <span>{project.teamName}</span>
+          <div className="mt-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+              <span>{timeInfo.elapsed} elapsed</span>
+              <span>{timeInfo.remaining} left</span>
             </div>
+            <Progress value={progress} className="h-2" />
           </div>
         </CardContent>
       </Link>

@@ -196,22 +196,22 @@ The Intelligent Voyage Navigator uses a **three-panel simultaneous view** layout
 
 ### Smart Output Builder (E.2.5)
 
-The Smart Output Builder uses a **hybrid multi-format editor** where the editor mode is determined by the deliverable type defined in the project.
+The Smart Output Builder uses a **rich text editor** for document deliverables.
 
-#### Supported Editor Modes
+#### Supported Deliverable Types (Phase 1)
 
-| Deliverable Type          | Editor Mode         | Description                                                        |
-| ------------------------- | ------------------- | ------------------------------------------------------------------ |
-| Document / Essay / Report | Rich text (WYSIWYG) | TipTap or similar rich text editor with formatting toolbar         |
-| Code / Technical          | Code editor         | Monaco or CodeMirror with syntax highlighting and language support |
-| Technical documentation   | Markdown            | Split-pane markdown editor (source + live preview)                 |
+| Deliverable Type | Editor Mode         | Description                                                |
+| ---------------- | ------------------- | ---------------------------------------------------------- |
+| None             | N/A                 | Session has no deliverable requirement                     |
+| Document         | Rich text (WYSIWYG) | TipTap or similar rich text editor with formatting toolbar |
+
+> **Note**: Additional deliverable types (code, markdown, presentation, mixed) may be added in future phases.
 
 #### Editor Mode Selection
 
 - The deliverable type is defined by the Creator during project setup (C.2.7.3)
-- For Phase 1: Deliverable type is provided in mock data per session
-- The editor mode is automatically selected based on the deliverable type — users cannot manually switch modes
-- If no deliverable type is specified, default to **Rich text (WYSIWYG)**
+- For Phase 1: Only `none` and `document` deliverable types are supported
+- If no deliverable type is specified, default to **document** (Rich text WYSIWYG)
 
 #### Ghost Typing (E.2.5.2) Behavior
 

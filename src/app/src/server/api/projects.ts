@@ -95,6 +95,11 @@ export const getCreatorProjects = createServerFn({ method: 'GET' })
             teamCount: teamCount[0]?.count || 0,
             memberCount: memberCount[0]?.count || 0,
             sessionCount: project.sessions.length,
+            sessions: project.sessions.map(s => ({
+              ...s,
+              startDate: s.startDate?.toISOString(),
+              endDate: s.endDate?.toISOString(),
+            })),
             createdAt: project.createdAt.toISOString(),
             updatedAt: project.updatedAt.toISOString(),
             startDate: project.startDate?.toISOString(),
@@ -136,14 +141,24 @@ export const getUserProjects = createServerFn({ method: 'GET' })
 
       const projectList = userTeams.map(tm => {
         const project = tm.team.project
+        const currentSessionIndex = project.sessions.findIndex(s => s.id === tm.currentSessionId)
+        
         return {
           id: project.id,
           title: project.title,
           description: project.description,
           teamId: tm.team.id,
           teamName: tm.team.name,
+          teamSize: project.teamSize,
           currentSessionId: tm.currentSessionId,
+          currentSessionIndex: currentSessionIndex !== -1 ? currentSessionIndex : 0,
           sessionCount: project.sessions.length,
+          sessions: project.sessions.map(s => ({
+            id: s.id,
+            title: s.title,
+            startDate: s.startDate?.toISOString(),
+            endDate: s.endDate?.toISOString(),
+          })),
           creatorName: project.creator.name,
           startDate: project.startDate?.toISOString(),
           endDate: project.endDate?.toISOString(),
@@ -179,8 +194,16 @@ export const getUserProjects = createServerFn({ method: 'GET' })
             description: project.description,
             teamId: '',
             teamName: 'Waiting for Allocation',
+            teamSize: project.teamSize,
             currentSessionId: null,
+            currentSessionIndex: 0,
             sessionCount: project.sessions.length,
+            sessions: project.sessions.map(s => ({
+              id: s.id,
+              title: s.title,
+              startDate: s.startDate?.toISOString(),
+              endDate: s.endDate?.toISOString(),
+            })),
             creatorName: project.creator.name,
             startDate: project.startDate?.toISOString(),
             endDate: project.endDate?.toISOString(),
@@ -293,7 +316,8 @@ export const getProject = createServerFn({ method: 'GET' })
             ...s,
             createdAt: s.createdAt.toISOString(),
             updatedAt: s.updatedAt.toISOString(),
-            dueDate: s.dueDate?.toISOString(),
+            startDate: s.startDate?.toISOString(),
+            endDate: s.endDate?.toISOString(),
           })),
           creator: {
             id: project.creator.id,
@@ -358,9 +382,18 @@ export const updateProject = createServerFn({ method: 'POST' })
   .inputValidator((data: { projectId: string; updates: Partial<z.infer<typeof createProjectSchema>> }) => data)
   .handler(async ({ data }) => {
     try {
+      // Convert date strings to Date objects for DB
+      const updates: Record<string, unknown> = { ...data.updates }
+      if (data.updates.startDate) {
+        updates.startDate = new Date(data.updates.startDate)
+      }
+      if (data.updates.endDate) {
+        updates.endDate = new Date(data.updates.endDate)
+      }
+      
       await db.update(projects)
         .set({
-          ...data.updates,
+          ...updates,
           updatedAt: new Date(),
         })
         .where(eq(projects.id, data.projectId))
@@ -889,5 +922,52 @@ export const allocateTeams = createServerFn({ method: 'POST' })
     } catch (error) {
       console.error('Allocate teams error:', error)
       return { success: false, error: 'Failed to allocate teams' }
+    }
+  })
+
+/**
+ * Get all project participants (both in teams and waiting)
+ */
+export const getProjectParticipants = createServerFn({ method: 'GET' })
+  .inputValidator((data: { projectId: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      // Get all accepted invitations for this project
+      const invitations = await db.query.projectInvitations.findMany({
+        where: and(
+          eq(projectInvitations.projectId, data.projectId),
+          eq(projectInvitations.status, 'accepted')
+        ),
+        with: {
+          user: true,
+          team: true,
+        },
+      })
+
+      const participants = invitations.map(inv => ({
+        id: inv.userId,
+        name: inv.user.name,
+        email: inv.user.email,
+        avatar: inv.user.avatarUrl,
+        teamId: inv.teamId,
+        teamName: inv.team?.name || null,
+        joinedAt: inv.respondedAt?.toISOString() || inv.createdAt.toISOString(),
+      }))
+
+      // Separate into waiting (no team) and assigned (has team)
+      const waiting = participants.filter(p => !p.teamId)
+      const assigned = participants.filter(p => p.teamId)
+
+      return {
+        success: true,
+        participants: {
+          total: participants.length,
+          waiting,
+          assigned,
+        },
+      }
+    } catch (error) {
+      console.error('Get project participants error:', error)
+      return { success: false, error: 'Failed to get participants' }
     }
   })

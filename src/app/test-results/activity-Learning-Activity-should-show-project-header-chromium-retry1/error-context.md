@@ -1,0 +1,55 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - link "Peabee Peabee" [ref=e4] [cursor=pointer]:
+      - /url: /explorer
+      - img "Peabee" [ref=e5]
+      - generic [ref=e6]: Peabee
+    - navigation [ref=e7]:
+      - link "Dashboard" [ref=e8] [cursor=pointer]:
+        - /url: /explorer
+        - img [ref=e9]
+        - text: Dashboard
+      - link "Portfolio" [ref=e14] [cursor=pointer]:
+        - /url: /explorer/portfolio
+        - img [ref=e15]
+        - text: Portfolio
+    - generic [ref=e18]:
+      - button "Toggle theme" [ref=e19]:
+        - img
+      - button [ref=e20]:
+        - img
+      - button "EO Explorer One" [ref=e21]:
+        - generic [ref=e23]: EO
+        - generic [ref=e24]: Explorer One
+        - img
+  - main [ref=e25]:
+    - paragraph [ref=e26]: Not Found
+  - button "Open chat assistant"
+  - generic [ref=e27]:
+    - generic [ref=e28]:
+      - generic [ref=e29]:
+        - img [ref=e31]
+        - generic [ref=e34]:
+          - heading "Assistant" [level=3] [ref=e35]
+          - paragraph [ref=e36]: Here to help
+      - generic [ref=e37]:
+        - button [ref=e38]:
+          - img
+        - button [ref=e39]:
+          - img
+    - generic [ref=e44]:
+      - img [ref=e47]
+      - generic [ref=e50]:
+        - paragraph [ref=e51]: Hi! I'm here to help you get started. Have a join code or invitation link? I can help you join your first project!
+        - paragraph [ref=e52]: less than a minute ago
+    - generic [ref=e54]:
+      - textbox "Ask me anything..." [active] [ref=e55]
+      - button [disabled]:
+        - img
+  - region "Notifications alt+T"
+  - button "Open TanStack Devtools" [ref=e56] [cursor=pointer]:
+    - img "TanStack Devtools" [ref=e57]
+```

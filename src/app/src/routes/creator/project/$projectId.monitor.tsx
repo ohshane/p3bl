@@ -29,10 +29,14 @@ function MonitoringPage() {
     }
   }, [isAuthenticated, navigate])
 
-  // Check if user is a creator
+  // Check if user is a creator or pioneer (admins should use /admin)
   useEffect(() => {
     if (currentUser && currentUser.role !== 'creator' && currentUser.role !== 'pioneer') {
-      navigate({ to: '/explorer' })
+      if (currentUser.role === 'admin') {
+        navigate({ to: '/admin' })
+      } else {
+        navigate({ to: '/explorer' })
+      }
     }
   }, [currentUser, navigate])
 
@@ -102,7 +106,7 @@ function MonitoringPage() {
             <div className="text-2xl font-bold text-foreground">
               {project.teams.reduce((sum, t) => sum + t.memberIds.length, 0)}
             </div>
-            <div className="text-sm text-muted-foreground">Total Learners</div>
+            <div className="text-sm text-muted-foreground">Total Explorers</div>
           </div>
           <div className="bg-card border border-border rounded-lg p-4">
             <div className="text-2xl font-bold text-foreground">

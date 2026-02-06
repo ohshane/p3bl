@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from '@tanstack/react-router'
-import { Bell, LogOut, User, ChevronDown, Settings, LayoutDashboard, FolderPlus, Briefcase } from 'lucide-react'
+import { Bell, LogOut, User, ChevronDown, Settings, LayoutDashboard, FolderPlus, Briefcase, Calendar } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { ThemeToggle } from '@/components/shared/ThemeToggle'
 import { Button } from '@/components/ui/button'
@@ -125,6 +125,14 @@ export function AppHeader() {
               Dashboard
             </Link>
             <Link
+              to="/creator/calendar"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              activeProps={{ className: 'text-sm font-medium text-foreground' }}
+            >
+              <Calendar className="w-4 h-4 inline mr-1" />
+              Calendar
+            </Link>
+            <Link
               to="/creator/project/new"
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               activeProps={{ className: 'text-sm font-medium text-foreground' }}
@@ -143,6 +151,14 @@ export function AppHeader() {
             >
               <LayoutDashboard className="w-4 h-4 inline mr-1" />
               Dashboard
+            </Link>
+            <Link
+              to="/explorer/calendar"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              activeProps={{ className: 'text-sm font-medium text-foreground' }}
+            >
+              <Calendar className="w-4 h-4 inline mr-1" />
+              Calendar
             </Link>
             <Link
               to="/explorer/portfolio"

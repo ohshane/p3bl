@@ -1,0 +1,246 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - link "Peabee Peabee" [ref=e4] [cursor=pointer]:
+      - /url: /explorer
+      - img "Peabee" [ref=e5]
+      - generic [ref=e6]: Peabee
+    - navigation
+    - generic [ref=e7]:
+      - button "Toggle theme" [ref=e8]:
+        - img
+      - button [ref=e9]:
+        - img
+      - button "AU Admin User" [ref=e10]:
+        - generic [ref=e12]: AU
+        - generic [ref=e13]: Admin User
+        - img
+  - main [ref=e14]:
+    - generic [ref=e17]:
+      - navigation [ref=e18]:
+        - generic [ref=e19]:
+          - heading "Administration" [level=2] [ref=e20]
+          - list [ref=e21]:
+            - listitem [ref=e22]:
+              - link "Dashboard" [ref=e23] [cursor=pointer]:
+                - /url: /admin
+                - img [ref=e24]
+                - generic [ref=e29]: Dashboard
+                - img [ref=e30]
+            - listitem [ref=e32]:
+              - link "Users" [ref=e33] [cursor=pointer]:
+                - /url: /admin/users
+                - img [ref=e34]
+                - generic [ref=e39]: Users
+                - img [ref=e40]
+      - main [ref=e42]:
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - generic [ref=e45]:
+              - heading "User Management" [level=1] [ref=e46]:
+                - img [ref=e47]
+                - text: User Management
+              - paragraph [ref=e52]: 8 users total
+            - button "Add User" [ref=e53]:
+              - img
+              - text: Add User
+          - generic [ref=e54]:
+            - generic [ref=e56]:
+              - img [ref=e57]
+              - textbox "Search by name or email..." [ref=e60]
+            - combobox [ref=e61]:
+              - generic: All Roles
+              - img
+            - combobox [ref=e62]:
+              - generic: Date Joined
+              - img
+            - button "↓" [ref=e63]
+          - table [ref=e65]:
+            - rowgroup [ref=e66]:
+              - row "User Role Level Joined Actions" [ref=e67]:
+                - columnheader "User" [ref=e68]
+                - columnheader "Role" [ref=e69]
+                - columnheader "Level" [ref=e70]
+                - columnheader "Joined" [ref=e71]
+                - columnheader "Actions" [ref=e72]
+            - rowgroup [ref=e73]:
+              - row "A Admin User admin@p3bl.local admin 1 (0 XP) 2/6/2026" [ref=e74]:
+                - cell "A Admin User admin@p3bl.local" [ref=e75]:
+                  - generic [ref=e76]:
+                    - generic [ref=e78]: A
+                    - generic [ref=e79]:
+                      - paragraph [ref=e80]: Admin User
+                      - paragraph [ref=e81]: admin@p3bl.local
+                - cell "admin" [ref=e82]:
+                  - generic [ref=e83]:
+                    - img
+                    - text: admin
+                - cell "1 (0 XP)" [ref=e84]:
+                  - generic [ref=e85]:
+                    - generic [ref=e86]: "1"
+                    - generic [ref=e87]: (0 XP)
+                - cell "2/6/2026" [ref=e88]
+                - cell [ref=e89]:
+                  - button [ref=e90]:
+                    - img
+              - row "C Creator One creator1@p3bl.local creator 1 (0 XP) 2/6/2026" [ref=e91]:
+                - cell "C Creator One creator1@p3bl.local" [ref=e92]:
+                  - generic [ref=e93]:
+                    - generic [ref=e95]: C
+                    - generic [ref=e96]:
+                      - paragraph [ref=e97]: Creator One
+                      - paragraph [ref=e98]: creator1@p3bl.local
+                - cell "creator" [ref=e99]:
+                  - generic [ref=e100]:
+                    - img
+                    - text: creator
+                - cell "1 (0 XP)" [ref=e101]:
+                  - generic [ref=e102]:
+                    - generic [ref=e103]: "1"
+                    - generic [ref=e104]: (0 XP)
+                - cell "2/6/2026" [ref=e105]
+                - cell [ref=e106]:
+                  - button [ref=e107]:
+                    - img
+              - row "C Creator Two creator2@p3bl.local creator 1 (0 XP) 2/6/2026" [ref=e108]:
+                - cell "C Creator Two creator2@p3bl.local" [ref=e109]:
+                  - generic [ref=e110]:
+                    - generic [ref=e112]: C
+                    - generic [ref=e113]:
+                      - paragraph [ref=e114]: Creator Two
+                      - paragraph [ref=e115]: creator2@p3bl.local
+                - cell "creator" [ref=e116]:
+                  - generic [ref=e117]:
+                    - img
+                    - text: creator
+                - cell "1 (0 XP)" [ref=e118]:
+                  - generic [ref=e119]:
+                    - generic [ref=e120]: "1"
+                    - generic [ref=e121]: (0 XP)
+                - cell "2/6/2026" [ref=e122]
+                - cell [ref=e123]:
+                  - button [ref=e124]:
+                    - img
+              - row "C Creator Three creator3@p3bl.local creator 1 (0 XP) 2/6/2026" [ref=e125]:
+                - cell "C Creator Three creator3@p3bl.local" [ref=e126]:
+                  - generic [ref=e127]:
+                    - generic [ref=e129]: C
+                    - generic [ref=e130]:
+                      - paragraph [ref=e131]: Creator Three
+                      - paragraph [ref=e132]: creator3@p3bl.local
+                - cell "creator" [ref=e133]:
+                  - generic [ref=e134]:
+                    - img
+                    - text: creator
+                - cell "1 (0 XP)" [ref=e135]:
+                  - generic [ref=e136]:
+                    - generic [ref=e137]: "1"
+                    - generic [ref=e138]: (0 XP)
+                - cell "2/6/2026" [ref=e139]
+                - cell [ref=e140]:
+                  - button [ref=e141]:
+                    - img
+              - row "E Explorer One explorer1@p3bl.local explorer 1 (0 XP) 2/6/2026" [ref=e142]:
+                - cell "E Explorer One explorer1@p3bl.local" [ref=e143]:
+                  - generic [ref=e144]:
+                    - generic [ref=e146]: E
+                    - generic [ref=e147]:
+                      - paragraph [ref=e148]: Explorer One
+                      - paragraph [ref=e149]: explorer1@p3bl.local
+                - cell "explorer" [ref=e150]:
+                  - generic [ref=e151]:
+                    - img
+                    - text: explorer
+                - cell "1 (0 XP)" [ref=e152]:
+                  - generic [ref=e153]:
+                    - generic [ref=e154]: "1"
+                    - generic [ref=e155]: (0 XP)
+                - cell "2/6/2026" [ref=e156]
+                - cell [ref=e157]:
+                  - button [ref=e158]:
+                    - img
+              - row "E Explorer Two explorer2@p3bl.local explorer 1 (0 XP) 2/6/2026" [ref=e159]:
+                - cell "E Explorer Two explorer2@p3bl.local" [ref=e160]:
+                  - generic [ref=e161]:
+                    - generic [ref=e163]: E
+                    - generic [ref=e164]:
+                      - paragraph [ref=e165]: Explorer Two
+                      - paragraph [ref=e166]: explorer2@p3bl.local
+                - cell "explorer" [ref=e167]:
+                  - generic [ref=e168]:
+                    - img
+                    - text: explorer
+                - cell "1 (0 XP)" [ref=e169]:
+                  - generic [ref=e170]:
+                    - generic [ref=e171]: "1"
+                    - generic [ref=e172]: (0 XP)
+                - cell "2/6/2026" [ref=e173]
+                - cell [ref=e174]:
+                  - button [ref=e175]:
+                    - img
+              - row "E Explorer Three explorer3@p3bl.local explorer 1 (0 XP) 2/6/2026" [ref=e176]:
+                - cell "E Explorer Three explorer3@p3bl.local" [ref=e177]:
+                  - generic [ref=e178]:
+                    - generic [ref=e180]: E
+                    - generic [ref=e181]:
+                      - paragraph [ref=e182]: Explorer Three
+                      - paragraph [ref=e183]: explorer3@p3bl.local
+                - cell "explorer" [ref=e184]:
+                  - generic [ref=e185]:
+                    - img
+                    - text: explorer
+                - cell "1 (0 XP)" [ref=e186]:
+                  - generic [ref=e187]:
+                    - generic [ref=e188]: "1"
+                    - generic [ref=e189]: (0 XP)
+                - cell "2/6/2026" [ref=e190]
+                - cell [ref=e191]:
+                  - button [ref=e192]:
+                    - img
+              - row "P Pioneer One pioneer1@p3bl.local pioneer 1 (0 XP) 2/6/2026" [ref=e193]:
+                - cell "P Pioneer One pioneer1@p3bl.local" [ref=e194]:
+                  - generic [ref=e195]:
+                    - generic [ref=e197]: P
+                    - generic [ref=e198]:
+                      - paragraph [ref=e199]: Pioneer One
+                      - paragraph [ref=e200]: pioneer1@p3bl.local
+                - cell "pioneer" [ref=e201]:
+                  - generic [ref=e202]:
+                    - img
+                    - text: pioneer
+                - cell "1 (0 XP)" [ref=e203]:
+                  - generic [ref=e204]:
+                    - generic [ref=e205]: "1"
+                    - generic [ref=e206]: (0 XP)
+                - cell "2/6/2026" [ref=e207]
+                - cell [ref=e208]:
+                  - button [ref=e209]:
+                    - img
+  - button "Open chat assistant"
+  - generic [ref=e210]:
+    - generic [ref=e211]:
+      - generic [ref=e212]:
+        - img [ref=e214]
+        - generic [ref=e217]:
+          - heading "Assistant" [level=3] [ref=e218]
+          - paragraph [ref=e219]: Here to help
+      - generic [ref=e220]:
+        - button [ref=e221]:
+          - img
+        - button [ref=e222]:
+          - img
+    - generic [ref=e227]:
+      - img [ref=e230]
+      - generic [ref=e233]:
+        - paragraph [ref=e234]: Hi! I'm here to help you get started. Have a join code or invitation link? I can help you join your first project!
+        - paragraph [ref=e235]: less than a minute ago
+    - generic [ref=e237]:
+      - textbox "Ask me anything..." [active] [ref=e238]
+      - button [disabled]:
+        - img
+  - region "Notifications alt+T"
+  - button "Open TanStack Devtools" [ref=e239] [cursor=pointer]:
+    - img "TanStack Devtools" [ref=e240]
+```

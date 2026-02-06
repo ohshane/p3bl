@@ -1,0 +1,191 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - link "Peabee Peabee" [ref=e4] [cursor=pointer]:
+      - /url: /explorer
+      - img "Peabee" [ref=e5]
+      - generic [ref=e6]: Peabee
+    - navigation
+    - generic [ref=e7]:
+      - button "Toggle theme" [ref=e8]:
+        - img
+      - button [ref=e9]:
+        - img
+      - button "AU Admin User" [ref=e10]:
+        - generic [ref=e12]: AU
+        - generic [ref=e13]: Admin User
+        - img
+  - main [ref=e14]:
+    - generic [ref=e17]:
+      - navigation [ref=e18]:
+        - generic [ref=e19]:
+          - heading "Administration" [level=2] [ref=e20]
+          - list [ref=e21]:
+            - listitem [ref=e22]:
+              - link "Dashboard" [ref=e23] [cursor=pointer]:
+                - /url: /admin
+                - img [ref=e24]
+                - generic [ref=e29]: Dashboard
+                - img [ref=e30]
+            - listitem [ref=e32]:
+              - link "Users" [ref=e33] [cursor=pointer]:
+                - /url: /admin/users
+                - img [ref=e34]
+                - generic [ref=e39]: Users
+                - img [ref=e40]
+      - main [ref=e42]:
+        - generic [ref=e43]:
+          - generic [ref=e44]:
+            - generic [ref=e45]:
+              - heading "Admin Dashboard" [level=1] [ref=e46]:
+                - img [ref=e47]
+                - text: Admin Dashboard
+              - paragraph [ref=e50]: Manage users and system settings
+            - link "Add User" [ref=e51] [cursor=pointer]:
+              - /url: /admin/users
+              - button "Add User" [ref=e52]:
+                - img
+                - text: Add User
+          - generic [ref=e53]:
+            - generic [ref=e56]:
+              - generic [ref=e57]:
+                - paragraph [ref=e58]: Total Users
+                - paragraph [ref=e59]: "8"
+              - img [ref=e61]
+            - generic [ref=e68]:
+              - generic [ref=e69]:
+                - paragraph [ref=e70]: Explorers
+                - paragraph [ref=e71]: "3"
+              - img [ref=e73]
+            - generic [ref=e78]:
+              - generic [ref=e79]:
+                - paragraph [ref=e80]: Creators
+                - paragraph [ref=e81]: "3"
+              - img [ref=e83]
+            - generic [ref=e90]:
+              - generic [ref=e91]:
+                - paragraph [ref=e92]: Pioneers
+                - paragraph [ref=e93]: "1"
+              - img [ref=e95]
+            - generic [ref=e102]:
+              - generic [ref=e103]:
+                - paragraph [ref=e104]: Admins
+                - paragraph [ref=e105]: "1"
+              - img [ref=e107]
+          - generic [ref=e109]:
+            - generic [ref=e110]:
+              - generic [ref=e111]:
+                - generic [ref=e112]: Recent Users
+                - generic [ref=e113]: Users registered in the last 7 days
+              - link "View All" [ref=e114] [cursor=pointer]:
+                - /url: /admin/users
+                - button "View All" [ref=e115]:
+                  - text: View All
+                  - img
+            - generic [ref=e117]:
+              - generic [ref=e118]:
+                - generic [ref=e119]:
+                  - generic [ref=e121]: A
+                  - generic [ref=e122]:
+                    - paragraph [ref=e123]: Admin User
+                    - paragraph [ref=e124]: admin@p3bl.local
+                - generic [ref=e125]:
+                  - generic [ref=e126]:
+                    - img
+                    - text: admin
+                  - generic [ref=e127]: 2/6/2026
+              - generic [ref=e128]:
+                - generic [ref=e129]:
+                  - generic [ref=e131]: C
+                  - generic [ref=e132]:
+                    - paragraph [ref=e133]: Creator One
+                    - paragraph [ref=e134]: creator1@p3bl.local
+                - generic [ref=e135]:
+                  - generic [ref=e136]:
+                    - img
+                    - text: creator
+                  - generic [ref=e137]: 2/6/2026
+              - generic [ref=e138]:
+                - generic [ref=e139]:
+                  - generic [ref=e141]: C
+                  - generic [ref=e142]:
+                    - paragraph [ref=e143]: Creator Two
+                    - paragraph [ref=e144]: creator2@p3bl.local
+                - generic [ref=e145]:
+                  - generic [ref=e146]:
+                    - img
+                    - text: creator
+                  - generic [ref=e147]: 2/6/2026
+              - generic [ref=e148]:
+                - generic [ref=e149]:
+                  - generic [ref=e151]: C
+                  - generic [ref=e152]:
+                    - paragraph [ref=e153]: Creator Three
+                    - paragraph [ref=e154]: creator3@p3bl.local
+                - generic [ref=e155]:
+                  - generic [ref=e156]:
+                    - img
+                    - text: creator
+                  - generic [ref=e157]: 2/6/2026
+              - generic [ref=e158]:
+                - generic [ref=e159]:
+                  - generic [ref=e161]: E
+                  - generic [ref=e162]:
+                    - paragraph [ref=e163]: Explorer One
+                    - paragraph [ref=e164]: explorer1@p3bl.local
+                - generic [ref=e165]:
+                  - generic [ref=e166]:
+                    - img
+                    - text: explorer
+                  - generic [ref=e167]: 2/6/2026
+          - generic [ref=e168]:
+            - generic [ref=e169]:
+              - generic [ref=e170]:
+                - generic [ref=e171]:
+                  - img [ref=e172]
+                  - text: Create New User
+                - generic [ref=e175]: Add explorers, creators, pioneers, or admins to the system
+              - link "Go to User Management" [ref=e177] [cursor=pointer]:
+                - /url: /admin/users
+                - button "Go to User Management" [ref=e178]:
+                  - text: Go to User Management
+                  - img
+            - generic [ref=e179]:
+              - generic [ref=e180]:
+                - generic [ref=e181]:
+                  - img [ref=e182]
+                  - text: Manage Roles
+                - generic [ref=e184]: Promote users to different roles
+              - link "Manage User Roles" [ref=e186] [cursor=pointer]:
+                - /url: /admin/users
+                - button "Manage User Roles" [ref=e187]:
+                  - text: Manage User Roles
+                  - img
+  - button "Open chat assistant"
+  - generic [ref=e188]:
+    - generic [ref=e189]:
+      - generic [ref=e190]:
+        - img [ref=e192]
+        - generic [ref=e195]:
+          - heading "Assistant" [level=3] [ref=e196]
+          - paragraph [ref=e197]: Here to help
+      - generic [ref=e198]:
+        - button [ref=e199]:
+          - img
+        - button [ref=e200]:
+          - img
+    - generic [ref=e205]:
+      - img [ref=e208]
+      - generic [ref=e211]:
+        - paragraph [ref=e212]: Hi! I'm here to help you get started. Have a join code or invitation link? I can help you join your first project!
+        - paragraph [ref=e213]: less than a minute ago
+    - generic [ref=e215]:
+      - textbox "Ask me anything..." [active] [ref=e216]
+      - button [disabled]:
+        - img
+  - region "Notifications alt+T"
+  - button "Open TanStack Devtools" [ref=e217] [cursor=pointer]:
+    - img "TanStack Devtools" [ref=e218]
+```

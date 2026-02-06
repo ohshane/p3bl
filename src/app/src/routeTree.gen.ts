@@ -19,7 +19,10 @@ import { Route as ExplorerIndexRouteImport } from './routes/explorer/index'
 import { Route as CreatorIndexRouteImport } from './routes/creator/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ExplorerPortfolioRouteImport } from './routes/explorer/portfolio'
+import { Route as ExplorerCalendarRouteImport } from './routes/explorer/calendar'
+import { Route as CreatorCalendarRouteImport } from './routes/creator/calendar'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as ExplorerProjectProjectIdRouteImport } from './routes/explorer/project.$projectId'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
 import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
@@ -82,9 +85,24 @@ const ExplorerPortfolioRoute = ExplorerPortfolioRouteImport.update({
   path: '/portfolio',
   getParentRoute: () => ExplorerRoute,
 } as any)
+const ExplorerCalendarRoute = ExplorerCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => ExplorerRoute,
+} as any)
+const CreatorCalendarRoute = CreatorCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => CreatorRoute,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => AdminRoute,
 } as any)
 const ExplorerProjectProjectIdRoute =
@@ -152,7 +170,10 @@ export interface FileRoutesByFullPath {
   '/explorer': typeof ExplorerRouteWithChildren
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/creator/calendar': typeof CreatorCalendarRoute
+  '/explorer/calendar': typeof ExplorerCalendarRoute
   '/explorer/portfolio': typeof ExplorerPortfolioRoute
   '/admin/': typeof AdminIndexRoute
   '/creator/': typeof CreatorIndexRoute
@@ -173,7 +194,10 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/creator/calendar': typeof CreatorCalendarRoute
+  '/explorer/calendar': typeof ExplorerCalendarRoute
   '/explorer/portfolio': typeof ExplorerPortfolioRoute
   '/admin': typeof AdminIndexRoute
   '/creator': typeof CreatorIndexRoute
@@ -198,7 +222,10 @@ export interface FileRoutesById {
   '/explorer': typeof ExplorerRouteWithChildren
   '/signin': typeof SigninRoute
   '/signup': typeof SignupRoute
+  '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/creator/calendar': typeof CreatorCalendarRoute
+  '/explorer/calendar': typeof ExplorerCalendarRoute
   '/explorer/portfolio': typeof ExplorerPortfolioRoute
   '/admin/': typeof AdminIndexRoute
   '/creator/': typeof CreatorIndexRoute
@@ -224,7 +251,10 @@ export interface FileRouteTypes {
     | '/explorer'
     | '/signin'
     | '/signup'
+    | '/admin/settings'
     | '/admin/users'
+    | '/creator/calendar'
+    | '/explorer/calendar'
     | '/explorer/portfolio'
     | '/admin/'
     | '/creator/'
@@ -245,7 +275,10 @@ export interface FileRouteTypes {
     | '/'
     | '/signin'
     | '/signup'
+    | '/admin/settings'
     | '/admin/users'
+    | '/creator/calendar'
+    | '/explorer/calendar'
     | '/explorer/portfolio'
     | '/admin'
     | '/creator'
@@ -269,7 +302,10 @@ export interface FileRouteTypes {
     | '/explorer'
     | '/signin'
     | '/signup'
+    | '/admin/settings'
     | '/admin/users'
+    | '/creator/calendar'
+    | '/explorer/calendar'
     | '/explorer/portfolio'
     | '/admin/'
     | '/creator/'
@@ -375,11 +411,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExplorerPortfolioRouteImport
       parentRoute: typeof ExplorerRoute
     }
+    '/explorer/calendar': {
+      id: '/explorer/calendar'
+      path: '/calendar'
+      fullPath: '/explorer/calendar'
+      preLoaderRoute: typeof ExplorerCalendarRouteImport
+      parentRoute: typeof ExplorerRoute
+    }
+    '/creator/calendar': {
+      id: '/creator/calendar'
+      path: '/calendar'
+      fullPath: '/creator/calendar'
+      preLoaderRoute: typeof CreatorCalendarRouteImport
+      parentRoute: typeof CreatorRoute
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof AdminRoute
     }
     '/explorer/project/$projectId': {
@@ -463,11 +520,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminSettingsRoute: typeof AdminSettingsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminSettingsRoute: AdminSettingsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
@@ -489,12 +548,14 @@ const CreatorProjectProjectIdRouteWithChildren =
   )
 
 interface CreatorRouteChildren {
+  CreatorCalendarRoute: typeof CreatorCalendarRoute
   CreatorIndexRoute: typeof CreatorIndexRoute
   CreatorProjectProjectIdRoute: typeof CreatorProjectProjectIdRouteWithChildren
   CreatorProjectNewRoute: typeof CreatorProjectNewRoute
 }
 
 const CreatorRouteChildren: CreatorRouteChildren = {
+  CreatorCalendarRoute: CreatorCalendarRoute,
   CreatorIndexRoute: CreatorIndexRoute,
   CreatorProjectProjectIdRoute: CreatorProjectProjectIdRouteWithChildren,
   CreatorProjectNewRoute: CreatorProjectNewRoute,
@@ -504,12 +565,14 @@ const CreatorRouteWithChildren =
   CreatorRoute._addFileChildren(CreatorRouteChildren)
 
 interface ExplorerRouteChildren {
+  ExplorerCalendarRoute: typeof ExplorerCalendarRoute
   ExplorerPortfolioRoute: typeof ExplorerPortfolioRoute
   ExplorerIndexRoute: typeof ExplorerIndexRoute
   ExplorerProjectProjectIdRoute: typeof ExplorerProjectProjectIdRoute
 }
 
 const ExplorerRouteChildren: ExplorerRouteChildren = {
+  ExplorerCalendarRoute: ExplorerCalendarRoute,
   ExplorerPortfolioRoute: ExplorerPortfolioRoute,
   ExplorerIndexRoute: ExplorerIndexRoute,
   ExplorerProjectProjectIdRoute: ExplorerProjectProjectIdRoute,

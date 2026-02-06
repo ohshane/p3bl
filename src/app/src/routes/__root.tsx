@@ -58,7 +58,7 @@ function RootComponent() {
           ) : (
             <>
               {isAuthenticated && <AppHeader />}
-              <main className={isAuthenticated ? 'pb-16' : ''}>
+              <main>
                 <Outlet />
               </main>
               {showFloatingBot && <FloatingBot />}

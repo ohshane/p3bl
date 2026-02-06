@@ -1,34 +1,28 @@
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { toDataURL } from 'qrcode'
 import {
-  Copy,
-  QrCode,
-  RefreshCw,
+  User,
   Users,
   Calendar,
-  MoreVertical,
+  Clock,
   Trash2,
   Eye,
-  AlertCircle,
-  CheckCircle2,
-  FileText,
+  Pencil,
+  Play,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import type { CreatorProject, CreatorProjectStatus } from '@/types'
 import { useCreatorStore } from '@/stores/creatorStore'
-import { safeFormatDate, getProjectTimeStatus } from '@/lib/utils'
+import { updateProject } from '@/server/api/projects'
+import { updateSession } from '@/server/api/sessions'
+import { safeFormatDate, getProjectTimeStatus, getProjectProgress, getProjectTimeInfo } from '@/lib/utils'
+import { Progress } from '@/components/ui/progress'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { JoinCode } from '@/components/creator/JoinCode'
+
 import {
   Dialog,
   DialogContent,
@@ -44,92 +38,35 @@ interface CreatorProjectCardProps {
 
 export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
   const navigate = useNavigate()
-  const { deleteProject, regenerateJoinCode } = useCreatorStore()
+  const { deleteProject, fetchProjects } = useCreatorStore()
   
-  const [showQRDialog, setShowQRDialog] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null)
+  const [isStarting, setIsStarting] = useState(false)
+  const [, setTick] = useState(0)
 
-  // Calculate status from dates (like Kaggle)
+  // Force re-render every second to update progress and time info
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick(t => t + 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  // Calculate status from dates (recalculated every second)
   const status: CreatorProjectStatus = getProjectTimeStatus(project.startDate, project.endDate)
+  const progress = getProjectProgress(project.startDate, project.endDate)
+  const timeInfo = getProjectTimeInfo(project.startDate, project.endDate)
 
   const statusColors: Record<CreatorProjectStatus, string> = {
-    scheduled: 'bg-muted text-muted-foreground',
-    opened: 'bg-emerald-600 text-emerald-50',
-    closed: 'bg-blue-600 text-blue-50',
+    scheduled: 'bg-amber-500/10 text-amber-500 border-amber-500/30',
+    opened: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/30',
+    closed: 'bg-green-500/10 text-green-500 border-green-500/30',
   }
 
   const statusLabels: Record<CreatorProjectStatus, string> = {
     scheduled: 'Scheduled',
     opened: 'Opened',
     closed: 'Closed',
-  }
-
-  const riskColors = {
-    green: 'text-green-400',
-    yellow: 'text-yellow-400',
-    red: 'text-red-400',
-  }
-
-  const riskIcons = {
-    green: <CheckCircle2 className="w-4 h-4" />,
-    yellow: <AlertCircle className="w-4 h-4" />,
-    red: <AlertCircle className="w-4 h-4" />,
-  }
-
-  const baseUrl = (import.meta.env.VITE_BASE_URL ?? (typeof window !== 'undefined' ? window.location.origin : ''))
-    .replace(/\/$/, '')
-  const joinPath = `/explorer?joinCode=${encodeURIComponent(project.joinCode)}`
-  const joinUrl = baseUrl
-    ? `${baseUrl}/signin?redirect_uri=${encodeURIComponent(joinPath)}`
-    : ''
-
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(project.joinCode)
-    toast.success('Join code copied to clipboard')
-  }
-
-  useEffect(() => {
-    if (!showQRDialog) {
-      setQrCodeUrl(null)
-      return
-    }
-
-    if (!joinUrl) {
-      setQrCodeUrl(null)
-      return
-    }
-
-    let isActive = true
-
-    toDataURL(joinUrl, {
-      width: 512,
-      margin: 1,
-      errorCorrectionLevel: 'M',
-    })
-      .then((url) => {
-        if (isActive) {
-          setQrCodeUrl(url)
-        }
-      })
-      .catch(() => {
-        if (isActive) {
-          setQrCodeUrl(null)
-        }
-      })
-
-    return () => {
-      isActive = false
-    }
-  }, [showQRDialog, joinUrl])
-
-  const handleRegenerateCode = async () => {
-    const newCode = await regenerateJoinCode(project.id, project.creatorId)
-    if (newCode) {
-      toast.success('Join code regenerated')
-    } else {
-      toast.error('Failed to regenerate join code')
-    }
   }
 
   const handleDelete = async () => {
@@ -146,6 +83,76 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
     navigate({ to: '/creator/project/$projectId/monitor', params: { projectId: project.id } })
   }
 
+  const handleStartNow = async () => {
+    setIsStarting(true)
+    try {
+      const now = new Date()
+      const updates: { startDate: string; endDate?: string } = {
+        startDate: now.toISOString(),
+      }
+      
+      // Calculate time shift amount
+      let timeShift = 0
+      if (project.startDate) {
+        const originalStart = new Date(project.startDate)
+        timeShift = now.getTime() - originalStart.getTime()
+        
+        // If there's an original endDate, shift it by the same amount
+        if (project.endDate) {
+          const originalEnd = new Date(project.endDate)
+          const newEndDate = new Date(originalEnd.getTime() + timeShift)
+          updates.endDate = newEndDate.toISOString()
+        }
+      }
+      
+      const result = await updateProject({
+        data: {
+          projectId: project.id,
+          updates,
+        },
+      })
+      
+      if (result.success) {
+        // Shift all session times by the same amount
+        if (timeShift !== 0 && project.sessions.length > 0) {
+          await Promise.all(
+            project.sessions.map(async (session) => {
+              const sessionUpdates: { startDate?: string; endDate?: string } = {}
+              
+              if (session.startDate) {
+                const newStartDate = new Date(new Date(session.startDate).getTime() + timeShift)
+                sessionUpdates.startDate = newStartDate.toISOString()
+              }
+              
+              if (session.endDate) {
+                const newEndDate = new Date(new Date(session.endDate).getTime() + timeShift)
+                sessionUpdates.endDate = newEndDate.toISOString()
+              }
+              
+              if (Object.keys(sessionUpdates).length > 0) {
+                await updateSession({
+                  data: {
+                    sessionId: session.id,
+                    updates: sessionUpdates,
+                  },
+                })
+              }
+            })
+          )
+        }
+        
+        toast.success('Project started!')
+        await fetchProjects(project.creatorId)
+      } else {
+        toast.error('Failed to start project')
+      }
+    } catch (error) {
+      toast.error('Failed to start project')
+    } finally {
+      setIsStarting(false)
+    }
+  }
+
   const handleViewDetails = () => {
     navigate({ to: '/creator/project/$projectId', params: { projectId: project.id } })
   }
@@ -154,107 +161,72 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
 
   return (
     <>
-      <Card className="bg-card border-border hover:border-border/70 transition-colors">
+      <Card className="bg-card border-border transition-all">
         <CardHeader className="pb-3">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <Badge className={statusColors[status]}>
-                  {statusLabels[status]}
-                </Badge>
-                {status === 'opened' && (
-                  <span className={`flex items-center gap-1 text-sm ${riskColors[project.riskLevel]}`}>
-                    {riskIcons[project.riskLevel]}
-                    {project.riskLevel === 'red' && 'At Risk'}
-                    {project.riskLevel === 'yellow' && 'Attention'}
-                  </span>
-                )}
-              </div>
-              <h3 className="text-lg font-semibold text-foreground line-clamp-1">
-                {project.name}
-              </h3>
-              <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                {project.description}
-              </p>
+          {/* Top row: Status badge and action icons */}
+          <div className="flex items-center justify-between mb-2">
+            <Badge variant="outline" className={`text-[10px] uppercase font-bold py-0 h-5 px-2 ${statusColors[status]}`}>
+              {statusLabels[status]}
+            </Badge>
+            
+            {/* Right: Edit and Delete icons */}
+            <div className="flex gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleViewDetails}
+                className="h-8 w-8 text-muted-foreground hover:text-cyan-500 hover:bg-cyan-500/10"
+              >
+                <Pencil className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowDeleteDialog(true)}
+                className="h-8 w-8 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
             </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-popover border-border">
-                <DropdownMenuItem onClick={handleViewDetails} className="cursor-pointer">
-                  <FileText className="w-4 h-4 mr-2" />
-                  View Details
-                </DropdownMenuItem>
-                {status === 'opened' && (
-                  <DropdownMenuItem onClick={handleMonitor} className="cursor-pointer">
-                    <Eye className="w-4 h-4 mr-2" />
-                    Monitor Project
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator className="bg-border" />
-                <DropdownMenuItem
-                  onClick={() => setShowDeleteDialog(true)}
-                  className="cursor-pointer text-red-400 focus:text-red-400"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete Project
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
+          
+          {/* Title and description - full width */}
+          <h3 
+            className="text-lg font-semibold text-foreground line-clamp-1 hover:text-cyan-500 transition-colors cursor-pointer w-full"
+            onClick={handleViewDetails}
+          >
+            {project.name}
+          </h3>
+          <p className="text-sm text-muted-foreground line-clamp-2 mt-1 w-full">
+            {project.description}
+          </p>
         </CardHeader>
 
         <CardContent>
           {/* Join Code Section */}
-          <div className="bg-muted/50 rounded-lg p-3 mb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-xs text-muted-foreground">Join Code</span>
-                <div className="font-mono text-lg font-bold text-cyan-400">
-                  {project.joinCode}
-                </div>
-              </div>
-              <div className="flex gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleCopyCode}
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                >
-                  <Copy className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowQRDialog(true)}
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                >
-                  <QrCode className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleRegenerateCode}
-                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
+          <div className="mb-4">
+            <JoinCode
+              joinCode={project.joinCode}
+              projectId={project.id}
+              creatorId={project.creatorId}
+              projectName={project.name}
+              size="sm"
+            />
           </div>
 
           {/* Project Info */}
           <div className="space-y-2 text-sm">
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                Teams
+                {project.teamSize === 1 ? (
+                  <User className="w-4 h-4" />
+                ) : (
+                  <Users className="w-4 h-4" />
+                )}
+                Type
               </span>
               <span className="text-foreground">
-                {project.teams.length} / {Math.ceil(project.totalParticipants / project.teamSize)}
+                {project.teamSize === 1 ? 'Individual' : 'Group'}
               </span>
             </div>
             <div className="flex items-center justify-between text-muted-foreground">
@@ -265,11 +237,23 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
               <span className="text-foreground">{project.sessions.length} sessions</span>
             </div>
             <div className="flex items-center justify-between text-muted-foreground">
-              <span>Duration</span>
+              <span className="flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                Duration
+              </span>
               <span className="text-foreground">
                 {safeFormatDate(project.startDate, 'MMM d HH:mm', 'TBD')} - {safeFormatDate(project.endDate, 'MMM d HH:mm', 'TBD')}
               </span>
             </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+              <span>{timeInfo.elapsed} elapsed</span>
+              <span>{timeInfo.remaining} left</span>
+            </div>
+            <Progress value={progress} className="h-2" />
           </div>
 
           {/* Risk Warning */}
@@ -279,7 +263,17 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
             </div>
           )}
 
-          {/* Action Button */}
+          {/* Action Buttons */}
+          {status === 'scheduled' && (
+            <Button
+              onClick={handleStartNow}
+              disabled={isStarting}
+              className="w-full mt-4 bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-600/50"
+            >
+              <Play className="w-4 h-4 mr-2" />
+              {isStarting ? 'Starting...' : 'Start Now'}
+            </Button>
+          )}
           {status === 'opened' && (
             <Button
               onClick={handleMonitor}
@@ -291,38 +285,6 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
           )}
         </CardContent>
       </Card>
-
-      {/* QR Code Dialog */}
-      <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
-        <DialogContent
-          className="bg-card border-border sm:max-w-2xl"
-          overlayClassName="backdrop-blur-sm"
-        >
-          <DialogHeader>
-            <DialogTitle>QR Code</DialogTitle>
-            <DialogDescription>
-              Share this QR code with learners to join the project
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center py-8">
-            <div className="w-64 h-64 bg-background rounded-lg flex items-center justify-center border border-border">
-              {qrCodeUrl ? (
-                <img
-                  src={qrCodeUrl}
-                  alt={`Join ${project.name}`}
-                  className="w-full h-full object-contain p-3"
-                />
-              ) : (
-                <QrCode className="w-44 h-44 text-muted-foreground" />
-              )}
-            </div>
-            <p className="mt-5 font-mono text-3xl font-bold text-cyan-400">
-              {project.joinCode}
-            </p>
-          </div>
-          <DialogFooter />
-        </DialogContent>
-      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

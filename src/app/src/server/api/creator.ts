@@ -207,6 +207,7 @@ export const getProjectTeamsWithProgress = createServerFn({ method: 'GET' })
             sessionId: session.id,
             sessionIndex: session.order,
             status,
+            startDate: session.startDate?.toISOString() || null,
             submittedAt: sessionArtifact?.status === 'submitted' || sessionArtifact?.status === 'approved'
               ? sessionArtifact.updatedAt.toISOString()
               : null,

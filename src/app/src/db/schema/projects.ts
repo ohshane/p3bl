@@ -4,7 +4,7 @@ import { users } from './users'
 import { organizations } from './organizations'
 
 // Deliverable types
-export type DeliverableType = 'document' | 'code' | 'markdown' | 'presentation' | 'mixed'
+export type DeliverableType = 'none' | 'document'
 
 // Projects table
 export const projects = sqliteTable('projects', {
@@ -19,7 +19,7 @@ export const projects = sqliteTable('projects', {
   joinCode: text('join_code').unique(),
   joinCodeExpiresAt: integer('join_code_expires_at', { mode: 'timestamp' }),
   maxParticipants: integer('max_participants'),
-  teamSize: integer('team_size').default(4),
+  teamSize: integer('team_size').default(2),
   startDate: integer('start_date', { mode: 'timestamp' }),
   endDate: integer('end_date', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
@@ -38,7 +38,8 @@ export const projectSessions = sqliteTable('project_sessions', {
   deliverableType: text('deliverable_type').$type<DeliverableType>().notNull().default('document'),
   deliverableTitle: text('deliverable_title'),
   deliverableDescription: text('deliverable_description'),
-  dueDate: integer('due_date', { mode: 'timestamp' }),
+  startDate: integer('start_date', { mode: 'timestamp' }),
+  endDate: integer('end_date', { mode: 'timestamp' }),
   llmModel: text('llm_model'), // Custom LLM model for this session
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),

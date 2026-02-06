@@ -52,21 +52,21 @@ export function OnboardingMode() {
   const hasPendingInvitations = invitations.length > 0
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-12">
+    <div className="container max-w-4xl mx-auto py-16 px-4">
       {/* Welcome Section */}
       <div className="text-center mb-12">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center mx-auto mb-6">
-          <Compass className="w-8 h-8 text-white" />
+        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center mx-auto mb-6">
+          <Compass className="w-10 h-10 text-white" />
         </div>
-        <h1 className="text-3xl font-bold text-foreground mb-3">
+        <h1 className="text-4xl font-bold text-foreground mb-4">
           Welcome, {currentUser.name}!
         </h1>
-        <p className="text-muted-foreground text-lg">
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
           {isLoading
             ? "Checking for invitations..."
             : hasPendingInvitations
               ? "You have a project invitation waiting for you."
-              : "Enter a join code from your instructor to get started."}
+              : "Enter a join code to get started."}
         </p>
       </div>
 
@@ -98,7 +98,7 @@ export function OnboardingMode() {
         <p className="text-sm text-muted-foreground">
           Don't have a join code?{' '}
           <button className="text-cyan-500 hover:text-cyan-400 underline">
-            Contact your instructor
+            Contact your creator
           </button>
         </p>
       </div>

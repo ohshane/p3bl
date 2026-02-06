@@ -205,7 +205,7 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
           <ClipboardCheck className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
           <p className="text-muted-foreground">No submissions yet.</p>
           <p className="text-sm text-muted-foreground mt-2">
-            Submissions will appear here once learners start submitting their work.
+            Submissions will appear here once explorers start submitting their work.
           </p>
         </div>
       ) : (

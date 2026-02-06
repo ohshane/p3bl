@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { ChatMessage } from '@/types'
 import { buildUserContextString } from '@/lib/userContext'
+import { getConfiguredAIModel } from '@/lib/ai-config'
 import {
   sendMessage as sendMessageApi,
   getMessages as getMessagesApi,
@@ -39,6 +40,7 @@ async function callOpenRouter(messages: { role: string; content: string }[]): Pr
     // Build the system prompt with current user context
     const userContext = buildUserContextString()
     const fullSystemPrompt = `${BASE_SYSTEM_PROMPT}\n\n${userContext}`
+    const aiModel = await getConfiguredAIModel()
     
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
@@ -49,7 +51,7 @@ async function callOpenRouter(messages: { role: string; content: string }[]): Pr
         'X-Title': 'Peabee Assistant',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-001',
+        model: aiModel,
         messages: [
           { role: 'system', content: fullSystemPrompt },
           ...messages,

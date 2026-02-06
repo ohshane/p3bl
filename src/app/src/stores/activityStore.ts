@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { VoyagePanel, PreCheckResult, PreCheckItem } from '@/types'
 import { storePrecheckResults } from '@/server/api'
+import { getConfiguredAIModel } from '@/lib/ai-config'
 
 // OpenRouter API configuration
 const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY
@@ -30,6 +31,7 @@ Respond with a JSON object containing:
 Only return valid JSON, no other text.`
 
   try {
+    const aiModel = await getConfiguredAIModel()
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
       headers: {
@@ -39,7 +41,7 @@ Only return valid JSON, no other text.`
         'X-Title': 'Peabee Pre-Check',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-001',
+        model: aiModel,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: `Please review this submission:\n\n${content}` },
@@ -112,6 +114,7 @@ function generateBasicPreCheck(content: string): {
 // Helper function to generate ghost suggestions using AI
 async function generateAIGhostSuggestion(content: string, context?: string): Promise<string> {
   try {
+    const aiModel = await getConfiguredAIModel()
     const response = await fetch(OPENROUTER_API_URL, {
       method: 'POST',
       headers: {
@@ -121,7 +124,7 @@ async function generateAIGhostSuggestion(content: string, context?: string): Pro
         'X-Title': 'Peabee Ghost Typing',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.0-flash-001',
+        model: aiModel,
         messages: [
           {
             role: 'system',
@@ -172,6 +175,10 @@ interface ActivityState {
   
   // Resource hub state
   isResourceHubExpanded: boolean
+
+  // External action handlers
+  runPreCheckAction?: () => void
+  submitAction?: () => void
   
   // Actions
   setCurrentProject: (projectId: string | null) => void
@@ -193,6 +200,12 @@ interface ActivityState {
   
   // Resource hub
   toggleResourceHub: () => void
+
+  // External actions
+  setActionHandlers: (handlers: {
+    runPreCheck?: () => void
+    submit?: () => void
+  }) => void
 }
 
 
@@ -215,6 +228,9 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
   isGhostTypingEnabled: true,
   
   isResourceHubExpanded: true,
+
+  runPreCheckAction: undefined,
+  submitAction: undefined,
   
   setCurrentProject: (projectId: string | null) => {
     set({ 
@@ -281,13 +297,15 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
       if (artifactId) {
         try {
           await storePrecheckResults({
-            artifactId,
-            overallScore: result.overallStatus,
-            feedback: result.items.map(item => ({
-              severity: item.severity,
-              message: item.message,
-              suggestion: item.suggestion,
-            })),
+            data: {
+              artifactId,
+              overallScore: result.overallStatus,
+              feedback: result.items.map(item => ({
+                severity: item.severity,
+                message: item.message,
+                suggestion: item.suggestion,
+              })),
+            },
           })
         } catch (error) {
           console.error('Failed to store pre-check results:', error)
@@ -347,6 +365,13 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
   
   toggleResourceHub: () => {
     set(state => ({ isResourceHubExpanded: !state.isResourceHubExpanded }))
+  },
+
+  setActionHandlers: (handlers) => {
+    set({
+      runPreCheckAction: handlers.runPreCheck,
+      submitAction: handlers.submit,
+    })
   },
 }))
 

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
+import { getConfiguredAIModel } from '@/lib/ai-config'
 
 // OpenRouter API configuration
 const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY
@@ -17,17 +18,20 @@ Your task is to generate a compelling project title, background context, and dri
 
 Guidelines:
 - Title: Create an engaging, concise project title (5-10 words) that captures the essence of the learning experience
-- Background: Write 2-3 sentences providing context about why this topic matters and what students will explore
-- Driving Question: Craft an open-ended, thought-provoking question that will guide student inquiry throughout the project
+- Background: Write 2-3 sentences providing context about why this objective matters and what students will explore
+- Driving Question: Craft an open-ended, thought-provoking question that will guide student inquiry throughout the project`
 
-Respond ONLY with valid JSON in this exact format:
-{
-  "title": "Your Project Title Here",
-  "background": "Your background context here...",
-  "drivingQuestion": "Your driving question here?"
+// JSON schema for structured output
+const PROJECT_RESPONSE_SCHEMA = {
+  type: "object",
+  properties: {
+    title: { type: "string", description: "Engaging project title (5-10 words)" },
+    background: { type: "string", description: "2-3 sentences of context" },
+    drivingQuestion: { type: "string", description: "Open-ended guiding question" }
+  },
+  required: ["title", "background", "drivingQuestion"],
+  additionalProperties: false
 }
-
-Do not include any other text, markdown, or explanation outside the JSON.`
 
 interface GeneratedProject {
   title: string
@@ -40,22 +44,39 @@ async function generateProjectFromKeywords(keywords: string): Promise<GeneratedP
     throw new Error('API key is not configured')
   }
 
+  let aiModel: string
+  try {
+    aiModel = await getConfiguredAIModel()
+    console.log('Using AI model:', aiModel)
+  } catch (error) {
+    console.error('Error getting AI model, using default:', error)
+    aiModel = 'openrouter/auto'
+  }
+
   const response = await fetch(OPENROUTER_API_URL, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
       'Content-Type': 'application/json',
       'HTTP-Referer': window.location.origin,
-        'X-Title': 'Peabee Project Generator',
+      'X-Title': 'Peabee Project Generator',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.0-flash-001',
+      model: aiModel,
       messages: [
         { role: 'system', content: PROJECT_GENERATION_PROMPT },
         { role: 'user', content: `Generate a project based on these keywords: ${keywords}` },
       ],
       max_tokens: 500,
       temperature: 0.8,
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: "project_response",
+          strict: true,
+          schema: PROJECT_RESPONSE_SCHEMA
+        }
+      }
     }),
   })
 
@@ -217,7 +238,7 @@ export function ContentSetup() {
             <Button
               onClick={handleGenerateFromKeywords}
               disabled={isGenerating || !keywords.trim()}
-              className="bg-cyan-600 hover:bg-cyan-700 text-white"
+              className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white"
             >
               {isGenerating ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -230,7 +251,7 @@ export function ContentSetup() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2">
-            Enter comma-separated keywords related to your project topic
+            Enter comma-separated keywords related to your project objective
           </p>
           {generationError && (
             <p className="text-xs text-red-400 mt-2">

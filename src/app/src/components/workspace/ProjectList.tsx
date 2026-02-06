@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ProjectCard } from './ProjectCard'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { FolderOpen, CheckCircle, Calendar, Layers } from 'lucide-react'
+import { FolderOpen, CheckCircle, Calendar, Layers, LayoutDashboard } from 'lucide-react'
 import type { ProjectTab } from '@/types'
 import type { UserProject } from '@/stores/projectStore'
 
@@ -17,7 +17,15 @@ export function ProjectList({ allProjects, scheduledProjects, openedProjects, cl
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-foreground mb-6">My Projects</h2>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
+          <LayoutDashboard className="w-8 h-8 text-cyan-500" />
+          My Projects
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          Track your learning journey and project progress
+        </p>
+      </div>
       
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ProjectTab)}>
         <TabsList className="mb-6">
@@ -68,7 +76,6 @@ export function ProjectList({ allProjects, scheduledProjects, openedProjects, cl
                 <ProjectCard
                   key={project.id}
                   project={project}
-                  isCurrent={false}
                 />
               ))}
             </div>
@@ -80,11 +87,10 @@ export function ProjectList({ allProjects, scheduledProjects, openedProjects, cl
             <EmptyState type="opened" />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {openedProjects.map((project, index) => (
+{openedProjects.map((project) => (
                 <ProjectCard
                   key={project.id}
                   project={project}
-                  isCurrent={index === 0}
                 />
               ))}
             </div>
@@ -100,7 +106,6 @@ export function ProjectList({ allProjects, scheduledProjects, openedProjects, cl
                 <ProjectCard
                   key={project.id}
                   project={project}
-                  isCurrent={false}
                 />
               ))}
             </div>
@@ -116,7 +121,6 @@ export function ProjectList({ allProjects, scheduledProjects, openedProjects, cl
                 <ProjectCard
                   key={project.id}
                   project={project}
-                  isCurrent={false}
                 />
               ))}
             </div>
@@ -144,11 +148,11 @@ function EmptyState({ type }: { type: 'all' | 'scheduled' | 'opened' | 'closed' 
   const getMessage = () => {
     switch (type) {
       case 'all':
-        return 'No projects yet. Join a project using a code from your instructor.'
+        return 'No projects yet. Join a project using a code from your creator.'
       case 'scheduled':
         return 'You have no scheduled projects. Projects will appear here when they are scheduled to start.'
       case 'opened':
-        return 'Join a project using a code from your instructor.'
+        return 'Join a project using a code from your creator.'
       case 'closed':
         return 'Your closed projects will appear here.'
     }

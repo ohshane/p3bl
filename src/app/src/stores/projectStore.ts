@@ -22,8 +22,16 @@ export interface UserProject {
   description: string | null
   teamId: string
   teamName: string
+  teamSize: number
   currentSessionId: string | null
+  currentSessionIndex: number
   sessionCount: number
+  sessions?: Array<{
+    id: string
+    title: string
+    startDate?: string
+    endDate?: string
+  }>
   creatorName: string
   startDate: string | null
   endDate: string | null

@@ -175,7 +175,7 @@ export async function logout(page: Page): Promise<void> {
 
   if (await logoutButton.isVisible({ timeout: 2000 })) {
     await logoutButton.click()
-    await page.waitForURL(/\/(login)?$/, { timeout: 10000 })
+    await page.waitForURL(/\/(signin)?$/, { timeout: 10000 })
   } else {
     // Fallback: clear localStorage and go to home
     await clearAuthState(page)

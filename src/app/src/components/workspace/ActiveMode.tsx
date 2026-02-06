@@ -5,6 +5,8 @@ import { ProjectList } from './ProjectList'
 import { ProfileCard } from './ProfileCard'
 import { HallOfFame } from './HallOfFame'
 import { ManualCodeInput } from './ManualCodeInput'
+import { ClockWidget } from './ClockWidget'
+import { MiniCalendar } from './MiniCalendar'
 import { Loader2 } from 'lucide-react'
 
 export function ActiveMode() {
@@ -63,20 +65,21 @@ export function ActiveMode() {
               closedProjects={closedProjects}
             />
           )}
-
-          {/* Join Another Project */}
-          <div className="mt-6">
-            <h3 className="text-sm font-medium text-muted-foreground mb-3">
-              Join Another Project
-            </h3>
-            <ManualCodeInput />
-          </div>
         </div>
 
         {/* Right Column - Sidebar */}
         <div className="col-span-12 lg:col-span-4 space-y-6">
           {/* Profile Card */}
           <ProfileCard />
+
+          {/* Clock Widget */}
+          <ClockWidget />
+
+          {/* Mini Calendar */}
+          <MiniCalendar />
+
+          {/* Join Another Project */}
+          <ManualCodeInput />
 
           {/* Hall of Fame */}
           <HallOfFame />

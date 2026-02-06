@@ -18,7 +18,7 @@ export const artifacts = sqliteTable('artifacts', {
   teamId: text('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
   content: text('content'), // Current draft content
-  contentType: text('content_type').$type<'document' | 'mindmap'>().notNull().default('document'),
+  contentType: text('content_type').$type<'document'>().notNull().default('document'),
   status: text('status').$type<ArtifactStatus>().notNull().default('draft'),
   currentVersion: text('current_version'),
   lastPrecheckAt: integer('last_precheck_at', { mode: 'timestamp' }),

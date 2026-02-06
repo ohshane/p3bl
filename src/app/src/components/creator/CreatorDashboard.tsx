@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Plus, LayoutDashboard, Calendar, PlayCircle, CheckCircle2, Loader2, List } from 'lucide-react'
+import { Plus, Calendar, FolderOpen, CheckCircle, Loader2, Layers, LayoutDashboard } from 'lucide-react'
 import { useCreatorStore } from '@/stores/creatorStore'
 import { useAuthStore } from '@/stores/authStore'
 import { Button } from '@/components/ui/button'
@@ -94,10 +94,10 @@ export function CreatorDashboard() {
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
             <LayoutDashboard className="w-8 h-8 text-cyan-500" />
-            Project Dashboard
+            My Projects
           </h1>
           <p className="text-muted-foreground mt-1">
-            Manage your projects, monitor progress, and assess learners
+            Manage your projects, monitor progress, and assess explorers
           </p>
         </div>
         <Button
@@ -131,26 +131,46 @@ export function CreatorDashboard() {
 
       {/* Project Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as DashboardTab)}>
-        <TabsList className="bg-muted border border-border">
-          <TabsTrigger value="all" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
-            <List className="w-4 h-4 mr-2" />
-            All ({allProjects.length})
+        <TabsList className="mb-6">
+          <TabsTrigger value="all" className="gap-2">
+            <Layers className="w-4 h-4" />
+            All
+            {allProjects.length > 0 && (
+              <span className="ml-1 px-2 py-0.5 text-xs bg-slate-500/20 text-slate-400 rounded-full">
+                {allProjects.length}
+              </span>
+            )}
           </TabsTrigger>
-          <TabsTrigger value="scheduled" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
-            <Calendar className="w-4 h-4 mr-2" />
-            Scheduled ({scheduledProjects.length})
+          <TabsTrigger value="scheduled" className="gap-2">
+            <Calendar className="w-4 h-4" />
+            Scheduled
+            {scheduledProjects.length > 0 && (
+              <span className="ml-1 px-2 py-0.5 text-xs bg-amber-500/20 text-amber-400 rounded-full">
+                {scheduledProjects.length}
+              </span>
+            )}
           </TabsTrigger>
-          <TabsTrigger value="opened" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
-            <PlayCircle className="w-4 h-4 mr-2" />
-            Opened ({openedProjects.length})
+          <TabsTrigger value="opened" className="gap-2">
+            <FolderOpen className="w-4 h-4" />
+            Opened
+            {openedProjects.length > 0 && (
+              <span className="ml-1 px-2 py-0.5 text-xs bg-cyan-500/20 text-cyan-400 rounded-full">
+                {openedProjects.length}
+              </span>
+            )}
           </TabsTrigger>
-          <TabsTrigger value="closed" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
-            <CheckCircle2 className="w-4 h-4 mr-2" />
-            Closed ({closedProjects.length})
+          <TabsTrigger value="closed" className="gap-2">
+            <CheckCircle className="w-4 h-4" />
+            Closed
+            {closedProjects.length > 0 && (
+              <span className="ml-1 px-2 py-0.5 text-xs bg-green-500/20 text-green-400 rounded-full">
+                {closedProjects.length}
+              </span>
+            )}
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value={activeTab} className="mt-6">
+        <TabsContent value={activeTab}>
           {getCurrentTabProjects().length === 0 ? (
             <div className="text-center py-12 bg-muted/40 rounded-lg border border-border">
               <p className="text-muted-foreground">

@@ -1,32 +1,67 @@
-import { ChevronLeft, ChevronRight, CheckCircle, Circle, Clock, Play } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { CheckCircle, Circle, Clock, Play, Lock, Maximize2, X } from 'lucide-react'
 import { useActivityStore } from '@/stores/activityStore'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Dialog,
+  DialogContent,
+  DialogClose,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { cn, safeFormatDate, isValidDate } from '@/lib/utils'
-import { isPast } from 'date-fns'
-import type { Project, Session, VoyagePanel } from '@/types'
+import { isPast, isFuture } from 'date-fns'
+import type { Project, Session } from '@/types'
 
 interface VoyageNavigatorProps {
   project: Project
 }
 
 export function VoyageNavigator({ project }: VoyageNavigatorProps) {
-  const { currentSessionIndex, setCurrentSession, expandedPanel, setExpandedPanel } = useActivityStore()
+  const { currentSessionIndex, setCurrentSession } = useActivityStore()
+  const [, setTick] = useState(0)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   const sessions = project.sessions
-  const currentSession = sessions[currentSessionIndex]
-  const previousSession = sessions[currentSessionIndex - 1]
-  const nextSession = sessions[currentSessionIndex + 1]
 
-  const canGoPrevious = currentSessionIndex > 0
-  const canGoNext = currentSessionIndex < sessions.length - 1
+  // Force re-render every second to check if sessions should be unlocked
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick(t => t + 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
 
-  const getSessionStatus = (session: Session) => {
+  // Find the current session based on time
+  // Current session = first session whose endDate has not passed yet
+  // If all sessions' endDates have passed, current = last session
+  const findCurrentSessionByTime = (): number => {
+    for (let i = 0; i < sessions.length; i++) {
+      const session = sessions[i]
+      if (!isValidDate(session.endDate)) continue
+      const endDate = new Date(session.endDate)
+      if (isFuture(endDate)) {
+        return i
+      }
+    }
+    // All endDates have passed, return last session
+    return sessions.length - 1
+  }
+
+  const activeSessionIndex = findCurrentSessionByTime()
+
+  const getSessionStatus = (session: Session, index: number) => {
     if (session.completedAt) return 'completed'
-    if (!isValidDate(session.dueDate)) return 'active'
-    const dueDate = new Date(session.dueDate)
-    if (isPast(dueDate)) return 'overdue'
+    if (!isValidDate(session.endDate)) return 'active'
+    const endDate = new Date(session.endDate)
+    // Future session (after current active session)
+    if (index > activeSessionIndex) return 'locked'
+    // Past session with endDate passed (late submission still allowed)
+    if (isPast(endDate)) return 'expired'
+    // Current active session
+    if (index === activeSessionIndex) return 'active'
     return 'active'
   }
 
@@ -34,188 +69,101 @@ export function VoyageNavigator({ project }: VoyageNavigatorProps) {
     switch (status) {
       case 'completed':
         return <CheckCircle className="w-4 h-4 text-green-500" />
-      case 'overdue':
-        return <Clock className="w-4 h-4 text-red-500" />
+      case 'expired':
+        return <Clock className="w-4 h-4 text-amber-500" />
       case 'active':
         return <Play className="w-4 h-4 text-cyan-500" />
+      case 'locked':
+        return <Lock className="w-4 h-4 text-muted-foreground" />
       default:
         return <Circle className="w-4 h-4 text-muted-foreground" />
     }
   }
 
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-sm flex items-center justify-between">
-          <span>Voyage Navigator</span>
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              disabled={!canGoPrevious}
-              onClick={() => setCurrentSession(currentSessionIndex - 1)}
+  const renderSessionList = (inModal = false) => (
+    <ScrollArea className={inModal ? "h-[60vh]" : "h-[280px]"}>
+      <div className="space-y-1">
+        {sessions.map((session, index) => {
+          const status = getSessionStatus(session, index)
+          const isCurrent = index === currentSessionIndex
+          // Session is locked if it's after the active session (future session)
+          const isLocked = index > activeSessionIndex
+
+          return (
+            <button
+              key={session.id}
+              onClick={() => !isLocked && setCurrentSession(index)}
+              disabled={isLocked}
+              className={cn(
+                'w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors',
+                isLocked 
+                  ? 'opacity-50 cursor-not-allowed' 
+                  : 'hover:bg-muted/50',
+                isCurrent && 'bg-cyan-500/10 border border-cyan-500/30'
+              )}
             >
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <span className="text-xs text-muted-foreground px-2">
-              {currentSessionIndex + 1} / {sessions.length}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              disabled={!canGoNext}
-              onClick={() => setCurrentSession(currentSessionIndex + 1)}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </CardTitle>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        {/* Three Panel View */}
-        <div className="space-y-2">
-          {/* Reflection (Previous) */}
-          <SessionPanel
-            label="Reflection"
-            session={previousSession}
-            isExpanded={expandedPanel === 'reflection'}
-            onClick={() => setExpandedPanel(expandedPanel === 'reflection' ? 'cockpit' : 'reflection')}
-            placeholder={!previousSession ? 'Project Start' : undefined}
-            type="reflection"
-          />
-
-          {/* Cockpit (Current) */}
-          <SessionPanel
-            label="Current"
-            session={currentSession}
-            isExpanded={expandedPanel === 'cockpit'}
-            onClick={() => setExpandedPanel('cockpit')}
-            isCurrent
-            type="cockpit"
-          />
-
-          {/* Preview (Next) */}
-          <SessionPanel
-            label="Preview"
-            session={nextSession}
-            isExpanded={expandedPanel === 'preview'}
-            onClick={() => setExpandedPanel(expandedPanel === 'preview' ? 'cockpit' : 'preview')}
-            placeholder={!nextSession ? 'Project Completion' : undefined}
-            type="preview"
-          />
-        </div>
-
-        {/* Session List */}
-        <div className="pt-2 border-t">
-          <p className="text-xs text-muted-foreground mb-2">All Sessions</p>
-          <ScrollArea className="h-[200px]">
-            <div className="space-y-1">
-              {sessions.map((session, index) => {
-                const status = getSessionStatus(session)
-                const isCurrent = index === currentSessionIndex
-
-                return (
-                  <button
-                    key={session.id}
-                    onClick={() => setCurrentSession(index)}
-                    className={cn(
-                      'w-full flex items-center gap-3 p-2 rounded-lg text-left transition-colors',
-                      'hover:bg-muted/50',
-                      isCurrent && 'bg-cyan-500/10 border border-cyan-500/30'
-                    )}
-                  >
-                    <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={cn(
-                        'text-sm font-medium truncate',
-                        isCurrent && 'text-cyan-400'
-                      )}>
-                        {session.title}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {safeFormatDate(session.dueDate, 'MMM d HH:mm')}
-                      </p>
-                    </div>
-                    {getStatusIcon(status)}
-                  </button>
-                )
-              })}
-            </div>
-          </ScrollArea>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-interface SessionPanelProps {
-  label: string
-  session?: Session
-  isExpanded: boolean
-  onClick: () => void
-  isCurrent?: boolean
-  placeholder?: string
-  type: VoyagePanel
-}
-
-function SessionPanel({
-  label,
-  session,
-  isExpanded,
-  onClick,
-  isCurrent,
-  placeholder,
-  type,
-}: SessionPanelProps) {
-  const bgColor = type === 'reflection'
-    ? 'bg-purple-500/5 border-purple-500/20'
-    : type === 'preview'
-    ? 'bg-blue-500/5 border-blue-500/20'
-    : 'bg-cyan-500/10 border-cyan-500/30'
-
-  const textColor = type === 'reflection'
-    ? 'text-purple-400'
-    : type === 'preview'
-    ? 'text-blue-400'
-    : 'text-cyan-400'
-
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'w-full p-3 rounded-lg border text-left transition-all',
-        bgColor,
-        isExpanded && 'ring-2 ring-cyan-500/50'
-      )}
-    >
-      <div className="flex items-center justify-between mb-1">
-        <span className={cn('text-xs font-medium uppercase tracking-wider', textColor)}>
-          {label}
-        </span>
-        {isCurrent && (
-          <span className="text-xs bg-cyan-500 text-white px-2 py-0.5 rounded-full">
-            Active
-          </span>
-        )}
+              <div className={cn(
+                "w-6 h-6 rounded-full flex items-center justify-center text-xs",
+                isLocked ? "bg-muted/50" : "bg-muted"
+              )}>
+                {index + 1}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={cn(
+                  'text-sm font-medium truncate',
+                  isCurrent && 'text-cyan-400',
+                  isLocked && 'text-muted-foreground'
+                )}>
+                  {session.title}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {safeFormatDate(session.endDate, 'MMM d HH:mm')}
+                </p>
+              </div>
+              {getStatusIcon(status)}
+            </button>
+          )
+        })}
       </div>
-      
-      {session ? (
-        <div>
-          <p className="font-medium text-sm truncate">{session.title}</p>
-          {isExpanded && (
-            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-              {session.topic}
-            </p>
-          )}
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground italic">{placeholder}</p>
-      )}
-    </button>
+    </ScrollArea>
+  )
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-sm">Voyage Navigator</CardTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setIsExpanded(true)}
+          >
+            <Maximize2 className="h-4 w-4" />
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {renderSessionList(false)}
+        </CardContent>
+      </Card>
+
+      <Dialog open={isExpanded} onOpenChange={setIsExpanded}>
+        <DialogContent
+          className="max-w-4xl"
+          overlayClassName="backdrop-blur-sm"
+          showCloseButton={false}
+        >
+          <DialogHeader className="flex flex-row items-center justify-between">
+            <DialogTitle>Voyage Navigator</DialogTitle>
+            <DialogClose asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogClose>
+          </DialogHeader>
+          {renderSessionList(true)}
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

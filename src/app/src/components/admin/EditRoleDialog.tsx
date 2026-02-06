@@ -135,7 +135,7 @@ export function EditRoleDialog({ open, onOpenChange, user, onRoleUpdated }: Edit
                 <SelectItem value="explorer">
                   <div className="flex items-center gap-2">
                     <Compass className="w-4 h-4 text-cyan-400" />
-                    Explorer (Learner)
+                    Explorer
                   </div>
                 </SelectItem>
                 <SelectItem value="creator">
@@ -160,7 +160,7 @@ export function EditRoleDialog({ open, onOpenChange, user, onRoleUpdated }: Edit
             </Select>
             <p className="text-xs text-muted-foreground">
               {role === 'explorer' && 'Can join projects and complete learning activities'}
-              {role === 'creator' && 'Can create projects, sessions, and manage learners'}
+              {role === 'creator' && 'Can create projects, sessions, and manage explorers'}
               {role === 'pioneer' && 'Early adopter with special access privileges'}
               {role === 'admin' && 'Full system access including user management'}
             </p>

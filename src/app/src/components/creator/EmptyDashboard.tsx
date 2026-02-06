@@ -10,17 +10,17 @@ export function EmptyDashboard({ onCreateProject }: EmptyDashboardProps) {
     {
       icon: <Sparkles className="w-6 h-6" />,
       title: 'AI-Powered Project Design',
-      description: 'Let AI help you create engaging project-based learning experiences from your lecture materials.',
+      description: 'Let AI help you break down complex problems into structured, conquerable milestones.',
     },
     {
       icon: <Users className="w-6 h-6" />,
       title: 'Smart Team Formation',
-      description: 'Automatically create balanced teams or manually assign learners based on your preferences.',
+      description: 'Automatically create balanced teams or manually assign explorers based on your preferences.',
     },
     {
       icon: <TrendingUp className="w-6 h-6" />,
-      title: 'Real-Time Monitoring',
-      description: 'Track learner progress, identify at-risk teams, and intervene proactively with AI assistance.',
+      title: 'Real-Time Progress Tracking',
+      description: 'Monitor team progress across milestones, identify blockers, and provide timely guidance.',
     },
   ]
 
@@ -32,11 +32,11 @@ export function EmptyDashboard({ onCreateProject }: EmptyDashboardProps) {
           <FolderPlus className="w-10 h-10 text-white" />
         </div>
         <h1 className="text-4xl font-bold text-foreground mb-4">
-          Welcome to Your Creator Dashboard
+          Welcome to the Creator Dashboard
         </h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-          Create your first project-based learning experience. Design engaging projects, 
-          form teams, and guide learners through their educational journey.
+          Design projects that break complex problems into conquerable milestones. 
+          Form teams, track progress, and guide explorers as they tackle each challenge.
         </p>
       </div>
 

@@ -158,7 +158,7 @@ export function CreateUserDialog({ open, onOpenChange, onUserCreated }: CreateUs
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-popover border-border">
-                <SelectItem value="explorer">Explorer (Learner)</SelectItem>
+                <SelectItem value="explorer">Explorer</SelectItem>
                 <SelectItem value="creator">Creator (Instructor)</SelectItem>
                 <SelectItem value="pioneer">Pioneer (Early Adopter)</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>

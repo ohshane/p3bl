@@ -20,7 +20,7 @@ export interface UserContext {
     status: 'scheduled' | 'opened' | 'closed'
     currentSession: string
     progress: string
-    dueDate: string | null
+    endDate: string | null
   }>
   artifacts: {
     total: number
@@ -189,7 +189,7 @@ export function getUserContext(): UserContext {
         status: getProjectTimeStatus(project.startDate, project.endDate),
         currentSession: 'N/A', // Would need more data to determine
         progress: `${project.sessionCount} sessions`,
-        dueDate: project.endDate || null,
+        endDate: project.endDate || null,
       }
     }),
     artifacts: {

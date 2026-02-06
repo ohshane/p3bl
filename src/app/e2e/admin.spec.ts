@@ -41,7 +41,7 @@ test.describe('Admin Authentication & Authorization', () => {
     // Should show error message
     await expect(page.locator('text=/invalid|error/i')).toBeVisible({ timeout: 5000 })
     // Should still be on login page
-    await expect(page).toHaveURL(/\/login/)
+    await expect(page).toHaveURL(/\/signin/)
   })
 
   test('should redirect explorer away from /admin', async ({ page }) => {
@@ -65,14 +65,14 @@ test.describe('Admin Authentication & Authorization', () => {
     await logout(page)
 
     // Should be on landing or login page
-    await expect(page).toHaveURL(/\/(login)?$/, { timeout: 10000 })
+    await expect(page).toHaveURL(/\/(signin)?$/, { timeout: 10000 })
   })
 
   test('should redirect unauthenticated user from /admin to login', async ({ page }) => {
     await page.goto('/admin')
 
     // Should be redirected to login
-    await expect(page).toHaveURL(/\/login/, { timeout: 10000 })
+    await expect(page).toHaveURL(/\/signin/, { timeout: 10000 })
   })
 })
 

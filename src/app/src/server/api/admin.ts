@@ -2,7 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import { v4 as uuidv4 } from 'uuid'
 import { eq, like, or, desc, asc, sql, gte } from 'drizzle-orm'
 import { db } from '@/db'
-import { users } from '@/db/schema'
+import { users, systemSettings, SETTING_KEYS, DEFAULT_SETTINGS, type SettingKey } from '@/db/schema'
 import { hashPassword } from '@/server/auth'
 import { z } from 'zod'
 import type { UserRole } from '@/db/schema/users'
@@ -474,5 +474,190 @@ export const getAdminStats = createServerFn({ method: 'GET' })
     } catch (error) {
       console.error('Get admin stats error:', error)
       return { success: false, error: 'Failed to get stats' }
+    }
+  })
+
+// ==================== SYSTEM SETTINGS ====================
+
+export type SystemSettingItem = {
+  key: string
+  value: string
+  description: string | null
+  updatedAt: string
+}
+
+export type GetSettingsResponse = {
+  success: true
+  settings: SystemSettingItem[]
+} | {
+  success: false
+  error: string
+}
+
+export type UpdateSettingResponse = {
+  success: true
+  setting: SystemSettingItem
+} | {
+  success: false
+  error: string
+}
+
+/**
+ * Get all system settings (admin only)
+ */
+export const getSystemSettings = createServerFn({ method: 'GET' })
+  .handler(async (): Promise<GetSettingsResponse> => {
+    try {
+      // Get all settings from database
+      const dbSettings = await db.select().from(systemSettings)
+      
+      // Create a map of existing settings
+      const settingsMap = new Map(dbSettings.map(s => [s.key, s]))
+      
+      // Merge with defaults to ensure all settings exist
+      const allSettings: SystemSettingItem[] = Object.entries(SETTING_KEYS).map(([, key]) => {
+        const dbSetting = settingsMap.get(key)
+        if (dbSetting) {
+          return {
+            key: dbSetting.key,
+            value: dbSetting.value,
+            description: dbSetting.description,
+            updatedAt: dbSetting.updatedAt.toISOString(),
+          }
+        }
+        // Return default if not in database
+        return {
+          key,
+          value: DEFAULT_SETTINGS[key as SettingKey],
+          description: null,
+          updatedAt: new Date().toISOString(),
+        }
+      })
+
+      return {
+        success: true,
+        settings: allSettings,
+      }
+    } catch (error) {
+      console.error('Get system settings error:', error)
+      // Return defaults on error (e.g., table doesn't exist yet)
+      const defaultSettings: SystemSettingItem[] = Object.entries(SETTING_KEYS).map(([, key]) => ({
+        key,
+        value: DEFAULT_SETTINGS[key as SettingKey],
+        description: null,
+        updatedAt: new Date().toISOString(),
+      }))
+      return {
+        success: true,
+        settings: defaultSettings,
+      }
+    }
+  })
+
+/**
+ * Get a single system setting by key
+ */
+export const getSystemSetting = createServerFn({ method: 'GET' })
+  .inputValidator((data: { key: string }) => data)
+  .handler(async ({ data }): Promise<{ success: true; value: string } | { success: false; error: string }> => {
+    try {
+      const setting = await db.query.systemSettings.findFirst({
+        where: eq(systemSettings.key, data.key),
+      })
+
+      if (setting) {
+        return { success: true, value: setting.value }
+      }
+
+      // Return default if not in database
+      const defaultValue = DEFAULT_SETTINGS[data.key as SettingKey]
+      if (defaultValue) {
+        return { success: true, value: defaultValue }
+      }
+
+      return { success: false, error: 'Setting not found' }
+    } catch (error) {
+      console.error('Get system setting error:', error)
+      return { success: false, error: 'Failed to get setting' }
+    }
+  })
+
+/**
+ * Update a system setting (admin only)
+ */
+export const updateSystemSetting = createServerFn({ method: 'POST' })
+  .inputValidator((data: { key: string; value: string; updatedBy?: string }) => {
+    if (!data.key || typeof data.value !== 'string') {
+      throw new Error('Invalid setting data')
+    }
+    return data
+  })
+  .handler(async ({ data }): Promise<UpdateSettingResponse> => {
+    try {
+      const { key, value, updatedBy } = data
+      const now = new Date()
+
+      // Check if setting exists
+      const existing = await db.query.systemSettings.findFirst({
+        where: eq(systemSettings.key, key),
+      })
+
+      if (existing) {
+        // Update existing
+        await db.update(systemSettings)
+          .set({ value, updatedAt: now, updatedBy })
+          .where(eq(systemSettings.key, key))
+      } else {
+        // Insert new
+        await db.insert(systemSettings).values({
+          id: uuidv4(),
+          key,
+          value,
+          updatedAt: now,
+          updatedBy,
+        })
+      }
+
+      return {
+        success: true,
+        setting: {
+          key,
+          value,
+          description: existing?.description || null,
+          updatedAt: now.toISOString(),
+        },
+      }
+    } catch (error) {
+      console.error('Update system setting error:', error)
+      return { success: false, error: 'Failed to update setting' }
+    }
+  })
+
+/**
+ * Get AI model setting - convenience function for use across the app
+ */
+export const getAIModel = createServerFn({ method: 'GET' })
+  .handler(async (): Promise<{ success: true; model: string } | { success: false; error: string }> => {
+    try {
+      // Use select instead of query.findFirst for simpler query
+      const settings = await db
+        .select()
+        .from(systemSettings)
+        .where(eq(systemSettings.key, SETTING_KEYS.AI_MODEL))
+        .limit(1)
+
+      const setting = settings[0]
+
+      return {
+        success: true,
+        model: setting?.value || DEFAULT_SETTINGS[SETTING_KEYS.AI_MODEL],
+      }
+    } catch (error) {
+      console.error('Get AI model error:', error)
+      // Return default on error instead of failing
+      return {
+        success: true,
+        model: DEFAULT_SETTINGS[SETTING_KEYS.AI_MODEL],
+      }
     }
   })

@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -11,10 +11,9 @@ import { cn } from '@/lib/utils'
 interface RichTextEditorProps {
   value: string
   onChange: (value: string) => void
-  ghostSuggestion?: string | null
 }
 
-export function RichTextEditor({ value, onChange, ghostSuggestion }: RichTextEditorProps) {
+export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -44,14 +43,6 @@ export function RichTextEditor({ value, onChange, ghostSuggestion }: RichTextEdi
       editor.commands.setContent(value)
     }
   }, [value, editor])
-
-  // Handle Tab for ghost suggestion
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Tab' && ghostSuggestion && editor) {
-      e.preventDefault()
-      editor.commands.insertContent(ghostSuggestion)
-    }
-  }, [ghostSuggestion, editor])
 
   if (!editor) {
     return null
@@ -153,29 +144,11 @@ export function RichTextEditor({ value, onChange, ghostSuggestion }: RichTextEdi
           <Redo className="h-4 w-4" />
         </Button>
 
-        {/* Ghost suggestion indicator */}
-        {ghostSuggestion && (
-          <div className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="px-2 py-0.5 bg-cyan-500/10 text-cyan-400 rounded">
-              Press Tab to accept suggestion
-            </span>
-          </div>
-        )}
       </div>
 
       {/* Editor Content */}
-      <div 
-        className="flex-1 overflow-auto"
-        onKeyDown={handleKeyDown}
-      >
+      <div className="flex-1 overflow-auto">
         <EditorContent editor={editor} className="h-full" />
-        
-        {/* Ghost Suggestion Preview */}
-        {ghostSuggestion && (
-          <div className="px-4 pb-4 text-muted-foreground/50 italic text-sm">
-            {ghostSuggestion}
-          </div>
-        )}
       </div>
     </div>
   )

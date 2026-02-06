@@ -4,9 +4,9 @@ import { useAuthStore } from '@/stores/authStore'
 import { 
   LayoutDashboard, 
   Users, 
-  ChevronRight
+  ChevronRight,
+  Settings
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 export const Route = createFileRoute('/admin')({
   component: AdminLayout,
@@ -44,7 +44,8 @@ function AdminLayout() {
 
   const navItems = [
     { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-    { to: '/admin/users', label: 'Users', icon: Users },
+    { to: '/admin/users', label: 'Users', icon: Users, exact: true },
+    { to: '/admin/settings', label: 'Settings', icon: Settings, exact: true },
   ]
 
   return (
@@ -58,29 +59,18 @@ function AdminLayout() {
                 Administration
               </h2>
               <ul className="space-y-1">
-                {navItems.map((item) => {
-                  const isActive = item.exact 
-                    ? location.pathname === item.to
-                    : location.pathname.startsWith(item.to)
-                  
-                  return (
-                    <li key={item.to}>
-                      <Link
-                        to={item.to}
-                        className={cn(
-                          'flex items-center gap-3 px-3 py-2 rounded-lg transition-colors',
-                          isActive
-                            ? 'bg-cyan-500/10 text-cyan-600'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                        )}
-                      >
-                        <item.icon className="w-5 h-5" />
-                        <span>{item.label}</span>
-                        <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
-                      </Link>
-                    </li>
-                  )
-                })}
+                {navItems.map((item) => (
+                  <li key={item.to}>
+                    <Link
+                      to={item.to}
+                      className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+                    >
+                      <item.icon className="w-5 h-5" />
+                      <span>{item.label}</span>
+                      <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </div>
           </nav>

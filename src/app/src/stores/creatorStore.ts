@@ -16,6 +16,7 @@ import {
   getCreatorProjects,
   getCreatorDashboardStats,
   getProjectTeamsWithProgress,
+  getProjectParticipants,
   getLearningMetrics,
   getProjectInterventions as fetchInterventions,
   createIntervention,
@@ -45,7 +46,7 @@ const defaultWizardState: WizardState = {
   selectedAIPersonaIds: [],
   participantParams: {
     projectMode: 'team',
-    teamSize: 4,
+    teamSize: 2,
   },
   timeline: {
     startDate: '',
@@ -82,6 +83,16 @@ function createDefaultSession(index: number): Omit<CreatorSession, 'id'> {
   }
 }
 
+interface ProjectParticipant {
+  id: string
+  name: string
+  email: string
+  avatar: string | null
+  teamId: string | null
+  teamName: string | null
+  joinedAt: string
+}
+
 interface CreatorState {
   // Data
   projects: CreatorProject[]
@@ -101,6 +112,7 @@ interface CreatorState {
   // Cached data for monitoring
   liveMatrixCache: Map<string, LiveMatrixEntry[]>
   dipChartCache: Map<string, DipChartDataPoint[]>
+  participantsCache: Map<string, { total: number; waiting: ProjectParticipant[]; assigned: ProjectParticipant[] }>
   
   // Loading states
   isLoading: boolean
@@ -126,6 +138,7 @@ interface CreatorState {
   getLiveMatrix: (projectId: string) => LiveMatrixEntry[]
   getDipChartData: (projectId: string) => DipChartDataPoint[]
   getProjectInterventions: (projectId: string) => AIIntervention[]
+  getParticipants: (projectId: string) => { total: number; waiting: ProjectParticipant[]; assigned: ProjectParticipant[] } | null
   
   // Async data fetching actions
   fetchProjects: (creatorId: string) => Promise<void>
@@ -134,6 +147,7 @@ interface CreatorState {
   fetchDipChartData: (projectId: string) => Promise<void>
   fetchInterventions: (projectId: string) => Promise<void>
   fetchAiPersonas: () => Promise<void>
+  fetchParticipants: (projectId: string) => Promise<void>
   
   // Actions
   setCurrentProject: (projectId: string | null) => void
@@ -143,7 +157,7 @@ interface CreatorState {
   // Wizard actions
   setWizardMode: (mode: WizardMode) => void
   setWizardStep: (step: number) => void
-  nextStep: () => void
+  nextStep: () => { success: boolean; error?: string }
   prevStep: () => void
   updateBasicInfo: (info: Partial<WizardState['basicInfo']>) => void
   setSelectedAIPersonas: (ids: string[]) => void
@@ -153,6 +167,11 @@ interface CreatorState {
   updateSession: (index: number, updates: Partial<Omit<CreatorSession, 'id'>>) => void
   removeSession: (index: number) => void
   setSessions: (sessions: Omit<CreatorSession, 'id'>[]) => void
+  quickStart: (data: {
+    basicInfo: WizardState['basicInfo']
+    sessions: Omit<CreatorSession, 'id'>[]
+    timeline: WizardState['timeline']
+  }) => void
   resetWizard: () => void
   validateWizard: () => boolean
   
@@ -194,6 +213,7 @@ export const useCreatorStore = create<CreatorState>()(
       
       liveMatrixCache: new Map(),
       dipChartCache: new Map(),
+      participantsCache: new Map(),
       
       isLoading: false,
       isLoadingMatrix: false,
@@ -259,6 +279,10 @@ export const useCreatorStore = create<CreatorState>()(
         )
       },
       
+      getParticipants: (projectId: string) => {
+        return get().participantsCache.get(projectId) || null
+      },
+      
       // Async data fetching
       fetchProjects: async (creatorId: string) => {
         set({ isLoading: true, error: null })
@@ -283,11 +307,11 @@ export const useCreatorStore = create<CreatorState>()(
                 id: s.id,
                 index: s.order || idx,
                 title: s.title,
-                topic: s.description || '',
+                topic: s.topic || '',
                 guide: s.guide || '',
                 weight: 100,
-                startDate: '',
-                endDate: s.dueDate || '',
+                startDate: s.startDate || '',
+                endDate: s.endDate || '',
                 deliverableType: s.deliverableType || 'document',
                 rubric: [],
                 resources: [],
@@ -368,6 +392,19 @@ export const useCreatorStore = create<CreatorState>()(
         } catch (error) {
           console.error('Failed to fetch live matrix:', error)
           set({ isLoadingMatrix: false })
+        }
+      },
+      
+      fetchParticipants: async (projectId: string) => {
+        try {
+          const result = await getProjectParticipants({ data: { projectId } })
+          if (result.success && result.participants) {
+            const newCache = new Map(get().participantsCache)
+            newCache.set(projectId, result.participants)
+            set({ participantsCache: newCache })
+          }
+        } catch (error) {
+          console.error('Failed to fetch participants:', error)
         }
       },
       
@@ -474,11 +511,51 @@ export const useCreatorStore = create<CreatorState>()(
       
       nextStep: () => {
         const { wizardState } = get()
+        
+        // Validate current step before proceeding
+        const step = wizardState.currentStep
+        
+        // Step 2: Content validation
+        if (step === 2) {
+          if (!wizardState.basicInfo.title.trim()) {
+            return { success: false, error: 'Project title is required' }
+          }
+          if (!wizardState.basicInfo.drivingQuestion.trim()) {
+            return { success: false, error: 'Driving question is required' }
+          }
+        }
+        
+        // Step 4: Teams validation
+        if (step === 4) {
+          if (wizardState.participantParams.projectMode === 'team' && wizardState.participantParams.teamSize < 2) {
+            return { success: false, error: 'Team size must be at least 2' }
+          }
+        }
+        
+        // Step 5: Timeline validation
+        if (step === 5) {
+          if (!wizardState.timeline.startDate) {
+            return { success: false, error: 'Start date is required' }
+          }
+          if (!wizardState.timeline.endDate) {
+            return { success: false, error: 'End date is required' }
+          }
+        }
+        
+        // Step 6: Sessions validation
+        if (step === 6) {
+          if (wizardState.sessions.length === 0) {
+            return { success: false, error: 'At least one session is required' }
+          }
+        }
+        
         if (wizardState.currentStep < wizardState.totalSteps) {
           set(state => ({
             wizardState: { ...state.wizardState, currentStep: state.wizardState.currentStep + 1 },
           }))
         }
+        
+        return { success: true }
       },
       
       prevStep: () => {
@@ -569,6 +646,25 @@ export const useCreatorStore = create<CreatorState>()(
         }))
       },
       
+      quickStart: (data) => {
+        set(state => ({
+          wizardState: {
+            ...state.wizardState,
+            mode: 'quickstart',
+            basicInfo: data.basicInfo,
+            selectedAIPersonaIds: ['persona_sage', 'persona_spark'],
+            participantParams: {
+              projectMode: 'team',
+              teamSize: 2,
+            },
+            timeline: data.timeline,
+            sessions: data.sessions,
+            isValid: true,
+            validationErrors: {},
+          }
+        }))
+      },
+      
       resetWizard: () => {
         set({ wizardState: { ...defaultWizardState } })
       },
@@ -653,7 +749,8 @@ export const useCreatorStore = create<CreatorState>()(
                     guide: session.guide,
                     weight: session.weight,
                     deliverableType: session.deliverableType,
-                    dueDate: session.endDate,
+                    startDate: session.startDate,
+                    endDate: session.endDate,
                     llmModel: session.llmModel,
                   },
                 })
@@ -666,7 +763,7 @@ export const useCreatorStore = create<CreatorState>()(
                     await apiAddRubric({
                       data: {
                         sessionId: sessionResult.sessionId,
-                        criteria: rubric.criteria,
+                        criteria: rubric.criterion,
                         description: rubric.description,
                         weight: rubric.weight,
                         maxScore: rubric.maxScore,
@@ -682,7 +779,6 @@ export const useCreatorStore = create<CreatorState>()(
                         type: resource.type,
                         title: resource.title,
                         url: resource.url,
-                        filePath: resource.filePath,
                       },
                     })
                   }
@@ -694,7 +790,7 @@ export const useCreatorStore = create<CreatorState>()(
                         sessionId: sessionResult.sessionId,
                         name: template.name,
                         content: template.content,
-                        type: template.type,
+                        type: 'document' as const, // Default type for templates
                       },
                     })
                   }

@@ -17,10 +17,14 @@ function CreatorLayout() {
     }
   }, [isAuthenticated, navigate])
 
-  // Check if user is a creator
+  // Check if user is a creator or pioneer (admins should use /admin)
   useEffect(() => {
     if (currentUser && currentUser.role !== 'creator' && currentUser.role !== 'pioneer') {
-      navigate({ to: '/explorer' })
+      if (currentUser.role === 'admin') {
+        navigate({ to: '/admin' })
+      } else {
+        navigate({ to: '/explorer' })
+      }
     }
   }, [currentUser, navigate])
 

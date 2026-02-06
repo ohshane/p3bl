@@ -40,8 +40,8 @@ test.describe('Learning Activity', () => {
     }
 
     // Should show project name
-    const projectTitle = page.locator('h1, h2').filter({ hasText: /Machine Learning/ })
-    await expect(projectTitle.first()).toBeVisible({ timeout: 10000 })
+    const projectTitle = page.getByRole('heading', { name: /Machine Learning/i }).first()
+    await expect(projectTitle).toBeVisible({ timeout: 10000 })
   })
 
   test('should show session navigation', async ({ page }) => {
@@ -51,7 +51,7 @@ test.describe('Learning Activity', () => {
       return
     }
 
-    const sessionNav = page.locator('[class*="voyage"], [class*="navigator"], button:has-text("Back"), text=/session/i').first()
+    const sessionNav = page.locator('nav, [class*="voyage"], [class*="navigator"]').first()
     await expect(sessionNav).toBeVisible({ timeout: 10000 })
   })
 
@@ -62,7 +62,7 @@ test.describe('Learning Activity', () => {
       return
     }
 
-    const backButton = page.locator('button:has-text("Back")').first()
+    const backButton = page.getByRole('button', { name: /Back/i }).first()
     await expect(backButton).toBeVisible({ timeout: 10000 })
   })
 
@@ -73,7 +73,7 @@ test.describe('Learning Activity', () => {
       return
     }
 
-    const backButton = page.locator('button:has-text("Back")').first()
+    const backButton = page.getByRole('button', { name: /Back/i }).first()
     await backButton.click()
 
     await expect(page).toHaveURL(/\/explorer/, { timeout: 10000 })
@@ -166,7 +166,7 @@ test.describe('Pre-check Feature', () => {
       return
     }
 
-    const submitButton = page.locator('button').filter({ hasText: /submit|save/i }).first()
+    const submitButton = page.getByRole('button', { name: /submit|save/i }).first()
     await expect(submitButton).toBeVisible({ timeout: 10000 })
   })
 })
@@ -266,7 +266,7 @@ test.describe('Voyage Navigator', () => {
     }
 
     // Look for session titles from the seeded data
-    const sessionContent = page.locator('text=/Introduction|Data Preparation|Building Models|Ethics/i').first()
+    const sessionContent = page.getByText(/Introduction|Data Preparation|Building Models|Ethics/i).first()
     await expect(sessionContent).toBeVisible({ timeout: 10000 })
   })
 
@@ -277,7 +277,7 @@ test.describe('Voyage Navigator', () => {
       return
     }
 
-    const sessionButtons = page.locator('button').filter({ hasText: /Session|Introduction|Data|Building/ })
+    const sessionButtons = page.getByRole('button', { name: /Session|Introduction|Data|Building/i })
 
     if (await sessionButtons.count() > 1) {
       await sessionButtons.nth(1).click()
@@ -322,7 +322,7 @@ test.describe('Project Not Found', () => {
     await page.goto('/activity/non_existent_project')
     await waitForPageLoad(page)
 
-    const backButton = page.locator('button:has-text("Back to Workspace")').first()
+    const backButton = page.getByRole('button', { name: /Back to Workspace/i }).first()
     await expect(backButton).toBeVisible({ timeout: 10000 })
 
     await backButton.click()

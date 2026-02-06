@@ -17,7 +17,7 @@ export function TeamSetup() {
       <div>
         <h2 className="text-2xl font-bold text-foreground mb-2">Team Formation</h2>
         <p className="text-muted-foreground">
-          Choose how learners will work on this project
+          Choose how explorers will work on this project
         </p>
       </div>
 
@@ -46,7 +46,7 @@ export function TeamSetup() {
             <h3 className="text-xl font-semibold text-foreground">Personal</h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            Each learner works individually on their own project.
+            Each explorer works individually on their own project.
           </p>
         </button>
 
@@ -73,7 +73,7 @@ export function TeamSetup() {
             <h3 className="text-xl font-semibold text-foreground">Team</h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            Learners collaborate together in teams.
+            Explorers collaborate together in teams.
           </p>
         </button>
       </div>

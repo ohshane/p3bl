@@ -88,8 +88,8 @@ export function DipChart({ projectId }: DipChartProps) {
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
                   <p>
-                    The Dip Chart visualizes learner confidence and engagement over time.
-                    It shows how AI support helps learners recover from the natural "dip"
+                    The Dip Chart visualizes explorer confidence and engagement over time.
+                    It shows how AI support helps explorers recover from the natural "dip"
                     that occurs when facing challenging material.
                   </p>
                 </TooltipContent>
@@ -102,7 +102,7 @@ export function DipChart({ projectId }: DipChartProps) {
             <TrendingDown className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No learning metrics data yet.</p>
             <p className="text-sm text-muted-foreground mt-2">
-              Metrics will appear as learners engage with the project and AI support.
+              Metrics will appear as explorers engage with the project and AI support.
             </p>
           </div>
         </CardContent>
@@ -124,8 +124,8 @@ export function DipChart({ projectId }: DipChartProps) {
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
                   <p>
-                    The Dip Chart visualizes learner confidence and engagement over time.
-                    It shows how AI support helps learners recover from the natural "dip"
+                    The Dip Chart visualizes explorer confidence and engagement over time.
+                    It shows how AI support helps explorers recover from the natural "dip"
                     that occurs when facing challenging material.
                   </p>
                 </TooltipContent>
@@ -231,7 +231,7 @@ export function DipChart({ projectId }: DipChartProps) {
               <Line
                 type="monotone"
                 dataKey="confidence"
-                name="Learner Confidence"
+                name="Explorer Confidence"
                 stroke="#8B5CF6"
                 strokeWidth={1}
                 dot={false}

@@ -1,12 +1,17 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Loader2, AlertCircle } from 'lucide-react'
+import { Loader2, AlertCircle, ArrowRight } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { joinProject } from '@/server/api/projects'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
+
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from '@/components/ui/input-otp'
 import { toast } from 'sonner'
 
 const COOLDOWN_MINUTES = 5
@@ -18,7 +23,6 @@ export function ManualCodeInput() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [cooldownEnd, setCooldownEnd] = useState<Date | null>(null)
   const [cooldownRemaining, setCooldownRemaining] = useState(0)
-  const inputRef = useRef<HTMLInputElement>(null)
 
   const { currentUser, addJoinedProject } = useAuthStore()
 
@@ -40,9 +44,8 @@ export function ManualCodeInput() {
     }, 1000)
   }
 
-  const handleCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6)
-    setCode(value)
+  const handleCodeChange = (value: string) => {
+    setCode(value.toUpperCase())
     setError('')
   }
 
@@ -114,31 +117,33 @@ export function ManualCodeInput() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Have a join code?</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="flex gap-3">
-            <Input
-              ref={inputRef}
+      <CardContent className="p-5">
+        <form onSubmit={handleSubmit} className="space-y-2">
+          <div className="flex justify-center items-center gap-2">
+            <InputOTP
+              maxLength={6}
               value={code}
               onChange={handleCodeChange}
-              placeholder="ABC123"
               disabled={isDisabled}
-              className="flex-1 text-center text-lg tracking-widest font-mono uppercase"
-              maxLength={6}
-              autoComplete="off"
-            />
+              pattern="^[A-Za-z0-9]+$"
+            >
+              <InputOTPGroup>
+                <InputOTPSlot index={0} className="uppercase font-mono" />
+                <InputOTPSlot index={1} className="uppercase font-mono" />
+                <InputOTPSlot index={2} className="uppercase font-mono" />
+                <InputOTPSlot index={3} className="uppercase font-mono" />
+                <InputOTPSlot index={4} className="uppercase font-mono" />
+                <InputOTPSlot index={5} className="uppercase font-mono" />
+              </InputOTPGroup>
+            </InputOTP>
             <Button
               type="submit"
               disabled={isDisabled || code.length !== 6}
-              className="px-8"
             >
               {isSubmitting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                'Join'
+                <ArrowRight className="w-4 h-4" />
               )}
             </Button>
           </div>

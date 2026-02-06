@@ -67,7 +67,7 @@ export const XP_REWARDS = {
 // ----------------------------------------------------------------------------
 
 export type ProjectStatus = 'scheduled' | 'opened' | 'closed'
-export type DeliverableType = 'none' | 'document' | 'mindmap'
+export type DeliverableType = 'none' | 'document'
 
 export interface Project {
   id: string
@@ -91,7 +91,8 @@ export interface Session {
   index: number
   title: string
   topic: string
-  dueDate: string
+  startDate: string
+  endDate: string
   deliverableType: DeliverableType
   guide: string
   resources: Resource[]
@@ -375,7 +376,7 @@ export type VoyagePanel = 'reflection' | 'cockpit' | 'preview'
 
 export type CreatorProjectStatus = 'scheduled' | 'opened' | 'closed'
 export type RiskLevel = 'green' | 'yellow' | 'red'
-export type WizardMode = 'manual' | 'keyword' | 'document'
+export type WizardMode = 'manual' | 'keyword' | 'document' | 'quickstart'
 export type TeamFormationMode = 'manual' | 'automatic'
 export type ProjectMode = 'personal' | 'team'
 export type SessionDifficulty = 'easy' | 'medium' | 'hard'

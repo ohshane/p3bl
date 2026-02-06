@@ -44,6 +44,7 @@ export {
   resetJoinCode,
   getUserInvitations,
   respondToInvitation,
+  getProjectParticipants,
 } from './projects'
 
 // Session functions
@@ -117,3 +118,18 @@ export {
   calculateTeamRisks,
   getAiPersonas,
 } from './creator'
+
+// Admin functions
+export {
+  listUsers,
+  createUser,
+  updateUserRole,
+  deleteUser,
+  getUserDetails,
+  resetUserPassword,
+  getAdminStats,
+  getSystemSettings,
+  getSystemSetting,
+  updateSystemSetting,
+  getAIModel,
+} from './admin'

@@ -120,7 +120,7 @@ describe('Sessions API', () => {
           title: 'Updated Session Title',
           topic: 'Neural Networks',
           guide: 'Follow these steps...',
-          dueDate: new Date('2025-03-01'),
+          endDate: new Date('2025-03-01'),
           updatedAt: new Date(),
         })
         .where(eq(schema.projectSessions.id, session.id))
@@ -132,7 +132,7 @@ describe('Sessions API', () => {
       expect(updated!.title).toBe('Updated Session Title')
       expect(updated!.topic).toBe('Neural Networks')
       expect(updated!.guide).toBe('Follow these steps...')
-      expect(updated!.dueDate).toBeDefined()
+      expect(updated!.endDate).toBeDefined()
     })
 
     it('should delete session', async () => {
