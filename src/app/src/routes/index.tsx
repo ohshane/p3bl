@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useAuthStore } from '@/stores/authStore'
+import { getRoleBasedHomePath } from '@/lib/authRedirect'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -25,13 +26,7 @@ function LandingPage() {
 
   useEffect(() => {
     if (isAuthenticated && currentUser) {
-      if (currentUser.role.includes('admin')) {
-        navigate({ to: '/admin' })
-      } else if (currentUser.role.includes('creator')) {
-        navigate({ to: '/creator' })
-      } else {
-        navigate({ to: '/explorer' })
-      }
+      navigate({ to: getRoleBasedHomePath(currentUser.role) })
     }
   }, [isAuthenticated, currentUser, navigate])
 

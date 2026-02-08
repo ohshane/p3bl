@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
 import { useAuthStore } from '@/stores/authStore'
-import { clearStoredRedirectPath } from '@/lib/authRedirect'
+import { clearStoredRedirectPath, getRoleBasedHomePath } from '@/lib/authRedirect'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,12 +17,14 @@ export function RegisterForm({ redirectTo }: RegisterFormProps) {
   const { register, isLoading, error, clearError } = useAuthStore()
   
   const [name, setName] = useState('')
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [validationErrors, setValidationErrors] = useState<{
     name?: string
+    username?: string
     email?: string
     password?: string
     confirmPassword?: string
@@ -43,6 +45,14 @@ export function RegisterForm({ redirectTo }: RegisterFormProps) {
       errors.name = 'Name is required'
     } else if (name.trim().length < 2) {
       errors.name = 'Name must be at least 2 characters'
+    }
+
+    if (!username.trim()) {
+      errors.username = 'Username is required'
+    } else if (username.trim().length < 3) {
+      errors.username = 'Username must be at least 3 characters'
+    } else if (!/^[a-zA-Z0-9_-]+$/.test(username.trim())) {
+      errors.username = 'Only letters, numbers, underscores, and hyphens'
     }
     
     if (!email.trim()) {
@@ -80,13 +90,15 @@ export function RegisterForm({ redirectTo }: RegisterFormProps) {
     
     const result = await register({
       name: name.trim(),
+      username: username.trim(),
       email: email.trim(),
       password,
     })
     
     if (result.success) {
       clearStoredRedirectPath()
-      navigate({ to: redirectTo || '/explorer' })
+      const user = useAuthStore.getState().currentUser
+      navigate({ to: redirectTo || getRoleBasedHomePath(user?.role ?? []) })
     }
   }
   
@@ -120,6 +132,29 @@ export function RegisterForm({ redirectTo }: RegisterFormProps) {
         />
         {validationErrors.name && (
           <p className="text-sm text-destructive">{validationErrors.name}</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="username">
+          Username
+        </Label>
+        <Input
+          id="username"
+          type="text"
+          placeholder="johndoe"
+          value={username}
+          onChange={(e) => {
+            setUsername(e.target.value)
+            if (validationErrors.username) {
+              setValidationErrors((prev) => ({ ...prev, username: undefined }))
+            }
+          }}
+          className="bg-background border-border placeholder:text-muted-foreground"
+          autoComplete="username"
+        />
+        {validationErrors.username && (
+          <p className="text-sm text-destructive">{validationErrors.username}</p>
         )}
       </div>
       

@@ -43,6 +43,7 @@ export function hasRole(roles: UserRole[], role: UserRole): boolean {
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
+  username: text('username').notNull().unique(),
   passwordHash: text('password_hash').notNull(),
   name: text('name').notNull(),
   avatarUrl: text('avatar_url'),

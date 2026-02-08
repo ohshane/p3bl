@@ -275,7 +275,7 @@ function UsersPage() {
                       </div>
                       <div>
                         <p className="font-medium text-foreground">{user.name}</p>
-                        <p className="text-sm text-muted-foreground">{user.email}</p>
+                        <p className="text-sm text-muted-foreground">@{user.username}</p>
                       </div>
                     </div>
                   </td>

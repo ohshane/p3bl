@@ -11,7 +11,7 @@ import {
   Play,
   LogIn,
   Loader2,
-  UserRoundCog,
+  Forward,
   Search,
   Shield,
   PenTool,
@@ -318,8 +318,18 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
                 size="icon"
                 onClick={handleViewDetails}
                 className="h-8 w-8 text-muted-foreground hover:text-cyan-500 hover:bg-cyan-500/10"
+                title="Edit project"
               >
                 <Pencil className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate({ to: '/creator/project/$projectId/participant', params: { projectId: project.id } })}
+                className="h-8 w-8 text-muted-foreground hover:text-cyan-500 hover:bg-cyan-500/10"
+                title="View participants"
+              >
+                <Users className="w-4 h-4" />
               </Button>
               <Button
                 variant="ghost"
@@ -328,13 +338,14 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
                 className="h-8 w-8 text-muted-foreground hover:text-orange-400 hover:bg-orange-500/10"
                 title="Delegate project"
               >
-                <UserRoundCog className="w-4 h-4" />
+                <Forward className="w-4 h-4" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowDeleteDialog(true)}
                 className="h-8 w-8 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
+                title="Delete project"
               >
                 <Trash2 className="w-4 h-4" />
               </Button>

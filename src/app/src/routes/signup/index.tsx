@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useAuthStore } from '@/stores/authStore'
-import { getStoredRedirectPath } from '@/lib/authRedirect'
+import { getStoredRedirectPath, getRoleBasedHomePath } from '@/lib/authRedirect'
 import { RegisterForm } from '@/components/auth/RegisterForm'
 import { Link } from '@tanstack/react-router'
 
@@ -28,13 +28,7 @@ function RegisterPage() {
         return
       }
 
-      if (currentUser.role.includes('admin')) {
-        navigate({ to: '/admin' })
-      } else if (currentUser.role.includes('creator')) {
-        navigate({ to: '/creator' })
-      } else {
-        navigate({ to: '/explorer' })
-      }
+      navigate({ to: getRoleBasedHomePath(currentUser.role) })
     }
   }, [isAuthenticated, currentUser, navigate, redirectTo])
   

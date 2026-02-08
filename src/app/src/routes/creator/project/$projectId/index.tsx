@@ -367,7 +367,9 @@ function RubricEditor({
                 <span className="text-[10px]">({r.weight}%)</span>
               </div>
               {r.description && (
-                <p className="text-[11px] text-muted-foreground mt-0.5">{r.description}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {r.description}
+                </p>
               )}
             </div>
           ))}
@@ -1262,6 +1264,13 @@ function ProjectDetailPage() {
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [, setTick] = useState(0);
+
+  // Re-render every second to keep progress bar and time info live
+  useEffect(() => {
+    const timer = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Fetch projects if not loaded yet
   useEffect(() => {
@@ -1410,19 +1419,6 @@ function ProjectDetailPage() {
                 </Badge>
               </div>
             </div>
-            {status === "opened" && (
-              <Button
-                onClick={() =>
-                  navigate({
-                    to: "/creator/project/$projectId/monitor",
-                    params: { projectId: project.id },
-                  })
-                }
-                className="bg-cyan-600 hover:bg-cyan-700 text-white shrink-0"
-              >
-                Monitor Progress
-              </Button>
-            )}
           </div>
         </div>
 
@@ -1833,6 +1829,46 @@ function ProjectDetailPage() {
                 projectName={project.name}
                 size="lg"
               />
+            </div>
+
+            {/* Participants */}
+            <div className="bg-card border border-border rounded-lg p-5">
+              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
+                Participants
+              </h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <Users className="w-4 h-4" />
+                    Joined
+                  </span>
+                  <span className="text-foreground">
+                    {project.totalParticipants}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <Users className="w-4 h-4" />
+                    Teams
+                  </span>
+                  <span className="text-foreground">
+                    {project.teams.length}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full mt-1 border-border text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  onClick={() =>
+                    navigate({
+                      to: "/creator/project/$projectId/participant",
+                      params: { projectId: project.id },
+                    })
+                  }
+                >
+                  View All
+                </Button>
+              </div>
             </div>
 
             {/* Quick Info */}

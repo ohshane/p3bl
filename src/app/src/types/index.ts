@@ -10,6 +10,7 @@ export type UserRole = 'explorer' | 'creator' | 'admin'
 
 export interface User {
   id: string
+  username: string
   name: string
   email: string
   avatar: string | null

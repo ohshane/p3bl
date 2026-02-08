@@ -22,6 +22,7 @@ async function seed() {
     {
       id: "user_super",
       email: "super@p3bl.local",
+      username: "super",
       passwordHash,
       name: "Super",
       role: serializeRoles(["admin", "creator", "explorer"]),
@@ -35,6 +36,7 @@ async function seed() {
     {
       id: "user_admin",
       email: "admin@p3bl.local",
+      username: "admin",
       passwordHash,
       name: "Admin",
       role: serializeRoles(["admin"]),
@@ -48,6 +50,7 @@ async function seed() {
     {
       id: "user_creator1",
       email: "creator1@p3bl.local",
+      username: "creator1",
       passwordHash,
       name: "Creator One",
       role: serializeRoles(["creator"]),
@@ -61,6 +64,7 @@ async function seed() {
     {
       id: "user_creator2",
       email: "creator2@p3bl.local",
+      username: "creator2",
       passwordHash,
       name: "Creator Two",
       role: serializeRoles(["creator"]),
@@ -74,6 +78,7 @@ async function seed() {
     {
       id: "user_creator3",
       email: "creator3@p3bl.local",
+      username: "creator3",
       passwordHash,
       name: "Creator Three",
       role: serializeRoles(["creator"]),
@@ -87,6 +92,7 @@ async function seed() {
     {
       id: "user_explorer1",
       email: "explorer1@p3bl.local",
+      username: "explorer1",
       passwordHash,
       name: "Explorer One",
       role: serializeRoles(["explorer"]),
@@ -100,6 +106,7 @@ async function seed() {
     {
       id: "user_explorer2",
       email: "explorer2@p3bl.local",
+      username: "explorer2",
       passwordHash,
       name: "Explorer Two",
       role: serializeRoles(["explorer"]),
@@ -113,6 +120,7 @@ async function seed() {
     {
       id: "user_explorer3",
       email: "explorer3@p3bl.local",
+      username: "explorer3",
       passwordHash,
       name: "Explorer Three",
       role: serializeRoles(["explorer"]),
@@ -126,6 +134,7 @@ async function seed() {
     {
       id: "user_pioneer1",
       email: "pioneer1@p3bl.local",
+      username: "pioneer1",
       passwordHash,
       name: "Pioneer One",
       role: serializeRoles(["creator", "explorer"]),
@@ -139,6 +148,7 @@ async function seed() {
     {
       id: "user_pioneer2",
       email: "pioneer2@p3bl.local",
+      username: "pioneer2",
       passwordHash,
       name: "Pioneer Two",
       role: serializeRoles(["creator", "explorer"]),
@@ -152,6 +162,7 @@ async function seed() {
     {
       id: "user_pioneer3",
       email: "pioneer3@p3bl.local",
+      username: "pioneer3",
       passwordHash,
       name: "Pioneer Three",
       role: serializeRoles(["creator", "explorer"]),
@@ -168,7 +179,7 @@ async function seed() {
 
   console.log("Seeded users (password: supersecret!):");
   for (const user of userRecords) {
-    console.log(`- ${user.email} (${user.role})`);
+    console.log(`- ${user.username} / ${user.email} (${user.role})`);
   }
 
   console.log("Seed completed successfully!");

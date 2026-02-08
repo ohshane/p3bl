@@ -252,11 +252,103 @@ export const getProject = createServerFn({ method: 'GET' })
         return { success: false, error: 'Project not found' }
       }
 
+      // Auto-allocate waiting participants when project has started
+      const now = new Date()
+      if (project.startDate && project.startDate <= now) {
+        const waitingInvitations = await db.query.projectInvitations.findMany({
+          where: and(
+            eq(projectInvitations.projectId, data.projectId),
+            eq(projectInvitations.status, 'accepted'),
+          ),
+        })
+        const unallocated = waitingInvitations.filter(p => !p.teamId)
+
+        if (unallocated.length > 0) {
+          const teamSize = project.teamSize || 4
+          const existingTeamsList = await db.query.teams.findMany({
+            where: eq(teams.projectId, data.projectId),
+            with: { members: true },
+          })
+
+          const firstSession = project.sessions[0]
+
+          // Shuffle for initial batch allocation
+          const shuffled = [...unallocated]
+          for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+          }
+
+          let teamCounter = existingTeamsList.length
+
+          for (const p of shuffled) {
+            // Find team with space (smallest first for even distribution)
+            const allTeams = await db.query.teams.findMany({
+              where: eq(teams.projectId, data.projectId),
+              with: { members: true },
+            })
+            let target = allTeams
+              .filter(t => t.members.length < teamSize)
+              .sort((a, b) => a.members.length - b.members.length)[0]
+
+            if (!target) {
+              const teamId = uuidv4()
+              teamCounter++
+              await db.insert(teams).values({
+                id: teamId,
+                projectId: data.projectId,
+                name: `Team ${teamCounter}`,
+                createdAt: now,
+                updatedAt: now,
+              })
+              target = { id: teamId, projectId: data.projectId, name: `Team ${teamCounter}`, members: [], createdAt: now, updatedAt: now } as any
+            }
+
+            await db.insert(teamMembers).values({
+              teamId: target.id,
+              userId: p.userId,
+              currentSessionId: firstSession?.id,
+              joinedAt: now,
+            })
+
+            await db.update(projectInvitations)
+              .set({ teamId: target.id })
+              .where(eq(projectInvitations.id, p.id))
+
+            try {
+              await db.insert(notifications).values({
+                id: uuidv4(),
+                userId: p.userId,
+                type: 'team_assignment',
+                title: 'Team Assigned',
+                message: `You have been assigned to ${target.name}!`,
+                projectId: data.projectId,
+                teamId: target.id,
+                createdAt: now,
+              })
+            } catch { /* non-critical */ }
+          }
+        }
+      }
+
       // Get user's team for this project if userId is provided
       let userTeam = null
       let isWaiting = false
 
       if (data.userId) {
+        // Check if user was removed from this project
+        const removedCheck = await db.query.projectInvitations.findFirst({
+          where: and(
+            eq(projectInvitations.projectId, data.projectId),
+            eq(projectInvitations.userId, data.userId),
+            eq(projectInvitations.status, 'removed')
+          )
+        })
+
+        if (removedCheck) {
+          return { success: false, error: 'removed' }
+        }
+
         // Find the user's team for this specific project by joining through teams
         const membershipRow = await db
           .select({ teamId: teams.id })
@@ -517,6 +609,19 @@ export const joinProject = createServerFn({ method: 'POST' })
         return { success: false, error: 'This project has ended.' }
       }
 
+      // Check if user was removed from this project
+      const removedInvitation = await db.query.projectInvitations.findFirst({
+        where: and(
+          eq(projectInvitations.projectId, project.id),
+          eq(projectInvitations.userId, data.userId),
+          eq(projectInvitations.status, 'removed')
+        )
+      })
+
+      if (removedInvitation) {
+        return { success: false, error: 'You have been removed from this project by the creator.' }
+      }
+
       // Check if user already in a team for this project
       const existingMembership = await db
         .select()
@@ -582,10 +687,14 @@ export const joinProject = createServerFn({ method: 'POST' })
         },
       })
 
-      let targetTeam = existingTeams.find(t => t.members.length < (project.teamSize || 4))
+      // Late join: assign sequentially to the team with fewest members
+      const teamSize = project.teamSize || 4
+      let targetTeam = existingTeams
+        .filter(t => t.members.length < teamSize)
+        .sort((a, b) => a.members.length - b.members.length)[0]
 
       if (!targetTeam) {
-        // Create new team
+        // All teams full — create new team
         const teamId = uuidv4()
         const teamNumber = existingTeams.length + 1
         await db.insert(teams).values({
@@ -612,11 +721,24 @@ export const joinProject = createServerFn({ method: 'POST' })
         orderBy: (s, { asc }) => [asc(s.order)],
       })
 
+      const joinNow = new Date()
+
       await db.insert(teamMembers).values({
         teamId: targetTeam.id,
         userId: data.userId,
         currentSessionId: firstSession?.id,
-        joinedAt: new Date(),
+        joinedAt: joinNow,
+      })
+
+      // Create invitation record for late joiners (for participant tracking)
+      await db.insert(projectInvitations).values({
+        id: uuidv4(),
+        projectId: project.id,
+        userId: data.userId,
+        teamId: targetTeam.id,
+        status: 'accepted',
+        createdAt: joinNow,
+        respondedAt: joinNow,
       })
 
       // Create notification (non-critical, don't fail the join if this errors)
@@ -629,7 +751,7 @@ export const joinProject = createServerFn({ method: 'POST' })
           message: `You've joined ${project.title}!`,
           projectId: project.id,
           teamId: targetTeam.id,
-          createdAt: new Date(),
+          createdAt: joinNow,
         })
       } catch (notifError) {
         console.error('Failed to create join notification (non-critical):', notifError)
@@ -676,6 +798,13 @@ export const resetJoinCode = createServerFn({ method: 'POST' })
           updatedAt: new Date(),
         })
         .where(eq(projects.id, data.projectId))
+
+      // Clear all 'removed' invitations so banned users can rejoin with the new code
+      await db.delete(projectInvitations)
+        .where(and(
+          eq(projectInvitations.projectId, data.projectId),
+          eq(projectInvitations.status, 'removed'),
+        ))
 
       return { success: true, joinCode: newCode }
     } catch (error) {
@@ -971,9 +1100,57 @@ export const getProjectParticipants = createServerFn({ method: 'GET' })
         joinedAt: inv.respondedAt?.toISOString() || inv.createdAt.toISOString(),
       }))
 
+      // Also find team members without invitation records (legacy late joiners)
+      const projectTeams = await db.query.teams.findMany({
+        where: eq(teams.projectId, data.projectId),
+        with: {
+          members: {
+            with: { user: true },
+          },
+        },
+      })
+
+      const invitationUserIds = new Set(participants.map(p => p.id))
+      for (const team of projectTeams) {
+        for (const member of team.members) {
+          if (!invitationUserIds.has(member.userId)) {
+            participants.push({
+              id: member.userId,
+              name: member.user.name,
+              email: member.user.email,
+              avatar: member.user.avatarUrl,
+              teamId: team.id,
+              teamName: team.name,
+              joinedAt: member.joinedAt.toISOString(),
+            })
+          }
+        }
+      }
+
       // Separate into waiting (no team) and assigned (has team)
       const waiting = participants.filter(p => !p.teamId)
       const assigned = participants.filter(p => p.teamId)
+
+      // Get removed invitations
+      const removedInvitations = await db.query.projectInvitations.findMany({
+        where: and(
+          eq(projectInvitations.projectId, data.projectId),
+          eq(projectInvitations.status, 'removed')
+        ),
+        with: {
+          user: true,
+        },
+      })
+
+      const removed = removedInvitations.map(inv => ({
+        id: inv.userId,
+        name: inv.user.name,
+        email: inv.user.email,
+        avatar: inv.user.avatarUrl,
+        teamId: null,
+        teamName: null,
+        joinedAt: inv.respondedAt?.toISOString() || inv.createdAt.toISOString(),
+      }))
 
       return {
         success: true,
@@ -981,6 +1158,7 @@ export const getProjectParticipants = createServerFn({ method: 'GET' })
           total: participants.length,
           waiting,
           assigned,
+          removed,
         },
       }
     } catch (error) {
@@ -1021,8 +1199,9 @@ export const removeParticipant = createServerFn({ method: 'POST' })
         }
       }
 
-      // Remove the accepted invitation
-      await db.delete(projectInvitations)
+      // Mark invitation as 'removed' so user cannot rejoin
+      await db.update(projectInvitations)
+        .set({ status: 'removed', respondedAt: new Date() })
         .where(and(
           eq(projectInvitations.projectId, data.projectId),
           eq(projectInvitations.userId, data.userId),
@@ -1032,6 +1211,28 @@ export const removeParticipant = createServerFn({ method: 'POST' })
     } catch (error) {
       console.error('Remove participant error:', error)
       return { success: false, error: 'Failed to remove participant' }
+    }
+  })
+
+/**
+ * Unremove a participant (lift ban), allowing them to rejoin.
+ * Deletes the 'removed' invitation so the user can use the join code again.
+ */
+export const unremoveParticipant = createServerFn({ method: 'POST' })
+  .inputValidator((data: { projectId: string; userId: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      await db.delete(projectInvitations)
+        .where(and(
+          eq(projectInvitations.projectId, data.projectId),
+          eq(projectInvitations.userId, data.userId),
+          eq(projectInvitations.status, 'removed'),
+        ))
+
+      return { success: true }
+    } catch (error) {
+      console.error('Unremove participant error:', error)
+      return { success: false, error: 'Failed to unremove participant' }
     }
   })
 

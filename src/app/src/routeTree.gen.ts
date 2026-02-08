@@ -34,6 +34,7 @@ import { Route as CreatorProjectProjectIdIndexRouteImport } from './routes/creat
 import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr.spa-mode'
 import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
 import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ssr.data-only'
+import { Route as CreatorProjectProjectIdParticipantIndexRouteImport } from './routes/creator/project/$projectId/participant/index'
 import { Route as CreatorProjectProjectIdMonitorIndexRouteImport } from './routes/creator/project/$projectId/monitor/index'
 
 const ExplorerRouteRoute = ExplorerRouteRouteImport.update({
@@ -164,6 +165,12 @@ const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
   path: '/demo/start/ssr/data-only',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CreatorProjectProjectIdParticipantIndexRoute =
+  CreatorProjectProjectIdParticipantIndexRouteImport.update({
+    id: '/participant/',
+    path: '/participant/',
+    getParentRoute: () => CreatorProjectProjectIdRouteRoute,
+  } as any)
 const CreatorProjectProjectIdMonitorIndexRoute =
   CreatorProjectProjectIdMonitorIndexRouteImport.update({
     id: '/monitor/',
@@ -198,6 +205,7 @@ export interface FileRoutesByFullPath {
   '/demo/start/ssr/': typeof DemoStartSsrIndexRoute
   '/explorer/project/$projectId/': typeof ExplorerProjectProjectIdIndexRoute
   '/creator/project/$projectId/monitor/': typeof CreatorProjectProjectIdMonitorIndexRoute
+  '/creator/project/$projectId/participant/': typeof CreatorProjectProjectIdParticipantIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -222,6 +230,7 @@ export interface FileRoutesByTo {
   '/demo/start/ssr': typeof DemoStartSsrIndexRoute
   '/explorer/project/$projectId': typeof ExplorerProjectProjectIdIndexRoute
   '/creator/project/$projectId/monitor': typeof CreatorProjectProjectIdMonitorIndexRoute
+  '/creator/project/$projectId/participant': typeof CreatorProjectProjectIdParticipantIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -251,6 +260,7 @@ export interface FileRoutesById {
   '/demo/start/ssr/': typeof DemoStartSsrIndexRoute
   '/explorer/project/$projectId/': typeof ExplorerProjectProjectIdIndexRoute
   '/creator/project/$projectId/monitor/': typeof CreatorProjectProjectIdMonitorIndexRoute
+  '/creator/project/$projectId/participant/': typeof CreatorProjectProjectIdParticipantIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/demo/start/ssr/'
     | '/explorer/project/$projectId/'
     | '/creator/project/$projectId/monitor/'
+    | '/creator/project/$projectId/participant/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -305,6 +316,7 @@ export interface FileRouteTypes {
     | '/demo/start/ssr'
     | '/explorer/project/$projectId'
     | '/creator/project/$projectId/monitor'
+    | '/creator/project/$projectId/participant'
   id:
     | '__root__'
     | '/'
@@ -333,6 +345,7 @@ export interface FileRouteTypes {
     | '/demo/start/ssr/'
     | '/explorer/project/$projectId/'
     | '/creator/project/$projectId/monitor/'
+    | '/creator/project/$projectId/participant/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -528,6 +541,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoStartSsrDataOnlyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/creator/project/$projectId/participant/': {
+      id: '/creator/project/$projectId/participant/'
+      path: '/participant'
+      fullPath: '/creator/project/$projectId/participant/'
+      preLoaderRoute: typeof CreatorProjectProjectIdParticipantIndexRouteImport
+      parentRoute: typeof CreatorProjectProjectIdRouteRoute
+    }
     '/creator/project/$projectId/monitor/': {
       id: '/creator/project/$projectId/monitor/'
       path: '/monitor'
@@ -557,6 +577,7 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
 interface CreatorProjectProjectIdRouteRouteChildren {
   CreatorProjectProjectIdIndexRoute: typeof CreatorProjectProjectIdIndexRoute
   CreatorProjectProjectIdMonitorIndexRoute: typeof CreatorProjectProjectIdMonitorIndexRoute
+  CreatorProjectProjectIdParticipantIndexRoute: typeof CreatorProjectProjectIdParticipantIndexRoute
 }
 
 const CreatorProjectProjectIdRouteRouteChildren: CreatorProjectProjectIdRouteRouteChildren =
@@ -564,6 +585,8 @@ const CreatorProjectProjectIdRouteRouteChildren: CreatorProjectProjectIdRouteRou
     CreatorProjectProjectIdIndexRoute: CreatorProjectProjectIdIndexRoute,
     CreatorProjectProjectIdMonitorIndexRoute:
       CreatorProjectProjectIdMonitorIndexRoute,
+    CreatorProjectProjectIdParticipantIndexRoute:
+      CreatorProjectProjectIdParticipantIndexRoute,
   }
 
 const CreatorProjectProjectIdRouteRouteWithChildren =

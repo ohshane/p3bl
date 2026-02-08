@@ -45,6 +45,7 @@ export {
   respondToInvitation,
   getProjectParticipants,
   removeParticipant,
+  unremoveParticipant,
   searchDelegateUsers,
   delegateProject,
 } from './projects'

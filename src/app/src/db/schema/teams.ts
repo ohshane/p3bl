@@ -54,7 +54,7 @@ export const projectInvitations = sqliteTable('project_invitations', {
   projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   teamId: text('team_id').references(() => teams.id, { onDelete: 'set null' }),
-  status: text('status').$type<'pending' | 'accepted' | 'dismissed' | 'expired'>().notNull().default('pending'),
+  status: text('status').$type<'pending' | 'accepted' | 'dismissed' | 'expired' | 'removed'>().notNull().default('pending'),
   expiresAt: integer('expires_at', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   respondedAt: integer('responded_at', { mode: 'timestamp' }),

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "daddb2b6-9652-43c9-85b2-2c43036046c3",
+  "id": "34a575fb-a922-424d-8a78-4f2eaff88fdc",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "intervention_logs": {
@@ -324,6 +324,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
         "password_hash": {
           "name": "password_hash",
           "type": "text",
@@ -404,6 +411,13 @@
           "name": "users_email_unique",
           "columns": [
             "email"
+          ],
+          "isUnique": true
+        },
+        "users_username_unique": {
+          "name": "users_username_unique",
+          "columns": [
+            "username"
           ],
           "isUnique": true
         }

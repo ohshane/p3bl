@@ -19,6 +19,7 @@ const listUsersSchema = z.object({
 
 const createUserSchema = z.object({
   email: z.string().email('Invalid email address'),
+  username: z.string().min(3, 'Username must be at least 3 characters').max(30).regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, underscores, and hyphens'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
   role: z.array(z.enum(['explorer', 'creator', 'admin'])).min(1, 'At least one role is required'),
@@ -47,6 +48,7 @@ function generateAnonymizedName(): string {
 export type UserListItem = {
   id: string
   email: string
+  username: string
   name: string
   role: UserRole[]
   avatarUrl: string | null
@@ -96,6 +98,7 @@ export const listUsers = createServerFn({ method: 'GET' })
         whereConditions.push(
           or(
             like(users.name, searchPattern),
+            like(users.username, searchPattern),
             like(users.email, searchPattern)
           )
         )
@@ -128,6 +131,7 @@ export const listUsers = createServerFn({ method: 'GET' })
         .select({
           id: users.id,
           email: users.email,
+          username: users.username,
           name: users.name,
           role: users.role,
           avatarUrl: users.avatarUrl,
@@ -180,15 +184,29 @@ export const createUser = createServerFn({ method: 'POST' })
   })
   .handler(async ({ data }): Promise<AdminActionResponse> => {
     try {
+      const usernameLower = data.username.toLowerCase()
+
       // Check if email already exists
-      const existingUser = await db.query.users.findFirst({
+      const existingEmail = await db.query.users.findFirst({
         where: eq(users.email, data.email.toLowerCase()),
       })
 
-      if (existingUser) {
+      if (existingEmail) {
         return {
           success: false,
           error: 'A user with this email already exists',
+        }
+      }
+
+      // Check if username already exists
+      const existingUsername = await db.query.users.findFirst({
+        where: eq(users.username, usernameLower),
+      })
+
+      if (existingUsername) {
+        return {
+          success: false,
+          error: 'This username is already taken',
         }
       }
 
@@ -203,6 +221,7 @@ export const createUser = createServerFn({ method: 'POST' })
       await db.insert(users).values({
         id: userId,
         email: data.email.toLowerCase(),
+        username: usernameLower,
         passwordHash,
         name: data.name,
         role: serializeRoles(roles),
@@ -218,6 +237,7 @@ export const createUser = createServerFn({ method: 'POST' })
         user: {
           id: userId,
           email: data.email.toLowerCase(),
+          username: usernameLower,
           name: data.name,
           role: roles,
           avatarUrl: null,
@@ -279,6 +299,7 @@ export const updateUserRole = createServerFn({ method: 'POST' })
         user: {
           id: user.id,
           email: user.email,
+          username: user.username,
           name: user.name,
           role: roles,
           avatarUrl: user.avatarUrl,
@@ -360,6 +381,7 @@ export const getUserDetails = createServerFn({ method: 'GET' })
         user: {
           id: user.id,
           email: user.email,
+          username: user.username,
           name: user.name,
           role: parseRoles(user.role),
           avatarUrl: user.avatarUrl,

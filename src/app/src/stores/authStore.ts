@@ -16,6 +16,7 @@ const DEFAULT_COMPETENCIES: CompetencyScores = {
 export interface AuthUser {
   id: string
   email: string
+  username: string
   name: string
   role: UserRole[]
   avatarUrl: string | null
@@ -49,7 +50,7 @@ interface AuthState {
   
   // Actions
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  register: (data: { email: string; password: string; name: string }) => Promise<{ success: boolean; error?: string }>
+  register: (data: { email: string; username: string; password: string; name: string }) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
   clearError: () => void
   addXP: (amount: number) => void
@@ -100,18 +101,13 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true, error: null })
         
         try {
-          // Support short usernames - treat them as username@p3bl.local
-          const shortUsernames = ['admin', 'creator1', 'creator2', 'creator3', 'explorer1', 'explorer2', 'explorer3', 'pioneer1']
-          const email = shortUsernames.includes(emailOrUsername.toLowerCase())
-            ? `${emailOrUsername.toLowerCase()}@p3bl.local`
-            : emailOrUsername.toLowerCase()
-          
-          const result = await apiLogin({ data: { email, password } })
+          const result = await apiLogin({ data: { emailOrUsername, password } })
           
           if (result.success) {
             const user: AuthUser = {
               id: result.user.id,
               email: result.user.email,
+              username: result.user.username,
               name: result.user.name,
               role: result.user.role,
               avatarUrl: result.user.avatarUrl,
@@ -158,6 +154,7 @@ export const useAuthStore = create<AuthState>()(
           const result = await apiRegister({
             data: {
               email: data.email.toLowerCase(),
+              username: data.username,
               password: data.password,
               name: data.name,
               role: ['explorer'], // Self-registration is always as explorer
@@ -168,6 +165,7 @@ export const useAuthStore = create<AuthState>()(
             const user: AuthUser = {
               id: result.user.id,
               email: result.user.email,
+              username: result.user.username,
               name: result.user.name,
               role: result.user.role,
               avatarUrl: result.user.avatarUrl,
@@ -266,6 +264,7 @@ export const useAuthStore = create<AuthState>()(
               currentUser: {
                 id: result.user.id,
                 email: result.user.email,
+                username: result.user.username,
                 name: result.user.name,
                 role: result.user.role,
                 avatarUrl: result.user.avatarUrl,

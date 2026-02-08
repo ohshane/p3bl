@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { v4 as uuidv4 } from 'uuid'
-import { eq, and, gt } from 'drizzle-orm'
+import { eq, and, gt, or } from 'drizzle-orm'
 import { db } from '@/db'
 import { users, authSessions, passwordResets } from '@/db/schema'
 import {
@@ -28,6 +28,7 @@ export type AuthResponse = {
   user: {
     id: string
     email: string
+    username: string
     name: string
     role: UserRole[]
     avatarUrl: string | null
@@ -70,15 +71,29 @@ export const register = createServerFn({ method: 'POST' })
   })
   .handler(async ({ data }): Promise<AuthResponse> => {
     try {
+      const usernameLower = data.username.toLowerCase()
+
       // Check if email already exists
-      const existingUser = await db.query.users.findFirst({
+      const existingEmail = await db.query.users.findFirst({
         where: eq(users.email, data.email.toLowerCase()),
       })
 
-      if (existingUser) {
+      if (existingEmail) {
         return {
           success: false,
           error: 'An account with this email already exists',
+        }
+      }
+
+      // Check if username already exists
+      const existingUsername = await db.query.users.findFirst({
+        where: eq(users.username, usernameLower),
+      })
+
+      if (existingUsername) {
+        return {
+          success: false,
+          error: 'This username is already taken',
         }
       }
 
@@ -94,6 +109,7 @@ export const register = createServerFn({ method: 'POST' })
       await db.insert(users).values({
         id: userId,
         email: data.email.toLowerCase(),
+        username: usernameLower,
         passwordHash,
         name: data.name,
         role: serializeRoles(roles),
@@ -125,6 +141,7 @@ export const register = createServerFn({ method: 'POST' })
         user: {
           id: userId,
           email: data.email.toLowerCase(),
+          username: usernameLower,
           name: data.name,
           role: roles,
           avatarUrl: null,
@@ -161,15 +178,20 @@ export const login = createServerFn({ method: 'POST' })
   })
   .handler(async ({ data }): Promise<AuthResponse> => {
     try {
-      // Find user
+      const input = data.emailOrUsername.trim().toLowerCase()
+
+      // Find user by email or username (case-insensitive)
       const user = await db.query.users.findFirst({
-        where: eq(users.email, data.email.toLowerCase()),
+        where: or(
+          eq(users.email, input),
+          eq(users.username, input)
+        ),
       })
 
       if (!user) {
         return {
           success: false,
-          error: 'Invalid email or password',
+          error: 'Invalid email/username or password',
         }
       }
 
@@ -178,7 +200,7 @@ export const login = createServerFn({ method: 'POST' })
       if (!isValid) {
         return {
           success: false,
-          error: 'Invalid email or password',
+          error: 'Invalid email/username or password',
         }
       }
 
@@ -206,6 +228,7 @@ export const login = createServerFn({ method: 'POST' })
         user: {
           id: user.id,
           email: user.email,
+          username: user.username,
           name: user.name,
           role: roles,
           avatarUrl: user.avatarUrl,
@@ -285,6 +308,7 @@ export const refreshToken = createServerFn({ method: 'POST' })
         user: {
           id: user.id,
           email: user.email,
+          username: user.username,
           name: user.name,
           role: roles,
           avatarUrl: user.avatarUrl,
@@ -460,6 +484,7 @@ export const getCurrentUser = createServerFn({ method: 'GET' })
         user: {
           id: user.id,
           email: user.email,
+          username: user.username,
           name: user.name,
           role: parseRoles(user.role),
           avatarUrl: user.avatarUrl,
@@ -512,6 +537,7 @@ export const updateProfile = createServerFn({ method: 'POST' })
         user: {
           id: updatedUser.id,
           email: updatedUser.email,
+          username: updatedUser.username,
           name: updatedUser.name,
           role: parseRoles(updatedUser.role),
           avatarUrl: updatedUser.avatarUrl,

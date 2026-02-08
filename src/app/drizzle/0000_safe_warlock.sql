@@ -47,6 +47,7 @@ CREATE UNIQUE INDEX `password_resets_token_unique` ON `password_resets` (`token`
 CREATE TABLE `users` (
 	`id` text PRIMARY KEY NOT NULL,
 	`email` text NOT NULL,
+	`username` text NOT NULL,
 	`password_hash` text NOT NULL,
 	`name` text NOT NULL,
 	`avatar_url` text,
@@ -60,6 +61,7 @@ CREATE TABLE `users` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `users_email_unique` ON `users` (`email`);--> statement-breakpoint
+CREATE UNIQUE INDEX `users_username_unique` ON `users` (`username`);--> statement-breakpoint
 CREATE TABLE `org_members` (
 	`org_id` text NOT NULL,
 	`user_id` text NOT NULL,

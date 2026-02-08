@@ -53,6 +53,7 @@ interface CreateUserDialogProps {
 
 export function CreateUserDialog({ open, onOpenChange, onUserCreated }: CreateUserDialogProps) {
   const [name, setName] = useState('')
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [selectedRoles, setSelectedRoles] = useState<UserRole[]>(['explorer'])
@@ -62,6 +63,7 @@ export function CreateUserDialog({ open, onOpenChange, onUserCreated }: CreateUs
 
   const resetForm = () => {
     setName('')
+    setUsername('')
     setEmail('')
     setPassword('')
     setSelectedRoles(['explorer'])
@@ -89,6 +91,7 @@ export function CreateUserDialog({ open, onOpenChange, onUserCreated }: CreateUs
       const result = await createUser({
         data: {
           name: name.trim(),
+          username: username.trim(),
           email: email.trim(),
           password,
           role: selectedRoles,
@@ -141,6 +144,18 @@ export function CreateUserDialog({ open, onOpenChange, onUserCreated }: CreateUs
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="John Doe"
+              className="bg-background border-border"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="username">Username</Label>
+            <Input
+              id="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="johndoe"
               className="bg-background border-border"
               required
             />

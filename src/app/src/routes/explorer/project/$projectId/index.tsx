@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, useRef } from "react";
-import { ChevronLeft, Loader2, ArrowRight, Maximize2, X } from "lucide-react";
+import { ChevronLeft, Loader2, ArrowRight, Maximize2, X, UserMinus } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useActivityStore } from "@/stores/activityStore";
 import { getProject, allocateTeams } from "@/server/api/projects";
@@ -299,8 +299,10 @@ function ExplorerProjectPage() {
   const [isAllocating, setIsAllocating] = useState(false);
   const [showNextSessionModal, setShowNextSessionModal] = useState(false);
   const [showProjectEndedModal, setShowProjectEndedModal] = useState(false);
+  const [showRemovedModal, setShowRemovedModal] = useState(false);
   const [isSmartOutputOpen, setIsSmartOutputOpen] = useState(false);
   const hasLoadedOnce = useRef(false);
+  const hadTeamRef = useRef(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -390,16 +392,21 @@ function ExplorerProjectPage() {
             setCurrentSession(initialSessionIndex);
           }
 
-          // Store user team info — always update when the API returns team data,
-          // but never clear a previously loaded team (guards against transient failures)
+          // Store user team info and detect removal
           if (result.userTeam) {
+            hadTeamRef.current = true;
             setUserTeam(prev => {
               const incoming = { id: result.userTeam.id, name: result.userTeam.name };
-              // Only update if changed to avoid unnecessary re-renders
               if (prev?.id === incoming.id && prev?.name === incoming.name) return prev;
               return incoming;
             });
+          } else if (hadTeamRef.current && !result.isWaiting) {
+            // User previously had a team but now doesn't and isn't waiting
+            // → they were removed by the creator
+            setShowRemovedModal(true);
           }
+        } else if (result.error === "removed") {
+          setShowRemovedModal(true);
         } else {
           setError(result.error || "Failed to load project");
         }
@@ -723,6 +730,39 @@ function ExplorerProjectPage() {
                 setShowProjectEndedModal(false);
                 navigate({ to: "/explorer" });
               }}
+              className="gap-2"
+            >
+              Back to Explorer
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Removed from Project Modal */}
+      <Dialog open={showRemovedModal} onOpenChange={() => {}}>
+        <DialogContent
+          className="sm:max-w-md"
+          overlayClassName="backdrop-blur-md"
+          showCloseButton={false}
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="w-14 h-14 rounded-full bg-destructive/10 flex items-center justify-center">
+                <UserMinus className="w-7 h-7 text-destructive" />
+              </div>
+              <DialogTitle>Removed from Project</DialogTitle>
+              <DialogDescription>
+                You have been removed from "{project.name}" by the creator.
+                You no longer have access to this project.
+              </DialogDescription>
+            </div>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center">
+            <Button
+              onClick={() => navigate({ to: "/explorer" })}
               className="gap-2"
             >
               Back to Explorer

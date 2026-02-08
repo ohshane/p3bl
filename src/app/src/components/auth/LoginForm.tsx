@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
 import { useAuthStore } from '@/stores/authStore'
-import { clearStoredRedirectPath } from '@/lib/authRedirect'
+import { clearStoredRedirectPath, getRoleBasedHomePath } from '@/lib/authRedirect'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -53,12 +53,8 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       
       if (redirectTo) {
         navigate({ to: redirectTo })
-      } else if (user?.role?.includes('admin')) {
-        navigate({ to: '/admin' })
-      } else if (user?.role?.includes('creator')) {
-        navigate({ to: '/creator' })
       } else {
-        navigate({ to: '/explorer' })
+        navigate({ to: getRoleBasedHomePath(user?.role ?? []) })
       }
     }
   }

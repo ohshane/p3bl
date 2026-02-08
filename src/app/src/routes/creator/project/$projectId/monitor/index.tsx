@@ -18,7 +18,7 @@ function MonitoringPage() {
   const navigate = useNavigate()
   const { projectId } = Route.useParams()
   const { isAuthenticated, currentUser } = useAuthStore()
-  const { getProject } = useCreatorStore()
+  const { getProject, fetchProjects } = useCreatorStore()
 
   const project = getProject(projectId)
 
@@ -35,6 +35,13 @@ function MonitoringPage() {
       navigate({ to: '/explorer' })
     }
   }, [currentUser, navigate])
+
+  // Fetch projects if not loaded (e.g. hard refresh)
+  useEffect(() => {
+    if (currentUser?.id && !project) {
+      fetchProjects(currentUser.id)
+    }
+  }, [currentUser?.id, project, fetchProjects])
 
   if (!currentUser || !currentUser.role.includes('creator')) {
     return null

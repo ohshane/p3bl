@@ -1,4 +1,15 @@
+import type { UserRole } from '@/types'
+
 const AUTH_REDIRECT_STORAGE_KEY = 'p3bl:auth-redirect'
+
+/**
+ * Returns the home path based on role priority: admin > creator > explorer
+ */
+export function getRoleBasedHomePath(roles: UserRole[]): string {
+  if (roles.includes('admin')) return '/admin'
+  if (roles.includes('creator')) return '/creator'
+  return '/explorer'
+}
 
 export function storeRedirectPath(path: string) {
   if (typeof window === 'undefined') return

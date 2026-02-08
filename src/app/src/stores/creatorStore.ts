@@ -116,7 +116,7 @@ interface CreatorState {
   // Cached data for monitoring
   liveMatrixCache: Map<string, LiveMatrixEntry[]>
   dipChartCache: Map<string, DipChartDataPoint[]>
-  participantsCache: Map<string, { total: number; waiting: ProjectParticipant[]; assigned: ProjectParticipant[] }>
+  participantsCache: Map<string, { total: number; waiting: ProjectParticipant[]; assigned: ProjectParticipant[]; removed: ProjectParticipant[] }>
   
   // Loading states
   isLoading: boolean
@@ -145,7 +145,7 @@ interface CreatorState {
   getLiveMatrix: (projectId: string) => LiveMatrixEntry[]
   getDipChartData: (projectId: string) => DipChartDataPoint[]
   getProjectInterventions: (projectId: string) => AIIntervention[]
-  getParticipants: (projectId: string) => { total: number; waiting: ProjectParticipant[]; assigned: ProjectParticipant[] } | null
+  getParticipants: (projectId: string) => { total: number; waiting: ProjectParticipant[]; assigned: ProjectParticipant[]; removed: ProjectParticipant[] } | null
   
   // Async data fetching actions
   fetchProjects: (creatorId: string) => Promise<void>
