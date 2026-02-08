@@ -25,10 +25,10 @@
         "endDate": "2024-01-28T00:00:00.000Z",
         "deliverableType": "document",
         "rubric": [
-          {"id": "r1", "criterion": "Data Understanding", "description": "Demonstrates clear understanding of data types", "maxScore": 25, "weight": 25},
-          {"id": "r2", "criterion": "Data Collection Plan", "description": "Proposes feasible data collection strategy", "maxScore": 25, "weight": 25},
-          {"id": "r3", "criterion": "Preprocessing Steps", "description": "Identifies necessary preprocessing steps", "maxScore": 25, "weight": 25},
-          {"id": "r4", "criterion": "Communication", "description": "Clear and organized presentation", "maxScore": 25, "weight": 25}
+          {"id": "r1", "criterion": "Data Understanding", "description": "Demonstrates clear understanding of data types", "weight": 25},
+          {"id": "r2", "criterion": "Data Collection Plan", "description": "Proposes feasible data collection strategy", "weight": 25},
+          {"id": "r3", "criterion": "Preprocessing Steps", "description": "Identifies necessary preprocessing steps", "weight": 25},
+          {"id": "r4", "criterion": "Communication", "description": "Clear and organized presentation", "weight": 25}
         ],
         "resources": [
           {"id": "res1", "title": "Data Types in ML", "type": "pdf", "url": "/resources/data-types.pdf"},
@@ -50,10 +50,10 @@
         "endDate": "2024-02-11T00:00:00.000Z",
         "deliverableType": "code",
         "rubric": [
-          {"id": "r5", "criterion": "Model Implementation", "description": "Correctly implements ML model", "maxScore": 30, "weight": 30},
-          {"id": "r6", "criterion": "Training Process", "description": "Proper training and validation split", "maxScore": 25, "weight": 25},
-          {"id": "r7", "criterion": "Code Quality", "description": "Clean, documented code", "maxScore": 25, "weight": 25},
-          {"id": "r8", "criterion": "Results Analysis", "description": "Analyzes and explains results", "maxScore": 20, "weight": 20}
+          {"id": "r5", "criterion": "Model Implementation", "description": "Correctly implements ML model", "weight": 30},
+          {"id": "r6", "criterion": "Training Process", "description": "Proper training and validation split", "weight": 25},
+          {"id": "r7", "criterion": "Code Quality", "description": "Clean, documented code", "weight": 25},
+          {"id": "r8", "criterion": "Results Analysis", "description": "Analyzes and explains results", "weight": 20}
         ],
         "resources": [
           {"id": "res3", "title": "Scikit-learn Documentation", "type": "link", "url": "https://scikit-learn.org/stable/"},
@@ -75,10 +75,10 @@
         "endDate": "2024-02-25T00:00:00.000Z",
         "deliverableType": "markdown",
         "rubric": [
-          {"id": "r9", "criterion": "Metrics Understanding", "description": "Demonstrates understanding of evaluation metrics", "maxScore": 25, "weight": 25},
-          {"id": "r10", "criterion": "Improvement Strategies", "description": "Proposes valid improvement strategies", "maxScore": 30, "weight": 30},
-          {"id": "r11", "criterion": "Experimental Results", "description": "Clear presentation of experimental results", "maxScore": 25, "weight": 25},
-          {"id": "r12", "criterion": "Documentation", "description": "Thorough documentation", "maxScore": 20, "weight": 20}
+          {"id": "r9", "criterion": "Metrics Understanding", "description": "Demonstrates understanding of evaluation metrics", "weight": 25},
+          {"id": "r10", "criterion": "Improvement Strategies", "description": "Proposes valid improvement strategies", "weight": 30},
+          {"id": "r11", "criterion": "Experimental Results", "description": "Clear presentation of experimental results", "weight": 25},
+          {"id": "r12", "criterion": "Documentation", "description": "Thorough documentation", "weight": 20}
         ],
         "resources": [],
         "templates": [],
@@ -95,10 +95,10 @@
         "endDate": "2024-03-15T00:00:00.000Z",
         "deliverableType": "document",
         "rubric": [
-          {"id": "r13", "criterion": "Problem Definition", "description": "Clearly defines the problem", "maxScore": 20, "weight": 20},
-          {"id": "r14", "criterion": "Solution Design", "description": "Designs appropriate ML solution", "maxScore": 25, "weight": 25},
-          {"id": "r15", "criterion": "Implementation", "description": "Successfully implements solution", "maxScore": 30, "weight": 30},
-          {"id": "r16", "criterion": "Impact Analysis", "description": "Analyzes potential community impact", "maxScore": 25, "weight": 25}
+          {"id": "r13", "criterion": "Problem Definition", "description": "Clearly defines the problem", "weight": 20},
+          {"id": "r14", "criterion": "Solution Design", "description": "Designs appropriate ML solution", "weight": 25},
+          {"id": "r15", "criterion": "Implementation", "description": "Successfully implements solution", "weight": 30},
+          {"id": "r16", "criterion": "Impact Analysis", "description": "Analyzes potential community impact", "weight": 25}
         ],
         "resources": [],
         "templates": [],
@@ -194,9 +194,9 @@
         "endDate": "2024-04-14T00:00:00.000Z",
         "deliverableType": "document",
         "rubric": [
-          {"id": "r17", "criterion": "Concept Understanding", "description": "Demonstrates understanding of sustainability principles", "maxScore": 30, "weight": 30},
-          {"id": "r18", "criterion": "LCA Analysis", "description": "Correctly applies lifecycle assessment", "maxScore": 40, "weight": 40},
-          {"id": "r19", "criterion": "Presentation", "description": "Clear and organized presentation", "maxScore": 30, "weight": 30}
+          {"id": "r17", "criterion": "Concept Understanding", "description": "Demonstrates understanding of sustainability principles", "weight": 30},
+          {"id": "r18", "criterion": "LCA Analysis", "description": "Correctly applies lifecycle assessment", "weight": 40},
+          {"id": "r19", "criterion": "Presentation", "description": "Clear and organized presentation", "weight": 30}
         ],
         "resources": [],
         "templates": [],

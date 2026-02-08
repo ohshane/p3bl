@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -8,95 +8,109 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { updateUserRole } from '@/server/api/admin'
-import { Loader2, AlertCircle, Shield, Compass, PenTool, Rocket } from 'lucide-react'
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { updateUserRole } from "@/server/api/admin";
+import {
+  Loader2,
+  AlertCircle,
+  Shield,
+  Compass,
+  PenTool,
+  Rocket,
+} from "lucide-react";
 
 interface User {
-  id: string
-  name: string
-  email: string
-  role: 'explorer' | 'creator' | 'pioneer' | 'admin'
+  id: string;
+  name: string;
+  email: string;
+  role: "explorer" | "creator" | "pioneer" | "admin";
 }
 
 interface EditRoleDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  user: User | null
-  onRoleUpdated: () => void
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  user: User | null;
+  onRoleUpdated: () => void;
 }
 
-export function EditRoleDialog({ open, onOpenChange, user, onRoleUpdated }: EditRoleDialogProps) {
-  const [role, setRole] = useState<'explorer' | 'creator' | 'pioneer' | 'admin'>(user?.role || 'explorer')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+export function EditRoleDialog({
+  open,
+  onOpenChange,
+  user,
+  onRoleUpdated,
+}: EditRoleDialogProps) {
+  const [role, setRole] = useState<
+    "explorer" | "creator" | "pioneer" | "admin"
+  >(user?.role || "explorer");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Update role when user changes
   useState(() => {
     if (user) {
-      setRole(user.role)
+      setRole(user.role);
     }
-  })
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!user) return
+    e.preventDefault();
+    if (!user) return;
 
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
       const result = await updateUserRole({
         data: {
           userId: user.id,
           role,
-        }
-      })
+        },
+      });
 
       if (result.success) {
-        onOpenChange(false)
-        onRoleUpdated()
+        onOpenChange(false);
+        onRoleUpdated();
       } else {
-        setError(result.error)
+        setError(result.error);
       }
     } catch (err) {
-      setError('Failed to update role')
+      setError("Failed to update role");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      setError(null)
+      setError(null);
     } else if (user) {
-      setRole(user.role)
+      setRole(user.role);
     }
-    onOpenChange(newOpen)
-  }
+    onOpenChange(newOpen);
+  };
 
   const getRoleIcon = (r: string) => {
     switch (r) {
-      case 'admin':
-        return <Shield className="w-4 h-4 text-amber-400" />
-      case 'creator':
-        return <PenTool className="w-4 h-4 text-purple-400" />
-      case 'pioneer':
-        return <Rocket className="w-4 h-4 text-green-400" />
+      case "admin":
+        return <Shield className="w-4 h-4 text-amber-400" />;
+      case "creator":
+        return <PenTool className="w-4 h-4 text-purple-400" />;
+      case "pioneer":
+        return <Rocket className="w-4 h-4 text-green-400" />;
       default:
-        return <Compass className="w-4 h-4 text-cyan-400" />
+        return <Compass className="w-4 h-4 text-cyan-400" />;
     }
-  }
+  };
 
-  if (!user) return null
+  if (!user) return null;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -121,13 +135,18 @@ export function EditRoleDialog({ open, onOpenChange, user, onRoleUpdated }: Edit
             <p className="text-sm text-muted-foreground">{user.email}</p>
             <div className="flex items-center gap-2 mt-2">
               {getRoleIcon(user.role)}
-              <span className="text-sm text-muted-foreground">Current role: {user.role}</span>
+              <span className="text-sm text-muted-foreground">
+                Current role: {user.role}
+              </span>
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="role">New Role</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as typeof role)}>
+            <Select
+              value={role}
+              onValueChange={(v) => setRole(v as typeof role)}
+            >
               <SelectTrigger className="bg-background border-border">
                 <SelectValue />
               </SelectTrigger>
@@ -141,13 +160,13 @@ export function EditRoleDialog({ open, onOpenChange, user, onRoleUpdated }: Edit
                 <SelectItem value="creator">
                   <div className="flex items-center gap-2">
                     <PenTool className="w-4 h-4 text-purple-400" />
-                    Creator (Instructor)
+                    Creator
                   </div>
                 </SelectItem>
                 <SelectItem value="pioneer">
                   <div className="flex items-center gap-2">
                     <Rocket className="w-4 h-4 text-green-400" />
-                    Pioneer (Early Adopter)
+                    Pioneer (Creator & Explorer)
                   </div>
                 </SelectItem>
                 <SelectItem value="admin">
@@ -159,10 +178,14 @@ export function EditRoleDialog({ open, onOpenChange, user, onRoleUpdated }: Edit
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              {role === 'explorer' && 'Can join projects and complete learning activities'}
-              {role === 'creator' && 'Can create projects, sessions, and manage explorers'}
-              {role === 'pioneer' && 'Early adopter with special access privileges'}
-              {role === 'admin' && 'Full system access including user management'}
+              {role === "explorer" &&
+                "Can join projects and complete learning activities"}
+              {role === "creator" &&
+                "Can create projects, sessions, and manage explorers"}
+              {role === "pioneer" &&
+                "Early adopter with special access privileges"}
+              {role === "admin" &&
+                "Full system access including user management"}
             </p>
           </div>
 
@@ -186,12 +209,12 @@ export function EditRoleDialog({ open, onOpenChange, user, onRoleUpdated }: Edit
                   Updating...
                 </>
               ) : (
-                'Update Role'
+                "Update Role"
               )}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { login as apiLogin, register as apiRegister, logout as apiLogout, refreshToken as apiRefreshToken, getCurrentUser } from '@/server/api/auth'
-import type { CompetencyScores, Notification } from '@/types'
+import { login as apiLogin, register as apiRegister, logout as apiLogout, refreshToken as apiRefreshToken } from '@/server/api/auth'
+import type { CompetencyScores, Notification, SessionDifficulty } from '@/types'
 
 // Default competencies for new users
 const DEFAULT_COMPETENCIES: CompetencyScores = {
@@ -21,18 +21,13 @@ export interface AuthUser {
   avatarUrl: string | null
   xp: number
   level: number
-  hallOfFameOptIn?: boolean
+  defaultSessionDifficulty?: SessionDifficulty
   anonymizedName?: string
   createdAt?: string
   earnedBadgeIds: string[]
   competencies: CompetencyScores
   joinedProjectIds: string[]
 }
-
-// Token storage keys
-const ACCESS_TOKEN_KEY = 'p3bl_access_token'
-const REFRESH_TOKEN_KEY = 'p3bl_refresh_token'
-const TOKEN_EXPIRY_KEY = 'p3bl_token_expiry'
 
 interface AuthState {
   // Current user
@@ -122,6 +117,7 @@ export const useAuthStore = create<AuthState>()(
               avatarUrl: result.user.avatarUrl,
               xp: result.user.xp,
               level: result.user.level,
+              defaultSessionDifficulty: (result.user as { defaultSessionDifficulty?: SessionDifficulty }).defaultSessionDifficulty,
               earnedBadgeIds: (result.user as { earnedBadgeIds?: string[] }).earnedBadgeIds ?? [],
               competencies: (result.user as { competencies?: CompetencyScores }).competencies ?? DEFAULT_COMPETENCIES,
               joinedProjectIds: (result.user as { joinedProjectIds?: string[] }).joinedProjectIds ?? [],
@@ -177,6 +173,7 @@ export const useAuthStore = create<AuthState>()(
               avatarUrl: result.user.avatarUrl,
               xp: result.user.xp,
               level: result.user.level,
+              defaultSessionDifficulty: (result.user as { defaultSessionDifficulty?: SessionDifficulty }).defaultSessionDifficulty,
               earnedBadgeIds: (result.user as { earnedBadgeIds?: string[] }).earnedBadgeIds ?? [],
               competencies: (result.user as { competencies?: CompetencyScores }).competencies ?? DEFAULT_COMPETENCIES,
               joinedProjectIds: (result.user as { joinedProjectIds?: string[] }).joinedProjectIds ?? [],
@@ -274,6 +271,7 @@ export const useAuthStore = create<AuthState>()(
                 avatarUrl: result.user.avatarUrl,
                 xp: result.user.xp,
                 level: result.user.level,
+                defaultSessionDifficulty: (result.user as { defaultSessionDifficulty?: SessionDifficulty }).defaultSessionDifficulty,
                 earnedBadgeIds: (result.user as { earnedBadgeIds?: string[] }).earnedBadgeIds ?? [],
                 competencies: (result.user as { competencies?: CompetencyScores }).competencies ?? DEFAULT_COMPETENCIES,
                 joinedProjectIds: (result.user as { joinedProjectIds?: string[] }).joinedProjectIds ?? [],
@@ -350,13 +348,15 @@ export const useAuthStore = create<AuthState>()(
         const { currentUser } = get()
         if (!currentUser) return
         
+        const existing = currentUser.joinedProjectIds ?? []
+        
         // Don't add if already joined
-        if (currentUser.joinedProjectIds.includes(projectId)) return
+        if (existing.includes(projectId)) return
         
         set({
           currentUser: {
             ...currentUser,
-            joinedProjectIds: [...currentUser.joinedProjectIds, projectId],
+            joinedProjectIds: [...existing, projectId],
           },
         })
       },
@@ -405,6 +405,19 @@ export const useAuthStore = create<AuthState>()(
         refreshToken: state.refreshToken,
         tokenExpiresAt: state.tokenExpiresAt,
       }),
+      merge: (persisted, current) => {
+        const state = { ...current, ...(persisted as Partial<AuthState>) }
+        // Ensure array fields on currentUser are never undefined from stale storage
+        if (state.currentUser) {
+          state.currentUser = {
+            ...state.currentUser,
+            joinedProjectIds: state.currentUser.joinedProjectIds ?? [],
+            earnedBadgeIds: state.currentUser.earnedBadgeIds ?? [],
+            competencies: state.currentUser.competencies ?? DEFAULT_COMPETENCIES,
+          }
+        }
+        return state
+      },
     }
   )
 )

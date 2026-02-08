@@ -58,7 +58,6 @@ describe('Users API', () => {
         .set({
           name: 'Updated Name',
           avatarUrl: 'https://example.com/avatar.png',
-          hallOfFameOptIn: true,
           updatedAt: new Date(),
         })
         .where(eq(schema.users.id, user.id))
@@ -69,7 +68,6 @@ describe('Users API', () => {
 
       expect(updatedUser!.name).toBe('Updated Name')
       expect(updatedUser!.avatarUrl).toBe('https://example.com/avatar.png')
-      expect(updatedUser!.hallOfFameOptIn).toBe(true)
     })
 
     it('should list users by role', async () => {

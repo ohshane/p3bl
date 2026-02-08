@@ -21,6 +21,21 @@ import * as schema from '@/db/schema'
 import { eq, desc, and } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
 
+/** Helper to create a chat room for a project */
+async function createTestRoom(projectId: string, name = 'Test Room') {
+  const db = getTestDb()
+  const roomId = uuidv4()
+  const now = new Date()
+  await db.insert(schema.chatRooms).values({
+    id: roomId,
+    projectId,
+    name,
+    createdAt: now,
+    updatedAt: now,
+  })
+  return { id: roomId, projectId, name }
+}
+
 describe('Chat API', () => {
   beforeAll(() => {
     setupTestDb()
@@ -40,16 +55,17 @@ describe('Chat API', () => {
       const creator = await createTestUser({ role: 'creator' })
       const explorer = await createTestUser({ role: 'explorer' })
       const project = await createTestProject(creator.id)
-      const session = await createTestSession(project.id)
+      const _session = await createTestSession(project.id)
       const team = await createTestTeam(project.id)
-      await addUserToTeam(explorer.id, team.id, session.id)
+      await addUserToTeam(explorer.id, team.id, _session.id)
+      const room = await createTestRoom(project.id)
 
       const messageId = uuidv4()
       const now = new Date()
 
       await db.insert(schema.chatMessages).values({
         id: messageId,
-        teamId: team.id,
+        roomId: room.id,
         userId: explorer.id,
         content: 'Hello team!',
         type: 'text',
@@ -72,9 +88,9 @@ describe('Chat API', () => {
       const db = getTestDb()
       const creator = await createTestUser({ role: 'creator' })
       const project = await createTestProject(creator.id)
-      const session = await createTestSession(project.id)
       const team = await createTestTeam(project.id)
       const persona = await createTestPersona({ name: 'Sage', type: 'tutor' })
+      const room = await createTestRoom(project.id)
 
       // Link persona to team
       await db.insert(schema.teamAiPersonas).values({
@@ -87,7 +103,7 @@ describe('Chat API', () => {
 
       await db.insert(schema.chatMessages).values({
         id: messageId,
-        teamId: team.id,
+        roomId: room.id,
         personaId: persona.id,
         content: 'Welcome to the project! How can I help you today?',
         type: 'text',
@@ -106,7 +122,7 @@ describe('Chat API', () => {
       expect(message!.persona?.type).toBe('tutor')
     })
 
-    it('should get messages for a team', async () => {
+    it('should get messages for a room', async () => {
       const db = getTestDb()
       const creator = await createTestUser({ role: 'creator' })
       const explorer1 = await createTestUser({ role: 'explorer' })
@@ -116,6 +132,7 @@ describe('Chat API', () => {
       const team = await createTestTeam(project.id)
       await addUserToTeam(explorer1.id, team.id, session.id)
       await addUserToTeam(explorer2.id, team.id, session.id)
+      const room = await createTestRoom(project.id)
 
       const now = Date.now()
 
@@ -123,7 +140,7 @@ describe('Chat API', () => {
       await db.insert(schema.chatMessages).values([
         {
           id: uuidv4(),
-          teamId: team.id,
+          roomId: room.id,
           userId: explorer1.id,
           content: 'Message 1',
           type: 'text',
@@ -133,7 +150,7 @@ describe('Chat API', () => {
         },
         {
           id: uuidv4(),
-          teamId: team.id,
+          roomId: room.id,
           userId: explorer2.id,
           content: 'Message 2',
           type: 'text',
@@ -143,7 +160,7 @@ describe('Chat API', () => {
         },
         {
           id: uuidv4(),
-          teamId: team.id,
+          roomId: room.id,
           userId: explorer1.id,
           content: 'Message 3',
           type: 'text',
@@ -154,7 +171,7 @@ describe('Chat API', () => {
       ])
 
       const messages = await db.query.chatMessages.findMany({
-        where: eq(schema.chatMessages.teamId, team.id),
+        where: eq(schema.chatMessages.roomId, room.id),
         orderBy: desc(schema.chatMessages.createdAt),
         limit: 50,
         with: { user: true },
@@ -174,12 +191,13 @@ describe('Chat API', () => {
       const team = await createTestTeam(project.id)
       await addUserToTeam(explorer1.id, team.id, session.id)
       await addUserToTeam(explorer2.id, team.id, session.id)
+      const room = await createTestRoom(project.id)
 
       // Original message
       const originalId = uuidv4()
       await db.insert(schema.chatMessages).values({
         id: originalId,
-        teamId: team.id,
+        roomId: room.id,
         userId: explorer1.id,
         content: 'What do you think about this approach?',
         type: 'text',
@@ -192,7 +210,7 @@ describe('Chat API', () => {
       const replyId = uuidv4()
       await db.insert(schema.chatMessages).values({
         id: replyId,
-        teamId: team.id,
+        roomId: room.id,
         userId: explorer2.id,
         content: 'I think it looks great!',
         type: 'text',
@@ -221,15 +239,16 @@ describe('Chat API', () => {
       const creator = await createTestUser({ role: 'creator' })
       const explorer = await createTestUser({ role: 'explorer' })
       const project = await createTestProject(creator.id)
-      const session = await createTestSession(project.id)
+      const _session = await createTestSession(project.id)
       const team = await createTestTeam(project.id)
-      await addUserToTeam(explorer.id, team.id, session.id)
+      await addUserToTeam(explorer.id, team.id, _session.id)
+      const room = await createTestRoom(project.id)
 
       const messageId = uuidv4()
 
       await db.insert(schema.chatMessages).values({
         id: messageId,
-        teamId: team.id,
+        roomId: room.id,
         userId: explorer.id,
         content: 'Original message',
         type: 'text',
@@ -259,15 +278,16 @@ describe('Chat API', () => {
       const creator = await createTestUser({ role: 'creator' })
       const explorer = await createTestUser({ role: 'explorer' })
       const project = await createTestProject(creator.id)
-      const session = await createTestSession(project.id)
+      const _session = await createTestSession(project.id)
       const team = await createTestTeam(project.id)
-      await addUserToTeam(explorer.id, team.id, session.id)
+      await addUserToTeam(explorer.id, team.id, _session.id)
+      const room = await createTestRoom(project.id)
 
       const messageId = uuidv4()
 
       await db.insert(schema.chatMessages).values({
         id: messageId,
-        teamId: team.id,
+        roomId: room.id,
         userId: explorer.id,
         content: 'To be deleted',
         type: 'text',
@@ -298,12 +318,13 @@ describe('Chat API', () => {
       const team = await createTestTeam(project.id)
       await addUserToTeam(explorer1.id, team.id, session.id)
       await addUserToTeam(explorer2.id, team.id, session.id)
+      const room = await createTestRoom(project.id)
 
       const messageId = uuidv4()
 
       await db.insert(schema.chatMessages).values({
         id: messageId,
-        teamId: team.id,
+        roomId: room.id,
         userId: explorer1.id,
         content: 'Great job everyone!',
         type: 'text',
@@ -337,13 +358,14 @@ describe('Chat API', () => {
       const session = await createTestSession(project.id)
       const team = await createTestTeam(project.id)
       await addUserToTeam(explorer.id, team.id, session.id)
+      const room = await createTestRoom(project.id)
 
       const messageId = uuidv4()
       const reactionId = uuidv4()
 
       await db.insert(schema.chatMessages).values({
         id: messageId,
-        teamId: team.id,
+        roomId: room.id,
         userId: explorer.id,
         content: 'Test message',
         type: 'text',

@@ -137,7 +137,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   activeTab: 'opened',
   
   fetchUserProjects: async (userId: string) => {
-    set({ isLoadingProjects: true, projectsError: null })
+    // Only show loading spinner on initial load (when no projects cached yet)
+    const hasProjects = get().userProjects.length > 0
+    if (!hasProjects) {
+      set({ isLoadingProjects: true, projectsError: null })
+    }
     try {
       const result = await getUserProjects({ data: { userId } })
       if (result.success && result.projects) {
@@ -146,7 +150,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         set({ projectsError: result.error || 'Failed to fetch projects', isLoadingProjects: false })
       }
     } catch (error) {
-      set({ projectsError: 'Failed to fetch projects', isLoadingProjects: false })
+      if (!hasProjects) {
+        set({ projectsError: 'Failed to fetch projects', isLoadingProjects: false })
+      }
     }
   },
   

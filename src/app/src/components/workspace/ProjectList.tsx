@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ProjectCard } from './ProjectCard'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { FolderOpen, CheckCircle, Calendar, Layers, LayoutDashboard } from 'lucide-react'
@@ -14,6 +14,24 @@ interface ProjectListProps {
 
 export function ProjectList({ allProjects, scheduledProjects, openedProjects, closedProjects }: ProjectListProps) {
   const [activeTab, setActiveTab] = useState<ProjectTab>('all')
+  const [, setTick] = useState(0)
+
+  const sortedAllProjects = useMemo(() => {
+    const getStartTime = (startDate: string | null) => {
+      if (!startDate) return Number.NEGATIVE_INFINITY
+      const time = new Date(startDate).getTime()
+      return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time
+    }
+
+    return [...allProjects].sort((a, b) => getStartTime(b.startDate) - getStartTime(a.startDate))
+  }, [allProjects])
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick(t => t + 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   return (
     <div>
@@ -71,8 +89,8 @@ export function ProjectList({ allProjects, scheduledProjects, openedProjects, cl
           {allProjects.length === 0 ? (
             <EmptyState type="all" />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {allProjects.map(project => (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {sortedAllProjects.map(project => (
                 <ProjectCard
                   key={project.id}
                   project={project}
@@ -86,8 +104,8 @@ export function ProjectList({ allProjects, scheduledProjects, openedProjects, cl
           {openedProjects.length === 0 ? (
             <EmptyState type="opened" />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-{openedProjects.map((project) => (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {openedProjects.map((project) => (
                 <ProjectCard
                   key={project.id}
                   project={project}
@@ -101,7 +119,7 @@ export function ProjectList({ allProjects, scheduledProjects, openedProjects, cl
           {scheduledProjects.length === 0 ? (
             <EmptyState type="scheduled" />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {scheduledProjects.map(project => (
                 <ProjectCard
                   key={project.id}
@@ -116,7 +134,7 @@ export function ProjectList({ allProjects, scheduledProjects, openedProjects, cl
           {closedProjects.length === 0 ? (
             <EmptyState type="closed" />
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {closedProjects.map(project => (
                 <ProjectCard
                   key={project.id}

@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { eq, and, or, desc, gt, count } from 'drizzle-orm'
+import { eq, and, or, desc, gt, count, like, inArray, ne } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
 import { db } from '@/db'
 import {
@@ -13,7 +13,9 @@ import {
   projectInvitations,
   joinCodeAttempts,
   notifications,
+  users,
 } from '@/db/schema'
+import type { UserRole } from '@/db/schema/users'
 import { z } from 'zod'
 
 // Validation schemas
@@ -72,7 +74,11 @@ export const getCreatorProjects = createServerFn({ method: 'GET' })
         where: eq(projects.creatorId, data.creatorId),
         orderBy: desc(projects.updatedAt),
         with: {
-          sessions: true,
+          sessions: {
+            with: {
+              rubrics: true,
+            },
+          },
         },
       })
 
@@ -250,42 +256,48 @@ export const getProject = createServerFn({ method: 'GET' })
       let isWaiting = false
 
       if (data.userId) {
-        // Find the user's team membership for this specific project
-        const membership = await db.query.teamMembers.findFirst({
-          where: eq(teamMembers.userId, data.userId),
-          with: {
-            team: {
-              with: {
-                members: {
-                  with: { user: true },
-                },
-                aiPersonas: {
-                  with: { persona: true },
-                },
+        // Find the user's team for this specific project by joining through teams
+        const membershipRow = await db
+          .select({ teamId: teams.id })
+          .from(teamMembers)
+          .innerJoin(teams, eq(teamMembers.teamId, teams.id))
+          .where(and(
+            eq(teamMembers.userId, data.userId),
+            eq(teams.projectId, data.projectId),
+          ))
+
+        if (membershipRow.length > 0) {
+          // Load full team data with members and AI personas
+          const team = await db.query.teams.findFirst({
+            where: eq(teams.id, membershipRow[0].teamId),
+            with: {
+              members: {
+                with: { user: true },
+              },
+              aiPersonas: {
+                with: { persona: true },
               },
             },
-          },
-        })
+          })
 
-        // Verify this team belongs to this project using projectId
-        if (membership?.team && membership.team.projectId === data.projectId) {
-          const team = membership.team
-          userTeam = {
-            id: team.id,
-            name: team.name,
-            members: team.members.map(m => ({
-              id: m.user.id,
-              name: m.user.name,
-              avatarUrl: m.user.avatarUrl,
-              currentSessionId: m.currentSessionId,
-              joinedAt: m.joinedAt.toISOString(),
-            })),
-            aiPersonas: team.aiPersonas.map(ap => ({
-              id: ap.persona.id,
-              name: ap.persona.name,
-              type: ap.persona.type,
-              avatar: ap.persona.avatar,
-            })),
+          if (team) {
+            userTeam = {
+              id: team.id,
+              name: team.name,
+              members: team.members.map(m => ({
+                id: m.user.id,
+                name: m.user.name,
+                avatarUrl: m.user.avatarUrl,
+                currentSessionId: m.currentSessionId,
+                joinedAt: m.joinedAt.toISOString(),
+              })),
+              aiPersonas: team.aiPersonas.map(ap => ({
+                id: ap.persona.id,
+                name: ap.persona.name,
+                type: ap.persona.type,
+                avatar: ap.persona.avatar,
+              })),
+            }
           }
         } else {
           // Check if user is in waiting pool (accepted invitation)
@@ -480,7 +492,7 @@ export const joinProject = createServerFn({ method: 'POST' })
       )
       const isClosed = project && project.endDate && project.endDate <= now
       
-      const isJoinable = project && !isExpired && (isScheduled || isOpened) && !isClosed
+      const isJoinable = !!(project && !isExpired && (isScheduled || isOpened) && !isClosed)
 
       // Record attempt
       await db.insert(joinCodeAttempts).values({
@@ -606,17 +618,21 @@ export const joinProject = createServerFn({ method: 'POST' })
         joinedAt: new Date(),
       })
 
-      // Create notification
-      await db.insert(notifications).values({
-        id: uuidv4(),
-        userId: data.userId,
-        type: 'project_invitation',
-        title: 'Welcome!',
-        message: `You've joined ${project.title}!`,
-        projectId: project.id,
-        teamId: targetTeam.id,
-        createdAt: new Date(),
-      })
+      // Create notification (non-critical, don't fail the join if this errors)
+      try {
+        await db.insert(notifications).values({
+          id: uuidv4(),
+          userId: data.userId,
+          type: 'project_invitation',
+          title: 'Welcome!',
+          message: `You've joined ${project.title}!`,
+          projectId: project.id,
+          teamId: targetTeam.id,
+          createdAt: new Date(),
+        })
+      } catch (notifError) {
+        console.error('Failed to create join notification (non-critical):', notifError)
+      }
 
       return {
         success: true,
@@ -969,5 +985,148 @@ export const getProjectParticipants = createServerFn({ method: 'GET' })
     } catch (error) {
       console.error('Get project participants error:', error)
       return { success: false, error: 'Failed to get participants' }
+    }
+  })
+
+/**
+ * Remove a participant from a project (kick/추방)
+ * Removes from team_members and deletes the project invitation.
+ */
+export const removeParticipant = createServerFn({ method: 'POST' })
+  .inputValidator((data: { projectId: string; userId: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      // Find teams in this project that the user belongs to
+      const projectTeams = await db.query.teams.findMany({
+        where: eq(teams.projectId, data.projectId),
+      })
+
+      // Remove from team_members and clean up empty teams
+      for (const team of projectTeams) {
+        await db.delete(teamMembers)
+          .where(and(
+            eq(teamMembers.teamId, team.id),
+            eq(teamMembers.userId, data.userId),
+          ))
+
+        // Check if team is now empty, if so delete it
+        const remaining = await db
+          .select({ count: count() })
+          .from(teamMembers)
+          .where(eq(teamMembers.teamId, team.id))
+
+        if ((remaining[0]?.count || 0) === 0) {
+          await db.delete(teams).where(eq(teams.id, team.id))
+        }
+      }
+
+      // Remove the accepted invitation
+      await db.delete(projectInvitations)
+        .where(and(
+          eq(projectInvitations.projectId, data.projectId),
+          eq(projectInvitations.userId, data.userId),
+        ))
+
+      return { success: true }
+    } catch (error) {
+      console.error('Remove participant error:', error)
+      return { success: false, error: 'Failed to remove participant' }
+    }
+  })
+
+/**
+ * Search users eligible for project delegation (admin, pioneer, creator roles)
+ */
+export const searchDelegateUsers = createServerFn({ method: 'GET' })
+  .inputValidator((data: { search: string; excludeUserId?: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      const searchPattern = `%${data.search}%`
+      const delegateRoles: UserRole[] = ['admin', 'pioneer', 'creator']
+
+      let query = db
+        .select({
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          role: users.role,
+          avatarUrl: users.avatarUrl,
+        })
+        .from(users)
+        .where(
+          and(
+            inArray(users.role, delegateRoles),
+            or(
+              like(users.name, searchPattern),
+              like(users.email, searchPattern)
+            ),
+            ...(data.excludeUserId ? [ne(users.id, data.excludeUserId)] : [])
+          )
+        )
+        .limit(10)
+
+      const results = await query
+
+      return {
+        success: true as const,
+        users: results,
+      }
+    } catch (error) {
+      console.error('Search delegate users error:', error)
+      return { success: false as const, error: 'Failed to search users' }
+    }
+  })
+
+/**
+ * Delegate (transfer) project ownership to another user
+ */
+export const delegateProject = createServerFn({ method: 'POST' })
+  .inputValidator((data: { projectId: string; currentCreatorId: string; newCreatorId: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      // Verify the project exists and belongs to the current creator
+      const project = await db.query.projects.findFirst({
+        where: eq(projects.id, data.projectId),
+        columns: { id: true, creatorId: true, title: true },
+      })
+
+      if (!project) {
+        return { success: false as const, error: 'Project not found' }
+      }
+
+      if (project.creatorId !== data.currentCreatorId) {
+        return { success: false as const, error: 'Not authorized to delegate this project' }
+      }
+
+      // Verify the new creator exists and has an eligible role
+      const newCreator = await db.query.users.findFirst({
+        where: eq(users.id, data.newCreatorId),
+        columns: { id: true, role: true, name: true },
+      })
+
+      if (!newCreator) {
+        return { success: false as const, error: 'Target user not found' }
+      }
+
+      const eligibleRoles: UserRole[] = ['admin', 'pioneer', 'creator']
+      if (!eligibleRoles.includes(newCreator.role)) {
+        return { success: false as const, error: 'Target user does not have an eligible role' }
+      }
+
+      // Transfer ownership
+      await db.update(projects)
+        .set({
+          creatorId: data.newCreatorId,
+          updatedAt: new Date(),
+        })
+        .where(eq(projects.id, data.projectId))
+
+      return {
+        success: true as const,
+        message: `Project "${project.title}" delegated to ${newCreator.name}`,
+      }
+    } catch (error) {
+      console.error('Delegate project error:', error)
+      return { success: false as const, error: 'Failed to delegate project' }
     }
   })

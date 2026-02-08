@@ -357,7 +357,6 @@ export const getUserDetails = createServerFn({ method: 'GET' })
           avatarUrl: user.avatarUrl,
           xp: user.xp,
           level: user.level,
-          hallOfFameOptIn: user.hallOfFameOptIn,
           anonymizedName: user.anonymizedName,
           createdAt: user.createdAt.toISOString(),
           updatedAt: user.updatedAt.toISOString(),

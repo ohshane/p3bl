@@ -18,6 +18,7 @@ const createSessionSchema = z.object({
   topic: z.string().optional(),
   guide: z.string().optional(),
   weight: z.number().min(1).max(200).default(1),
+  difficulty: z.enum(['easy', 'medium', 'hard']).default('medium'),
   deliverableType: z.enum(['none', 'document']).default('document'),
   deliverableTitle: z.string().optional(),
   deliverableDescription: z.string().optional(),
@@ -39,7 +40,6 @@ const addRubricSchema = z.object({
   criteria: z.string().min(1).max(500),
   description: z.string().optional(),
   weight: z.number().min(0).max(100).default(1),
-  maxScore: z.number().int().min(1).max(100).default(100),
 })
 
 /**
@@ -141,6 +141,7 @@ export const createSession = createServerFn({ method: 'POST' })
         topic: data.topic,
         guide: data.guide,
         weight: data.weight,
+        difficulty: data.difficulty,
         deliverableType: data.deliverableType,
         deliverableTitle: data.deliverableTitle,
         deliverableDescription: data.deliverableDescription,
@@ -312,7 +313,6 @@ export const addRubric = createServerFn({ method: 'POST' })
         criteria: data.criteria,
         description: data.description,
         weight: data.weight,
-        maxScore: data.maxScore,
         order: existingRubrics.length,
         createdAt: new Date(),
       })
@@ -321,6 +321,24 @@ export const addRubric = createServerFn({ method: 'POST' })
     } catch (error) {
       console.error('Add rubric error:', error)
       return { success: false, error: 'Failed to add rubric' }
+    }
+  })
+
+/**
+ * Update rubric
+ */
+export const updateRubric = createServerFn({ method: 'POST' })
+  .inputValidator((data: { rubricId: string; updates: { criteria?: string; description?: string; weight?: number } }) => data)
+  .handler(async ({ data }) => {
+    try {
+      await db.update(sessionRubrics)
+        .set(data.updates)
+        .where(eq(sessionRubrics.id, data.rubricId))
+
+      return { success: true }
+    } catch (error) {
+      console.error('Update rubric error:', error)
+      return { success: false, error: 'Failed to update rubric' }
     }
   })
 

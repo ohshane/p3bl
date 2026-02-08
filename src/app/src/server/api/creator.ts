@@ -14,6 +14,7 @@ import {
   dailyMetricsAggregate,
   aiInterventions,
   teamRiskAssessments,
+  sessionRubrics,
 } from '@/db/schema'
 
 // ============================================================================
@@ -556,10 +557,13 @@ export const getProjectSubmissions = createServerFn({ method: 'GET' })
   .inputValidator((data: { projectId: string }) => data)
   .handler(async ({ data }) => {
     try {
-      // Get all sessions for the project
+      // Get all sessions for the project (with rubrics for weighted scoring)
       const sessions = await db.query.projectSessions.findMany({
         where: eq(projectSessions.projectId, data.projectId),
         orderBy: projectSessions.order,
+        with: {
+          rubrics: true,
+        },
       })
 
       const sessionIds = sessions.map(s => s.id)
@@ -586,13 +590,28 @@ export const getProjectSubmissions = createServerFn({ method: 'GET' })
         const latestPrecheck = artifact.precheckResults[0]
         let aiScore = 0
         
-        // Calculate AI score from precheck rubric scores
+        // Calculate AI score from precheck rubric scores using weighted average
         if (latestPrecheck?.rubricScores) {
           try {
             const scores = JSON.parse(latestPrecheck.rubricScores) as Record<string, number>
-            const values = Object.values(scores)
-            if (values.length > 0) {
-              aiScore = Math.round(values.reduce((a, b) => a + b, 0) / values.length)
+            const entries = Object.entries(scores)
+            if (entries.length > 0) {
+              // Build weight lookup from session rubrics (by ID and criterion name)
+              const rubrics = session?.rubrics || []
+              const weightById = new Map(rubrics.map(r => [r.id, r.weight]))
+              const weightByCriterion = new Map(rubrics.map(r => [r.criteria, r.weight]))
+
+              let weightedSum = 0
+              let totalWeight = 0
+              for (const [key, score] of entries) {
+                const weight = weightById.get(key) ?? weightByCriterion.get(key) ?? 0
+                weightedSum += score * weight
+                totalWeight += weight
+              }
+
+              aiScore = totalWeight > 0
+                ? Math.round(weightedSum / totalWeight)
+                : Math.round(entries.reduce((sum, [, s]) => sum + s, 0) / entries.length)
             }
           } catch {
             // Default to mapping overall score

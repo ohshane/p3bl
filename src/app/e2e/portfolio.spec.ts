@@ -179,46 +179,6 @@ test.describe('Portfolio - Badges', () => {
   })
 })
 
-test.describe('Hall of Fame', () => {
-  test('should display hall of fame if opted in', async ({ page }) => {
-    await page.goto('/')
-    await clearAuthState(page)
-    // Alex is opted in to Hall of Fame
-    await loginAsExplorer(page, 'explorer1')
-    await page.goto('/explorer')
-    await waitForPageLoad(page)
-
-    const hallOfFame = page.locator('text=/hall of fame|leaderboard|top/i').first()
-
-    if (await hallOfFame.isVisible({ timeout: 5000 })) {
-      await expect(hallOfFame).toBeVisible()
-    } else {
-      test.skip()
-    }
-  })
-
-  test('should show opt-in toggle on portfolio', async ({ page }) => {
-    await page.goto('/')
-    await clearAuthState(page)
-    await loginAsExplorer(page, 'explorer1')
-    await page.goto('/portfolio')
-    await waitForPageLoad(page)
-    // Wait for portfolio page to load
-    await expect(page.locator('h1:has-text("Growth Portfolio")')).toBeVisible({ timeout: 10000 })
-
-    // Hall of Fame opt-in might be on workspace, not portfolio
-    // Just verify portfolio loads correctly
-    const optInToggle = page.locator('text=/hall of fame/i').first()
-
-    if (await optInToggle.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await expect(optInToggle).toBeVisible()
-    } else {
-      // Test passes - opt-in toggle is not on portfolio page (it's on workspace)
-      test.skip()
-    }
-  })
-})
-
 test.describe('Portfolio for Different Users', () => {
   test('should show higher level for veteran user (Sam)', async ({ page }) => {
     await page.goto('/')

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ClipboardCheck, Star, Trophy, Search, Loader2 } from 'lucide-react'
+import { ClipboardCheck, Search, Loader2 } from 'lucide-react'
 import { useCreatorStore } from '@/stores/creatorStore'
 import { getProjectSubmissions } from '@/server/api'
 import { Input } from '@/components/ui/input'
@@ -74,12 +74,6 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
     return matchesSearch && matchesSession && matchesTeam
   })
 
-  // Calculate top performers for Hall of Fame
-  const topPerformers = [...submissions]
-    .filter(s => s.status === 'graded' || s.aiScore > 0)
-    .sort((a, b) => b.aiScore - a.aiScore)
-    .slice(0, 5)
-
   // Show loading state
   if (isLoading) {
     return (
@@ -95,10 +89,6 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-foreground">AI Assessment & Grading</h2>
-        <Button variant="outline" className="border-border">
-          <Trophy className="w-4 h-4 mr-2" />
-          Hall of Fame Selection
-        </Button>
       </div>
 
       {/* Filters */}
@@ -161,43 +151,6 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
           <div className="text-sm text-muted-foreground">Avg AI Score</div>
         </div>
       </div>
-
-      {/* Top Performers Card */}
-      {topPerformers.length > 0 && (
-        <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Trophy className="w-5 h-5 text-yellow-500" />
-            <h3 className="font-medium text-foreground">Top Performers</h3>
-            <Badge variant="outline" className="border-yellow-500/50 text-yellow-500 text-xs">
-              Hall of Fame Candidates
-            </Badge>
-          </div>
-          <div className="flex gap-4 overflow-x-auto pb-2">
-            {topPerformers.map((performer, idx) => (
-              <div
-                key={performer.id}
-                className="flex-shrink-0 bg-card rounded-lg p-3 min-w-[150px] border border-border"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className={cn(
-                    'w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold',
-                    idx === 0 ? 'bg-yellow-500 text-yellow-950' :
-                    idx === 1 ? 'bg-muted text-foreground' :
-                    idx === 2 ? 'bg-orange-500 text-orange-950' :
-                    'bg-muted text-muted-foreground'
-                  )}>
-                    {idx + 1}
-                  </div>
-                  <Star className="w-4 h-4 text-yellow-400" />
-                </div>
-                <div className="text-sm text-foreground font-medium">{performer.studentName}</div>
-                <div className="text-xs text-muted-foreground">{performer.teamName}</div>
-                <div className="text-lg font-bold text-cyan-500 mt-1">{performer.aiScore}%</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Empty state */}
       {submissions.length === 0 ? (

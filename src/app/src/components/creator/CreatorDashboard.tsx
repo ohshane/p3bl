@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { Plus, Calendar, FolderOpen, CheckCircle, Loader2, Layers, LayoutDashboard } from 'lucide-react'
 import { useCreatorStore } from '@/stores/creatorStore'
@@ -13,6 +13,7 @@ type DashboardTab = 'all' | 'scheduled' | 'opened' | 'closed'
 export function CreatorDashboard() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<DashboardTab>('all')
+  const [, setTick] = useState(0)
   const { currentUser } = useAuthStore()
   
   const {
@@ -33,10 +34,28 @@ export function CreatorDashboard() {
     }
   }, [currentUser?.id, fetchProjects])
 
+  // Force re-render periodically to keep badge counts fresh
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick(t => t + 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
   const allProjects = getAllProjects()
   const scheduledProjects = getScheduledProjects()
   const openedProjects = getOpenedProjects()
   const closedProjects = getClosedProjects()
+
+  const sortedAllProjects = useMemo(() => {
+    const getStartTime = (startDate?: string) => {
+      if (!startDate) return Number.NEGATIVE_INFINITY
+      const time = new Date(startDate).getTime()
+      return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time
+    }
+
+    return [...allProjects].sort((a, b) => getStartTime(b.startDate) - getStartTime(a.startDate))
+  }, [allProjects])
   
   const hasProjects = allProjects.length > 0
 
@@ -47,7 +66,7 @@ export function CreatorDashboard() {
   const getCurrentTabProjects = () => {
     switch (activeTab) {
       case 'all':
-        return allProjects
+        return sortedAllProjects
       case 'scheduled':
         return scheduledProjects
       case 'opened':

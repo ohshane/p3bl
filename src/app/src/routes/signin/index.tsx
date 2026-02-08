@@ -1,20 +1,24 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useAuthStore } from '@/stores/authStore'
-import { RegisterForm } from '@/components/auth/RegisterForm'
+import { getStoredRedirectPath } from '@/lib/authRedirect'
+import { LoginForm } from '@/components/auth/LoginForm'
 import { Link } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/signup')({
-  component: RegisterPage,
+export const Route = createFileRoute('/signin/')({
+  component: LoginPage,
 })
 
-function RegisterPage() {
+function LoginPage() {
   const navigate = useNavigate()
   const { isAuthenticated, currentUser } = useAuthStore()
   const redirectParam = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('redirect_uri')
     : null
-  const redirectTo = redirectParam && redirectParam.startsWith('/') ? redirectParam : undefined
+  const storedRedirect = getStoredRedirectPath()
+  const redirectTo = redirectParam && redirectParam.startsWith('/')
+    ? redirectParam
+    : storedRedirect ?? undefined
   
   // Redirect if already authenticated
   useEffect(() => {
@@ -35,7 +39,7 @@ function RegisterPage() {
   }, [isAuthenticated, currentUser, navigate, redirectTo])
   
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -46,13 +50,13 @@ function RegisterPage() {
               className="w-16 h-16 rounded-2xl shadow-lg shadow-cyan-500/25 mx-auto mb-4"
             />
           </Link>
-          <h1 className="text-2xl font-bold text-foreground">Create your account</h1>
-          <p className="text-muted-foreground mt-2">Start your learning journey today</p>
+          <h1 className="text-2xl font-bold text-foreground">Welcome back</h1>
+          <p className="text-muted-foreground mt-2">Sign in to your account</p>
         </div>
         
-        {/* Register Form */}
+        {/* Login Form */}
         <div className="bg-card border border-border shadow-sm rounded-xl p-6">
-          <RegisterForm redirectTo={redirectTo} />
+          <LoginForm redirectTo={redirectTo} />
         </div>
         
         {/* Footer */}

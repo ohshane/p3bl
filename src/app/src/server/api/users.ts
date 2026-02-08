@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { eq, desc, and, gte, sql } from 'drizzle-orm'
+import { eq, desc } from 'drizzle-orm'
 import { db } from '@/db'
 import { users, userBadges, badges, competencyScores, xpTransactions } from '@/db/schema'
 import { z } from 'zod'
@@ -13,7 +13,7 @@ const updateUserSchema = z.object({
   userId: z.string(),
   name: z.string().min(2).max(100).optional(),
   avatarUrl: z.string().url().optional().nullable(),
-  hallOfFameOptIn: z.boolean().optional(),
+  defaultSessionDifficulty: z.enum(['easy', 'medium', 'hard']).optional(),
 })
 
 const addXpSchema = z.object({
@@ -79,8 +79,8 @@ export const getUser = createServerFn({ method: 'GET' })
           level: levelInfo.level,
           levelName: levelInfo.name,
           levelProgress: levelInfo.progress,
-          hallOfFameOptIn: user.hallOfFameOptIn,
           anonymizedName: user.anonymizedName,
+          defaultSessionDifficulty: user.defaultSessionDifficulty,
           createdAt: user.createdAt.toISOString(),
         },
       }
@@ -129,7 +129,7 @@ export const updateUser = createServerFn({ method: 'POST' })
           xp: updatedUser.xp,
           level: levelInfo.level,
           levelName: levelInfo.name,
-          hallOfFameOptIn: updatedUser.hallOfFameOptIn,
+          defaultSessionDifficulty: updatedUser.defaultSessionDifficulty,
         },
       }
     } catch (error) {
@@ -292,112 +292,4 @@ export const getUserXpHistory = createServerFn({ method: 'GET' })
     }
   })
 
-/**
- * Get leaderboard (Hall of Fame)
- * Returns top users who have opted in, sorted by XP earned this month
- */
-export const getLeaderboard = createServerFn({ method: 'GET' })
-  .inputValidator((data: { limit?: number; currentUserId?: string }) => data)
-  .handler(async ({ data }) => {
-    try {
-      const limit = data.limit || 10
-      
-      // Get the start of the current month
-      const now = new Date()
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-      
-      // Get users who have opted in to Hall of Fame, sorted by total XP
-      const leaderboardUsers = await db.query.users.findMany({
-        where: and(
-          eq(users.hallOfFameOptIn, true),
-          eq(users.role, 'explorer')
-        ),
-        orderBy: desc(users.xp),
-        limit: limit,
-      })
-      
-      // Calculate XP earned this month for each user
-      const usersWithMonthlyXp = await Promise.all(
-        leaderboardUsers.map(async (user, index) => {
-          // Get XP transactions from this month
-          const monthlyTransactions = await db.query.xpTransactions.findMany({
-            where: and(
-              eq(xpTransactions.userId, user.id),
-              gte(xpTransactions.createdAt, startOfMonth)
-            ),
-          })
-          
-          const xpThisMonth = monthlyTransactions.reduce((sum, t) => sum + t.amount, 0)
-          const levelInfo = calculateLevel(user.xp)
-          
-          return {
-            rank: index + 1,
-            anonymizedName: user.anonymizedName || `Explorer${user.id.slice(0, 4)}`,
-            level: levelInfo.level,
-            xpThisMonth,
-            totalXp: user.xp,
-            isCurrentUser: user.id === data.currentUserId,
-          }
-        })
-      )
-      
-      // Sort by XP this month for the leaderboard
-      usersWithMonthlyXp.sort((a, b) => b.xpThisMonth - a.xpThisMonth)
-      
-      // Re-assign ranks after sorting by monthly XP
-      usersWithMonthlyXp.forEach((user, index) => {
-        user.rank = index + 1
-      })
-      
-      // If current user is opted in but not in top N, get their rank
-      let currentUserRank = null
-      if (data.currentUserId) {
-        const currentUser = await db.query.users.findFirst({
-          where: eq(users.id, data.currentUserId),
-        })
-        
-        if (currentUser && currentUser.hallOfFameOptIn) {
-          const isInTop = usersWithMonthlyXp.some(u => u.isCurrentUser)
-          
-          if (!isInTop) {
-            // Get user's monthly XP
-            const monthlyTransactions = await db.query.xpTransactions.findMany({
-              where: and(
-                eq(xpTransactions.userId, data.currentUserId),
-                gte(xpTransactions.createdAt, startOfMonth)
-              ),
-            })
-            const xpThisMonth = monthlyTransactions.reduce((sum, t) => sum + t.amount, 0)
-            
-            // Count users with more XP this month
-            const allOptedInUsers = await db.query.users.findMany({
-              where: and(
-                eq(users.hallOfFameOptIn, true),
-                eq(users.role, 'explorer')
-              ),
-            })
-            
-            // This is a simplified rank calculation
-            const levelInfo = calculateLevel(currentUser.xp)
-            currentUserRank = {
-              rank: allOptedInUsers.length, // Approximate rank
-              anonymizedName: currentUser.anonymizedName || `Explorer${currentUser.id.slice(0, 4)}`,
-              level: levelInfo.level,
-              xpThisMonth,
-              totalXp: currentUser.xp,
-              isCurrentUser: true,
-            }
-          }
-        }
-      }
-      
-      return {
-        success: true,
-        leaderboard: usersWithMonthlyXp,
-        currentUserRank,
-      }
-    } catch (error) {
-      console.error('Get leaderboard error:', error)
-      return { success: false, error: 'Failed to get leaderboard' }
-    }
-  })
+

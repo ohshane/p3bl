@@ -65,11 +65,8 @@ function ExplorerPage() {
 
         addJoinedProject(result.projectId)
 
-        if ('message' in result && result.message === 'Already a member of this project') {
-          toast.info('You are already a member of this project', {
-            description: 'Navigating to your project...',
-          })
-        } else {
+        const alreadyMember = 'message' in result && result.message === 'Already a member of this project'
+        if (!alreadyMember) {
           toast.success(`Welcome to ${result.projectTitle || 'the project'}!`, {
             description: 'You have successfully joined.',
           })

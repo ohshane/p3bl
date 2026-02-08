@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Bot } from 'lucide-react'
+import { Send, Bot, Loader2 } from 'lucide-react'
 import { useChatStore } from '@/stores/chatStore'
-import { useProjectStore } from '@/stores/projectStore'
 import { useAuthStore } from '@/stores/authStore'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -13,22 +12,39 @@ import { formatDistanceToNow } from 'date-fns'
 
 interface GroupChatProps {
   projectId: string
+  teamName?: string
 }
 
-export function GroupChat({ projectId }: GroupChatProps) {
+export function GroupChat({ projectId, teamName }: GroupChatProps) {
   const [message, setMessage] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
   
   const { currentUser } = useAuthStore()
-  const { userProjects } = useProjectStore()
-  const { getTeamMessages, sendMessage } = useChatStore()
+  const {
+    getOrCreateRoom,
+    getRoomForProject,
+    getRoomMessages,
+    fetchRoomMessages,
+    sendMessage: sendChatMessage,
+    isLoadingRoom,
+  } = useChatStore()
 
-  // Find the project in user's projects to get team info
-  const project = userProjects.find(p => p.id === projectId)
-  const teamId = project?.teamId
-  const teamName = project?.teamName
-  
-  const messages = teamId ? getTeamMessages(teamId) : []
+  const room = getRoomForProject(projectId)
+  const messages = room ? getRoomMessages(room.id) : []
+
+  // Initialize room and load messages on mount
+  useEffect(() => {
+    if (!currentUser || !projectId) return
+
+    async function initRoom() {
+      const resolvedRoom = await getOrCreateRoom(projectId, currentUser!.id, teamName ? `${teamName} Chat` : undefined)
+      if (resolvedRoom) {
+        await fetchRoomMessages(resolvedRoom.id)
+      }
+    }
+
+    initRoom()
+  }, [projectId, currentUser])
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -38,13 +54,13 @@ export function GroupChat({ projectId }: GroupChatProps) {
   }, [messages])
 
   const handleSend = () => {
-    if (!message.trim() || !teamId || !currentUser) return
+    if (!message.trim() || !room || !currentUser) return
 
-    sendMessage(teamId, {
-      teamId,
+    sendChatMessage(room.id, {
+      roomId: room.id,
       senderId: currentUser.id,
       senderName: currentUser.name,
-      senderAvatar: currentUser.avatar,
+      senderAvatar: currentUser.avatarUrl,
       senderType: 'user',
       content: message.trim(),
     })
@@ -67,16 +83,24 @@ export function GroupChat({ projectId }: GroupChatProps) {
       .slice(0, 2)
   }
 
-  if (!teamId || !teamName) return null
+  if (isLoadingRoom && !room) {
+    return (
+      <Card className="flex flex-col h-[400px] items-center justify-center">
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+      </Card>
+    )
+  }
 
   return (
     <Card className="flex flex-col h-[400px]">
       <CardHeader className="py-3 px-4 border-b shrink-0">
         <CardTitle className="text-sm flex items-center gap-2">
           <span>Team Chat</span>
-          <span className="text-xs font-normal text-muted-foreground">
-            - {teamName}
-          </span>
+          {teamName && (
+            <span className="text-xs font-normal text-muted-foreground">
+              - {teamName}
+            </span>
+          )}
         </CardTitle>
       </CardHeader>
 
@@ -180,11 +204,12 @@ export function GroupChat({ projectId }: GroupChatProps) {
               onKeyDown={handleKeyDown}
               placeholder="Type a message..."
               className="flex-1"
+              disabled={!room}
             />
             <Button
               size="icon"
               onClick={handleSend}
-              disabled={!message.trim()}
+              disabled={!message.trim() || !room}
             >
               <Send className="h-4 w-4" />
             </Button>

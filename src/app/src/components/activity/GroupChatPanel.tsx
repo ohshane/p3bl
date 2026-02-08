@@ -1,12 +1,12 @@
-import { useState, useRef, useEffect } from 'react'
-import { Send, Bot, Maximize2, X } from 'lucide-react'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { Send, Maximize2, X, Loader2 } from 'lucide-react'
 import { useChatStore } from '@/stores/chatStore'
 import { useAuthStore } from '@/stores/authStore'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+
 import {
   Dialog,
   DialogClose,
@@ -15,44 +15,93 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
-import { formatDistanceToNow } from 'date-fns'
 
 interface GroupChatPanelProps {
   projectId: string
-  teamId?: string
   teamName?: string
 }
 
-export function GroupChatPanel({ teamId, teamName }: GroupChatPanelProps) {
+export function GroupChatPanel({ projectId, teamName }: GroupChatPanelProps) {
   const [message, setMessage] = useState('')
   const [isExpanded, setIsExpanded] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const expandedScrollRef = useRef<HTMLDivElement>(null)
   
   const { currentUser } = useAuthStore()
-  const { getTeamMessages, sendMessage } = useChatStore()
+  const {
+    getOrCreateRoom,
+    getRoomForProject,
+    getRoomMessages,
+    fetchRoomMessages,
+    sendMessage: sendChatMessage,
+    isLoadingRoom,
+    isLoadingMessages,
+  } = useChatStore()
 
-  const messages = teamId ? getTeamMessages(teamId) : []
+  const room = getRoomForProject(projectId)
+  const messages = room ? getRoomMessages(room.id) : []
 
-  // Scroll to bottom on new messages
+  const prevMessageCountRef = useRef(0)
+
+  // Initialize room and load messages on mount
   useEffect(() => {
+    if (!currentUser || !projectId) return
+
+    async function initRoom() {
+      const resolvedRoom = await getOrCreateRoom(projectId, currentUser!.id, teamName ? `${teamName} Chat` : undefined)
+      if (resolvedRoom) {
+        await fetchRoomMessages(resolvedRoom.id)
+      }
+    }
+
+    initRoom()
+  }, [projectId, currentUser])
+
+  // Poll for new messages every 3 seconds
+  useEffect(() => {
+    if (!room) return
+
+    const interval = setInterval(() => {
+      fetchRoomMessages(room.id)
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [room, fetchRoomMessages])
+
+  // Scroll to bottom when new messages arrive
+  const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
-  }, [messages])
-
-  // Scroll expanded view to bottom
-  useEffect(() => {
     if (isExpanded && expandedScrollRef.current) {
       expandedScrollRef.current.scrollTop = expandedScrollRef.current.scrollHeight
     }
-  }, [messages, isExpanded])
+  }, [isExpanded])
+
+  useEffect(() => {
+    if (messages.length > prevMessageCountRef.current) {
+      scrollToBottom()
+    }
+    prevMessageCountRef.current = messages.length
+  }, [messages.length, scrollToBottom])
+
+  // Scroll expanded view to bottom on open
+  useEffect(() => {
+    if (isExpanded) {
+      // Small delay to let the dialog render
+      setTimeout(() => {
+        if (expandedScrollRef.current) {
+          expandedScrollRef.current.scrollTop = expandedScrollRef.current.scrollHeight
+        }
+      }, 50)
+    }
+  }, [isExpanded])
 
   const handleSend = () => {
-    if (!message.trim() || !teamId || !currentUser) return
+    if (!message.trim() || !room || !currentUser) return
 
-    sendMessage(teamId, {
-      teamId,
+    sendChatMessage(room.id, {
+      roomId: room.id,
       senderId: currentUser.id,
       senderName: currentUser.name,
       senderAvatar: currentUser.avatarUrl,
@@ -69,19 +118,14 @@ export function GroupChatPanel({ teamId, teamName }: GroupChatPanelProps) {
     }
   }
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
-  }
-
   const renderMessages = (scrollAreaRef: React.RefObject<HTMLDivElement | null>, inModal = false) => (
     <ScrollArea className={cn("flex-1 min-h-0", inModal && "h-[50vh]")} viewportRef={scrollAreaRef}>
       <div className="space-y-4 p-4">
-        {messages.length === 0 ? (
+        {isLoadingMessages && messages.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+          </div>
+        ) : messages.length === 0 ? (
           <div className="text-center py-8 text-sm text-muted-foreground">
             No messages yet. Start the conversation!
           </div>
@@ -90,73 +134,48 @@ export function GroupChatPanel({ teamId, teamName }: GroupChatPanelProps) {
             <div
               key={msg.id}
               className={cn(
-                'flex gap-3',
-                msg.senderId === currentUser?.id && 'flex-row-reverse'
+                'flex flex-col',
+                msg.senderId === currentUser?.id ? 'items-end' : 'items-start'
               )}
             >
-              <Avatar className="h-8 w-8 shrink-0">
-                <AvatarImage src={msg.senderAvatar || undefined} />
-                <AvatarFallback
+              {msg.senderId !== currentUser?.id && (
+                <span
                   className={cn(
-                    'text-xs',
-                    msg.senderType === 'ai'
-                      ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white'
-                      : 'bg-muted'
+                    'text-[11px] font-medium mb-0.5 ml-1',
+                    msg.senderType === 'ai' ? 'text-purple-400' : 'text-muted-foreground'
                   )}
                 >
-                  {msg.senderType === 'ai' ? (
-                    <Bot className="h-4 w-4" />
-                  ) : (
-                    getInitials(msg.senderName)
-                  )}
-                </AvatarFallback>
-              </Avatar>
+                  {msg.senderName}
+                </span>
+              )}
 
               <div
                 className={cn(
-                  'max-w-[80%]',
-                  msg.senderId === currentUser?.id && 'text-right'
+                  'rounded-2xl px-3 py-1.5 text-sm w-fit max-w-[80%]',
+                  msg.senderId === currentUser?.id
+                    ? 'bg-cyan-600 text-white'
+                    : msg.senderType === 'ai'
+                    ? 'bg-purple-500/10 text-foreground border border-purple-500/20'
+                    : 'bg-muted text-foreground'
                 )}
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <span
-                    className={cn(
-                      'text-xs font-medium',
-                      msg.senderType === 'ai' ? 'text-purple-400' : 'text-muted-foreground'
-                    )}
-                  >
-                    {msg.senderName}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(msg.timestamp), { addSuffix: true })}
-                  </span>
-                </div>
-
-                <div
-                  className={cn(
-                    'rounded-2xl px-4 py-2 text-sm',
-                    msg.senderId === currentUser?.id
-                      ? 'bg-cyan-600 text-white'
-                      : msg.senderType === 'ai'
-                      ? 'bg-purple-500/10 text-foreground border border-purple-500/20'
-                      : 'bg-muted text-foreground'
-                  )}
-                >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-                </div>
-
-                {/* Artifact Card */}
-                {msg.artifactCard && (
-                  <div className="mt-2 p-3 bg-muted/50 rounded-lg border text-left">
-                    <p className="text-sm font-medium truncate">
-                      {msg.artifactCard.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      From {msg.artifactCard.sessionName}
-                    </p>
-                  </div>
-                )}
+                <p className="whitespace-pre-wrap">{msg.content}</p>
               </div>
+
+              {/* Artifact Card */}
+              {msg.artifactCard && (
+                <div className={cn(
+                  "mt-1 p-3 bg-muted/50 rounded-lg border text-left max-w-[80%]",
+                  msg.senderId === currentUser?.id && 'ml-auto'
+                )}>
+                  <p className="text-sm font-medium truncate">
+                    {msg.artifactCard.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    From {msg.artifactCard.sessionName}
+                  </p>
+                </div>
+              )}
             </div>
           ))
         )}
@@ -173,10 +192,11 @@ export function GroupChatPanel({ teamId, teamName }: GroupChatPanelProps) {
           onKeyDown={handleKeyDown}
           placeholder="Type a message..."
           className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-2"
+          disabled={!room}
         />
         <button
           onClick={handleSend}
-          disabled={!message.trim()}
+          disabled={!message.trim() || !room}
           className={cn(
             "flex items-center justify-center w-8 h-8 rounded-lg transition-all duration-200",
             "bg-primary hover:bg-primary/90 text-primary-foreground",
@@ -189,20 +209,22 @@ export function GroupChatPanel({ teamId, teamName }: GroupChatPanelProps) {
     </div>
   )
 
-  if (!teamId) {
+  if (isLoadingRoom && !room) {
     return (
       <Card className="h-[500px] flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">No team assigned yet</p>
+        <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
       </Card>
     )
   }
+
+  const chatTitle = `Group Chat${teamName ? ` (${teamName})` : ''}`
 
   return (
     <>
       <Card className="h-[500px] flex flex-col pb-0">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-sm">
-            Group Chat{teamName ? ` (${teamName})` : ''}
+            {chatTitle}
           </CardTitle>
           <Button
             variant="ghost"
@@ -226,7 +248,7 @@ export function GroupChatPanel({ teamId, teamName }: GroupChatPanelProps) {
           showCloseButton={false}
         >
           <DialogHeader className="flex flex-row items-center justify-between">
-            <DialogTitle>Group Chat{teamName ? ` (${teamName})` : ''}</DialogTitle>
+            <DialogTitle>{chatTitle}</DialogTitle>
             <DialogClose asChild>
               <Button variant="ghost" size="icon" className="h-7 w-7">
                 <X className="h-4 w-4" />

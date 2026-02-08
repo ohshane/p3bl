@@ -10,7 +10,7 @@ import { CompetencyDashboard } from '@/components/portfolio/CompetencyDashboard'
 import { AchievementArchive } from '@/components/portfolio/AchievementArchive'
 import type { PortfolioTab } from '@/types'
 
-export const Route = createFileRoute('/explorer/portfolio')({
+export const Route = createFileRoute('/explorer/portfolio/')({
   component: PortfolioPage,
 })
 

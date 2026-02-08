@@ -3,6 +3,7 @@ import type { ChatMessage } from '@/types'
 import { buildUserContextString } from '@/lib/userContext'
 import { getConfiguredAIModel } from '@/lib/ai-config'
 import {
+  getOrCreateRoom as getOrCreateRoomApi,
   sendMessage as sendMessageApi,
   getMessages as getMessagesApi,
   sendFloatingBotMessage,
@@ -75,9 +76,19 @@ async function callOpenRouter(messages: { role: string; content: string }[]): Pr
   }
 }
 
+interface ChatRoom {
+  id: string
+  projectId: string
+  name: string
+}
+
 interface ChatState {
-  // Messages by team ID
-  messagesByTeam: Record<string, ChatMessage[]>
+  // Room management
+  roomsByProject: Record<string, ChatRoom> // projectId -> ChatRoom
+  isLoadingRoom: boolean
+  
+  // Messages by room ID
+  messagesByRoom: Record<string, ChatMessage[]>
   isLoadingMessages: boolean
   
   // Bot state
@@ -86,10 +97,14 @@ interface ChatState {
   hasShownInitialGreeting: boolean
   isBotTyping: boolean
   
-  // Actions
-  getTeamMessages: (teamId: string) => ChatMessage[]
-  fetchTeamMessages: (teamId: string) => Promise<void>
-  sendMessage: (teamId: string, message: Omit<ChatMessage, 'id' | 'timestamp'>) => void
+  // Room actions
+  getOrCreateRoom: (projectId: string, userId: string, roomName?: string) => Promise<ChatRoom | null>
+  getRoomForProject: (projectId: string) => ChatRoom | null
+  
+  // Message actions
+  getRoomMessages: (roomId: string) => ChatMessage[]
+  fetchRoomMessages: (roomId: string) => Promise<void>
+  sendMessage: (roomId: string, message: Omit<ChatMessage, 'id' | 'timestamp'>) => void
   
   // Floating bot actions
   toggleFloatingBot: () => void
@@ -100,12 +115,15 @@ interface ChatState {
   loadFloatingBotHistory: (userId: string) => Promise<void>
   
   // AI response generation
-  generateAIResponse: (teamId: string, context?: string) => void
+  generateAIResponse: (roomId: string, teamId?: string, context?: string) => void
   generateBotResponse: (userMessage: string, userId?: string) => void
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
-  messagesByTeam: {},
+  roomsByProject: {},
+  isLoadingRoom: false,
+  
+  messagesByRoom: {},
   isLoadingMessages: false,
   
   isFloatingBotOpen: false,
@@ -113,19 +131,65 @@ export const useChatStore = create<ChatState>((set, get) => ({
   hasShownInitialGreeting: false,
   isBotTyping: false,
   
-  getTeamMessages: (teamId: string) => {
-    return get().messagesByTeam[teamId] || []
+  getOrCreateRoom: async (projectId: string, userId: string, roomName?: string) => {
+    // Return cached room if available
+    const cached = get().roomsByProject[projectId]
+    if (cached) return cached
+    
+    set({ isLoadingRoom: true })
+    try {
+      const result = await getOrCreateRoomApi({
+        data: { projectId, userId, roomName },
+      })
+      
+      if (result.success && result.room) {
+        const room: ChatRoom = {
+          id: result.room.id,
+          projectId: result.room.projectId,
+          name: result.room.name,
+        }
+        
+        set(state => ({
+          roomsByProject: {
+            ...state.roomsByProject,
+            [projectId]: room,
+          },
+          isLoadingRoom: false,
+        }))
+        
+        return room
+      }
+      
+      set({ isLoadingRoom: false })
+      return null
+    } catch (error) {
+      console.error('Failed to get or create room:', error)
+      set({ isLoadingRoom: false })
+      return null
+    }
   },
   
-  fetchTeamMessages: async (teamId: string) => {
-    set({ isLoadingMessages: true })
+  getRoomForProject: (projectId: string) => {
+    return get().roomsByProject[projectId] || null
+  },
+  
+  getRoomMessages: (roomId: string) => {
+    return get().messagesByRoom[roomId] || []
+  },
+  
+  fetchRoomMessages: async (roomId: string) => {
+    // Only show loading spinner on initial load (no existing messages)
+    const existing = get().messagesByRoom[roomId]
+    if (!existing || existing.length === 0) {
+      set({ isLoadingMessages: true })
+    }
     try {
-      const result = await getMessagesApi({ teamId, limit: 50 })
+      const result = await getMessagesApi({ data: { roomId, limit: 50 } })
       if (result.success && result.messages) {
         // Transform API messages to ChatMessage format
-        const messages: ChatMessage[] = result.messages.map(m => ({
+        const serverMessages: ChatMessage[] = result.messages.map(m => ({
           id: m.id,
-          teamId,
+          roomId,
           senderId: m.sender?.id || 'unknown',
           senderName: m.sender?.name || 'Unknown',
           senderAvatar: m.sender?.avatarUrl || m.sender?.avatar || null,
@@ -134,21 +198,31 @@ export const useChatStore = create<ChatState>((set, get) => ({
           timestamp: m.createdAt,
         }))
         
-        set(state => ({
-          messagesByTeam: {
-            ...state.messagesByTeam,
-            [teamId]: messages,
-          },
-          isLoadingMessages: false,
-        }))
+        set(state => {
+          const currentMessages = state.messagesByRoom[roomId] || []
+          // Keep any optimistic messages (temp IDs starting with "msg_") that
+          // haven't been confirmed by the server yet
+          const serverIds = new Set(serverMessages.map(m => m.id))
+          const pendingOptimistic = currentMessages.filter(
+            m => m.id.startsWith('msg_') && !serverIds.has(m.id)
+          )
+          
+          return {
+            messagesByRoom: {
+              ...state.messagesByRoom,
+              [roomId]: [...serverMessages, ...pendingOptimistic],
+            },
+            isLoadingMessages: false,
+          }
+        })
       }
     } catch (error) {
-      console.error('Failed to fetch team messages:', error)
+      console.error('Failed to fetch room messages:', error)
       set({ isLoadingMessages: false })
     }
   },
   
-  sendMessage: async (teamId: string, message) => {
+  sendMessage: async (roomId: string, message) => {
     // Optimistically add message to UI
     const tempId = `msg_${Date.now()}`
     const newMessage: ChatMessage = {
@@ -158,28 +232,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
     
     set(state => ({
-      messagesByTeam: {
-        ...state.messagesByTeam,
-        [teamId]: [...(state.messagesByTeam[teamId] || []), newMessage],
+      messagesByRoom: {
+        ...state.messagesByRoom,
+        [roomId]: [...(state.messagesByRoom[roomId] || []), newMessage],
       },
     }))
     
     // Send to real API
     try {
       const result = await sendMessageApi({
-        teamId,
-        userId: message.senderType === 'user' ? message.senderId : undefined,
-        personaId: message.senderType === 'ai' ? message.senderId : undefined,
-        content: message.content,
-        type: 'text',
+        data: {
+          roomId,
+          userId: message.senderType === 'user' ? message.senderId : undefined,
+          personaId: message.senderType === 'ai' ? message.senderId : undefined,
+          content: message.content,
+          type: 'text',
+        },
       })
       
       if (result.success && result.message) {
         // Update with real message ID
         set(state => ({
-          messagesByTeam: {
-            ...state.messagesByTeam,
-            [teamId]: state.messagesByTeam[teamId]?.map(m =>
+          messagesByRoom: {
+            ...state.messagesByRoom,
+            [roomId]: state.messagesByRoom[roomId]?.map(m =>
               m.id === tempId ? { ...m, id: result.message!.id } : m
             ) || [],
           },
@@ -187,13 +263,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
     } catch (error) {
       console.error('Failed to send message:', error)
-    }
-    
-    // Trigger AI response after user message
-    if (message.senderType === 'user') {
-      setTimeout(() => {
-        get().generateAIResponse(teamId)
-      }, 1500 + Math.random() * 1000)
     }
   },
   
@@ -212,7 +281,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   sendBotMessage: async (content: string, userId: string, userName: string) => {
     const userMessage: ChatMessage = {
       id: `bot_msg_${Date.now()}`,
-      teamId: 'bot',
+      roomId: 'bot',
       senderId: userId,
       senderName: userName,
       senderAvatar: null,
@@ -227,7 +296,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     
     // Store user message in database
     try {
-      await sendFloatingBotMessage({ userId, role: 'user', content })
+      await sendFloatingBotMessage({ data: { userId, role: 'user', content } })
     } catch (error) {
       console.error('Failed to store user message:', error)
     }
@@ -240,7 +309,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // Add initial greeting message
     const greetingMessage: ChatMessage = {
       id: 'bot_greeting',
-      teamId: 'bot',
+      roomId: 'bot',
       senderId: 'assistant',
       senderName: 'Assistant',
       senderAvatar: null,
@@ -257,11 +326,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
   
   loadFloatingBotHistory: async (userId: string) => {
     try {
-      const result = await getFloatingBotMessages({ userId, limit: 50 })
+      const result = await getFloatingBotMessages({ data: { userId, limit: 50 } })
       if (result.success && result.messages) {
         const messages: ChatMessage[] = result.messages.map(m => ({
           id: m.id,
-          teamId: 'bot',
+          roomId: 'bot',
           senderId: m.role === 'assistant' ? 'assistant' : userId,
           senderName: m.role === 'assistant' ? 'Learning Assistant' : 'You',
           senderAvatar: null,
@@ -277,9 +346,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
   
-  generateAIResponse: async (teamId: string) => {
+  generateAIResponse: async (roomId: string, teamId?: string) => {
     // Get the last user message for context
-    const messages = get().messagesByTeam[teamId] || []
+    const messages = get().messagesByRoom[roomId] || []
     const lastUserMessage = [...messages].reverse().find(m => m.senderType === 'user')
     
     if (!lastUserMessage) return
@@ -291,17 +360,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }))
     
     try {
-      // Get team personas for context
-      const personasResult = await getTeamPersonas({ teamId })
-      const personas = personasResult.success ? personasResult.personas : []
-      const selectedPersona = personas[0] || { id: 'ai_001', name: 'Professor Sage' }
+      // Get team personas for context (if teamId provided)
+      let selectedPersona = { id: 'ai_001', name: 'Professor Sage' }
+      if (teamId) {
+        const personasResult = await getTeamPersonas({ data: { teamId } })
+        const personas = personasResult.success ? personasResult.personas : []
+        if (personas[0]) {
+          selectedPersona = personas[0]
+        }
+      }
       
       // Use OpenRouter for real AI response
       const response = await callOpenRouter(conversationHistory)
       
       const aiMessage: ChatMessage = {
         id: `msg_ai_${Date.now()}`,
-        teamId,
+        roomId,
         senderId: selectedPersona.id,
         senderName: selectedPersona.name,
         senderAvatar: null,
@@ -312,18 +386,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
       
       // Add to UI
       set(state => ({
-        messagesByTeam: {
-          ...state.messagesByTeam,
-          [teamId]: [...(state.messagesByTeam[teamId] || []), aiMessage],
+        messagesByRoom: {
+          ...state.messagesByRoom,
+          [roomId]: [...(state.messagesByRoom[roomId] || []), aiMessage],
         },
       }))
       
       // Store in database
       await sendMessageApi({
-        teamId,
-        personaId: selectedPersona.id,
-        content: response,
-        type: 'text',
+        data: {
+          roomId,
+          personaId: selectedPersona.id,
+          content: response,
+          type: 'text',
+        },
       })
     } catch (error) {
       console.error('Failed to generate AI response:', error)
@@ -350,7 +426,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       
       const botMessage: ChatMessage = {
         id: `bot_msg_${Date.now()}`,
-        teamId: 'bot',
+        roomId: 'bot',
         senderId: 'assistant',
         senderName: 'Assistant',
         senderAvatar: null,
@@ -367,7 +443,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       // Store assistant response in database
       if (userId) {
         try {
-          await sendFloatingBotMessage({ userId, role: 'assistant', content: response })
+          await sendFloatingBotMessage({ data: { userId, role: 'assistant', content: response } })
         } catch (error) {
           console.error('Failed to store assistant message:', error)
         }
@@ -377,7 +453,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       
       const errorMessage: ChatMessage = {
         id: `bot_msg_${Date.now()}`,
-        teamId: 'bot',
+        roomId: 'bot',
         senderId: 'assistant',
         senderName: 'Assistant',
         senderAvatar: null,

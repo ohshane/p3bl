@@ -3,7 +3,6 @@ import { useAuthStore } from '@/stores/authStore'
 import { useProjectStore } from '@/stores/projectStore'
 import { ProjectList } from './ProjectList'
 import { ProfileCard } from './ProfileCard'
-import { HallOfFame } from './HallOfFame'
 import { ManualCodeInput } from './ManualCodeInput'
 import { ClockWidget } from './ClockWidget'
 import { MiniCalendar } from './MiniCalendar'
@@ -21,11 +20,17 @@ export function ActiveMode() {
     getClosedProjects,
   } = useProjectStore()
 
-  // Fetch user's projects on mount
+  // Fetch user's projects on mount and poll for updates
   useEffect(() => {
-    if (currentUser?.id) {
+    if (!currentUser?.id) return
+
+    fetchUserProjects(currentUser.id)
+
+    const interval = setInterval(() => {
       fetchUserProjects(currentUser.id)
-    }
+    }, 10000) // Poll every 10 seconds
+
+    return () => clearInterval(interval)
   }, [currentUser?.id, fetchUserProjects])
 
   if (!currentUser) return null
@@ -80,9 +85,6 @@ export function ActiveMode() {
 
           {/* Join Another Project */}
           <ManualCodeInput />
-
-          {/* Hall of Fame */}
-          <HallOfFame />
         </div>
       </div>
     </div>

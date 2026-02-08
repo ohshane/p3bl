@@ -46,7 +46,7 @@ function findCurrentSessionIndex(sessions: Session[]): number {
   return Math.max(0, sessions.length - 1);
 }
 
-export const Route = createFileRoute("/explorer/project/$projectId")({
+export const Route = createFileRoute("/explorer/project/$projectId/")({
   component: ExplorerProjectPage,
 });
 
@@ -102,7 +102,7 @@ function ProjectCountdown({
   const seconds = timeLeft % 60;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8 animate-in fade-in zoom-in duration-500">
+    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-8">
       <div className="text-center space-y-4">
         <h2 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-500 to-purple-600">
           Project Starts In
@@ -266,7 +266,7 @@ function SessionCountdown({
 
 function WaitingScreen() {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6 animate-in fade-in duration-500">
+    <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
       <Loader2 className="w-12 h-12 text-cyan-500 animate-spin" />
       <div className="text-center space-y-2">
         <h2 className="text-2xl font-bold">Allocating Teams...</h2>
@@ -300,6 +300,7 @@ function ExplorerProjectPage() {
   const [showNextSessionModal, setShowNextSessionModal] = useState(false);
   const [showProjectEndedModal, setShowProjectEndedModal] = useState(false);
   const [isSmartOutputOpen, setIsSmartOutputOpen] = useState(false);
+  const hasLoadedOnce = useRef(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -319,7 +320,10 @@ function ExplorerProjectPage() {
     async function fetchProject() {
       if (!currentUser) return;
 
-      setIsLoading(true);
+      // Only show loading spinner on initial load, not on poll refreshes
+      if (!hasLoadedOnce.current) {
+        setIsLoading(true);
+      }
       setError(null);
 
       try {
@@ -360,9 +364,8 @@ function ExplorerProjectPage() {
               rubric:
                 s.rubrics?.map((r: any) => ({
                   id: r.id,
-                  criterion: r.criterion,
+                  criterion: r.criteria,
                   description: r.description,
-                  maxScore: r.maxScore,
                   weight: r.weight,
                 })) || [],
               templates:
@@ -380,15 +383,21 @@ function ExplorerProjectPage() {
           };
           setProject(transformedProject);
           
-          // Set the current session to the first incomplete session
-          const initialSessionIndex = findCurrentSessionIndex(transformedProject.sessions);
-          setCurrentSession(initialSessionIndex);
+          // Set the current session only on initial load, not on poll refreshes
+          // (polling resets would wipe in-progress editor content)
+          if (!hasLoadedOnce.current) {
+            const initialSessionIndex = findCurrentSessionIndex(transformedProject.sessions);
+            setCurrentSession(initialSessionIndex);
+          }
 
-          // Store user team info
+          // Store user team info — always update when the API returns team data,
+          // but never clear a previously loaded team (guards against transient failures)
           if (result.userTeam) {
-            setUserTeam({
-              id: result.userTeam.id,
-              name: result.userTeam.name,
+            setUserTeam(prev => {
+              const incoming = { id: result.userTeam.id, name: result.userTeam.name };
+              // Only update if changed to avoid unnecessary re-renders
+              if (prev?.id === incoming.id && prev?.name === incoming.name) return prev;
+              return incoming;
             });
           }
         } else {
@@ -399,6 +408,7 @@ function ExplorerProjectPage() {
         setError("Failed to load project");
       } finally {
         setIsLoading(false);
+        hasLoadedOnce.current = true;
       }
     }
 
@@ -426,19 +436,19 @@ function ExplorerProjectPage() {
     }
   }, [project, userTeam, isAllocating, projectId]);
 
-  // Poll for project updates when in waiting/countdown state
-  // This ensures "Start Now" changes are detected
+  // Poll for project updates to detect status changes (start/end date edits, team allocation, etc.)
   useEffect(() => {
     if (!project || !currentUser) return;
     
     const isInWaitingState = project.startDate && new Date(project.startDate) > new Date();
     const isWaitingForTeam = project.isWaiting && !userTeam;
-    
-    if (!isInWaitingState && !isWaitingForTeam) return;
+
+    // Poll frequently when waiting for status change, slower when active
+    const interval = (isInWaitingState || isWaitingForTeam) ? 5000 : 30000;
 
     const pollInterval = setInterval(() => {
       setRefreshKey((k) => k + 1);
-    }, 5000); // Poll every 5 seconds
+    }, interval);
 
     return () => clearInterval(pollInterval);
   }, [project, userTeam, currentUser]);
@@ -574,22 +584,8 @@ function ExplorerProjectPage() {
       {/* Main Content */}
       <div className="max-w-[1600px] mx-auto px-6 py-6">
         <div className="grid grid-cols-12 gap-6">
-          {/* Left Column - Timer, Voyage Navigator & Guide */}
+          {/* Left Column - Voyage Navigator & Guide */}
           <div className="col-span-12 xl:col-span-3 space-y-6">
-            {currentSession?.endDate && (
-              <SessionCountdown
-                endDate={currentSession.endDate}
-                onSessionEnd={() => {
-                  // Show appropriate modal based on whether there's a next session
-                  if (currentSessionIndex < project.sessions.length - 1) {
-                    setShowNextSessionModal(true);
-                  } else {
-                    // Last session ended - show project ended modal
-                    setShowProjectEndedModal(true);
-                  }
-                }}
-              />
-            )}
             <VoyageNavigator project={project} />
             {currentSession && <ResourcdHub session={currentSession} />}
           </div>
@@ -605,11 +601,24 @@ function ExplorerProjectPage() {
             )}
           </div>
 
-          {/* Right Column - Actions & Group Chat */}
+          {/* Right Column - Timer, Actions & Group Chat */}
           <div className="col-span-12 xl:col-span-3 space-y-6">
+            {currentSession?.endDate && (
+              <SessionCountdown
+                endDate={currentSession.endDate}
+                onSessionEnd={() => {
+                  // Show appropriate modal based on whether there's a next session
+                  if (currentSessionIndex < project.sessions.length - 1) {
+                    setShowNextSessionModal(true);
+                  } else {
+                    // Last session ended - show project ended modal
+                    setShowProjectEndedModal(true);
+                  }
+                }}
+              />
+            )}
             <GroupChatPanel
               projectId={projectId}
-              teamId={userTeam?.id}
               teamName={userTeam?.name}
             />
           </div>

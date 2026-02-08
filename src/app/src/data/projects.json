@@ -26,10 +26,10 @@
           { "id": "res_003", "title": "Video: Algorithmic Justice", "type": "video", "url": "https://youtube.com/watch?v=example" }
         ],
         "rubric": [
-          { "id": "rub_001", "criterion": "Understanding of Bias", "description": "Demonstrates clear understanding of how bias enters AI systems", "maxScore": 25, "weight": 0.25 },
-          { "id": "rub_002", "criterion": "Analysis Quality", "description": "Provides thoughtful analysis of real-world implications", "maxScore": 30, "weight": 0.30 },
-          { "id": "rub_003", "criterion": "Critical Thinking", "description": "Shows evidence of critical evaluation and synthesis", "maxScore": 25, "weight": 0.25 },
-          { "id": "rub_004", "criterion": "Communication", "description": "Clear, well-organized writing with proper citations", "maxScore": 20, "weight": 0.20 }
+          { "id": "rub_001", "criterion": "Understanding of Bias", "description": "Demonstrates clear understanding of how bias enters AI systems", "weight": 25 },
+          { "id": "rub_002", "criterion": "Analysis Quality", "description": "Provides thoughtful analysis of real-world implications", "weight": 30 },
+          { "id": "rub_003", "criterion": "Critical Thinking", "description": "Shows evidence of critical evaluation and synthesis", "weight": 25 },
+          { "id": "rub_004", "criterion": "Communication", "description": "Clear, well-organized writing with proper citations", "weight": 20 }
         ],
         "templates": [
           { "id": "tmpl_001", "name": "Reflection Essay Template", "content": "# AI Bias Reflection\n\n## Introduction\n[Introduce the topic and your thesis]\n\n## Analysis of AI Bias\n[Discuss how bias enters AI systems]\n\n## Real-World Impact\n[Analyze specific examples and consequences]\n\n## Ethical Implications\n[Discuss who is responsible and what should be done]\n\n## Conclusion\n[Summarize your key insights]\n\n## References\n[List your sources]" }
@@ -49,10 +49,10 @@
           { "id": "res_005", "title": "Facial Recognition Technology Guide", "type": "document", "url": "/resources/facial-rec.docx" }
         ],
         "rubric": [
-          { "id": "rub_005", "criterion": "Privacy Concepts", "description": "Demonstrates understanding of key privacy principles", "maxScore": 25, "weight": 0.25 },
-          { "id": "rub_006", "criterion": "Regulatory Knowledge", "description": "Shows awareness of relevant privacy regulations", "maxScore": 25, "weight": 0.25 },
-          { "id": "rub_007", "criterion": "Analysis", "description": "Provides thorough analysis of privacy implications", "maxScore": 30, "weight": 0.30 },
-          { "id": "rub_008", "criterion": "Recommendations", "description": "Offers practical privacy-preserving solutions", "maxScore": 20, "weight": 0.20 }
+          { "id": "rub_005", "criterion": "Privacy Concepts", "description": "Demonstrates understanding of key privacy principles", "weight": 25 },
+          { "id": "rub_006", "criterion": "Regulatory Knowledge", "description": "Shows awareness of relevant privacy regulations", "weight": 25 },
+          { "id": "rub_007", "criterion": "Analysis", "description": "Provides thorough analysis of privacy implications", "weight": 30 },
+          { "id": "rub_008", "criterion": "Recommendations", "description": "Offers practical privacy-preserving solutions", "weight": 20 }
         ],
         "templates": [],
         "completedAt": "2024-02-04T18:00:00Z"
@@ -70,10 +70,10 @@
           { "id": "res_007", "title": "Automation and Jobs Video", "type": "video", "url": "https://youtube.com/watch?v=jobs" }
         ],
         "rubric": [
-          { "id": "rub_009", "criterion": "Research Quality", "description": "Uses credible sources and current data", "maxScore": 25, "weight": 0.25 },
-          { "id": "rub_010", "criterion": "Analysis Depth", "description": "Provides comprehensive analysis of automation impact", "maxScore": 30, "weight": 0.30 },
-          { "id": "rub_011", "criterion": "Critical Perspective", "description": "Considers multiple stakeholder viewpoints", "maxScore": 25, "weight": 0.25 },
-          { "id": "rub_012", "criterion": "Solutions", "description": "Proposes actionable strategies", "maxScore": 20, "weight": 0.20 }
+          { "id": "rub_009", "criterion": "Research Quality", "description": "Uses credible sources and current data", "weight": 25 },
+          { "id": "rub_010", "criterion": "Analysis Depth", "description": "Provides comprehensive analysis of automation impact", "weight": 30 },
+          { "id": "rub_011", "criterion": "Critical Perspective", "description": "Considers multiple stakeholder viewpoints", "weight": 25 },
+          { "id": "rub_012", "criterion": "Solutions", "description": "Proposes actionable strategies", "weight": 20 }
         ],
         "templates": [
           { "id": "tmpl_002", "name": "Analysis Report Template", "content": "# AI and Employment Analysis\n\n## Executive Summary\n[Brief overview of findings]\n\n## Current State of AI Automation\n[Describe current trends]\n\n## Impact Analysis\n### Jobs at Risk\n[Identify vulnerable sectors]\n\n### New Opportunities\n[Discuss emerging roles]\n\n## Stakeholder Perspectives\n[Consider workers, employers, policymakers]\n\n## Recommendations\n[Propose strategies]\n\n## Conclusion\n[Final thoughts]" }
@@ -93,10 +93,10 @@
           { "id": "res_009", "title": "Model Cards Guide", "type": "pdf", "url": "/resources/model-cards.pdf" }
         ],
         "rubric": [
-          { "id": "rub_013", "criterion": "Code Quality", "description": "Clean, well-documented code", "maxScore": 25, "weight": 0.25 },
-          { "id": "rub_014", "criterion": "Fairness Implementation", "description": "Correctly implements fairness checks", "maxScore": 30, "weight": 0.30 },
-          { "id": "rub_015", "criterion": "Documentation", "description": "Complete and accurate model card", "maxScore": 25, "weight": 0.25 },
-          { "id": "rub_016", "criterion": "Testing", "description": "Includes appropriate tests", "maxScore": 20, "weight": 0.20 }
+          { "id": "rub_013", "criterion": "Code Quality", "description": "Clean, well-documented code", "weight": 25 },
+          { "id": "rub_014", "criterion": "Fairness Implementation", "description": "Correctly implements fairness checks", "weight": 30 },
+          { "id": "rub_015", "criterion": "Documentation", "description": "Complete and accurate model card", "weight": 25 },
+          { "id": "rub_016", "criterion": "Testing", "description": "Includes appropriate tests", "weight": 20 }
         ],
         "templates": [
           { "id": "tmpl_003", "name": "Python Starter", "content": "# Responsible AI Development\n# Your implementation here\n\nimport numpy as np\n\ndef check_bias(predictions, protected_attribute):\n    \"\"\"\n    Check for bias in model predictions.\n    \n    Args:\n        predictions: Model predictions\n        protected_attribute: Protected attribute values\n    \n    Returns:\n        dict: Fairness metrics\n    \"\"\"\n    # TODO: Implement bias detection\n    pass\n\ndef create_model_card(model_info):\n    \"\"\"\n    Generate a model card for documentation.\n    \n    Args:\n        model_info: Dictionary with model details\n    \n    Returns:\n        str: Formatted model card\n    \"\"\"\n    # TODO: Implement model card generation\n    pass" }
@@ -116,10 +116,10 @@
           { "id": "res_011", "title": "Global AI Policy Tracker", "type": "link", "url": "https://example.com/ai-policy" }
         ],
         "rubric": [
-          { "id": "rub_017", "criterion": "Research", "description": "Thorough research of governance frameworks", "maxScore": 25, "weight": 0.25 },
-          { "id": "rub_018", "criterion": "Comparison", "description": "Effective comparison of approaches", "maxScore": 30, "weight": 0.30 },
-          { "id": "rub_019", "criterion": "Analysis", "description": "Critical analysis of strengths and weaknesses", "maxScore": 25, "weight": 0.25 },
-          { "id": "rub_020", "criterion": "Formatting", "description": "Professional markdown formatting", "maxScore": 20, "weight": 0.20 }
+          { "id": "rub_017", "criterion": "Research", "description": "Thorough research of governance frameworks", "weight": 25 },
+          { "id": "rub_018", "criterion": "Comparison", "description": "Effective comparison of approaches", "weight": 30 },
+          { "id": "rub_019", "criterion": "Analysis", "description": "Critical analysis of strengths and weaknesses", "weight": 25 },
+          { "id": "rub_020", "criterion": "Formatting", "description": "Professional markdown formatting", "weight": 20 }
         ],
         "templates": [],
         "completedAt": null
@@ -134,11 +134,11 @@
         "guide": "For your final project, you will conduct an in-depth analysis of an AI ethics case of your choosing. Apply all concepts learned throughout the course.\n\n**Requirements:**\n- Select a real-world AI system or application\n- Analyze ethical implications across multiple dimensions\n- Propose improvements and governance recommendations\n- Minimum 2000 words",
         "resources": [],
         "rubric": [
-          { "id": "rub_021", "criterion": "Case Selection", "description": "Appropriate and relevant case choice", "maxScore": 15, "weight": 0.15 },
-          { "id": "rub_022", "criterion": "Comprehensive Analysis", "description": "Covers bias, privacy, employment, governance", "maxScore": 35, "weight": 0.35 },
-          { "id": "rub_023", "criterion": "Critical Thinking", "description": "Demonstrates sophisticated ethical reasoning", "maxScore": 25, "weight": 0.25 },
-          { "id": "rub_024", "criterion": "Recommendations", "description": "Practical, well-justified proposals", "maxScore": 15, "weight": 0.15 },
-          { "id": "rub_025", "criterion": "Writing Quality", "description": "Professional writing and formatting", "maxScore": 10, "weight": 0.10 }
+          { "id": "rub_021", "criterion": "Case Selection", "description": "Appropriate and relevant case choice", "weight": 15 },
+          { "id": "rub_022", "criterion": "Comprehensive Analysis", "description": "Covers bias, privacy, employment, governance", "weight": 35 },
+          { "id": "rub_023", "criterion": "Critical Thinking", "description": "Demonstrates sophisticated ethical reasoning", "weight": 25 },
+          { "id": "rub_024", "criterion": "Recommendations", "description": "Practical, well-justified proposals", "weight": 15 },
+          { "id": "rub_025", "criterion": "Writing Quality", "description": "Professional writing and formatting", "weight": 10 }
         ],
         "templates": [],
         "completedAt": null
@@ -170,8 +170,8 @@
           { "id": "res_020", "title": "Visual Design Basics", "type": "pdf", "url": "/resources/visual-design.pdf" }
         ],
         "rubric": [
-          { "id": "rub_030", "criterion": "Understanding", "description": "Demonstrates grasp of design principles", "maxScore": 50, "weight": 0.50 },
-          { "id": "rub_031", "criterion": "Application", "description": "Applies principles to examples", "maxScore": 50, "weight": 0.50 }
+          { "id": "rub_030", "criterion": "Understanding", "description": "Demonstrates grasp of design principles", "weight": 50 },
+          { "id": "rub_031", "criterion": "Application", "description": "Applies principles to examples", "weight": 50 }
         ],
         "templates": [],
         "completedAt": "2024-01-30T12:00:00Z"
@@ -186,8 +186,8 @@
         "guide": "Explore the strengths and weaknesses of different chart types.",
         "resources": [],
         "rubric": [
-          { "id": "rub_032", "criterion": "Chart Selection", "description": "Appropriate chart choices", "maxScore": 60, "weight": 0.60 },
-          { "id": "rub_033", "criterion": "Justification", "description": "Clear reasoning for choices", "maxScore": 40, "weight": 0.40 }
+          { "id": "rub_032", "criterion": "Chart Selection", "description": "Appropriate chart choices", "weight": 60 },
+          { "id": "rub_033", "criterion": "Justification", "description": "Clear reasoning for choices", "weight": 40 }
         ],
         "templates": [],
         "completedAt": null
@@ -202,8 +202,8 @@
         "guide": "Create interactive visualizations using JavaScript libraries.",
         "resources": [],
         "rubric": [
-          { "id": "rub_034", "criterion": "Functionality", "description": "Working interactive features", "maxScore": 50, "weight": 0.50 },
-          { "id": "rub_035", "criterion": "Design", "description": "Aesthetic and usable design", "maxScore": 50, "weight": 0.50 }
+          { "id": "rub_034", "criterion": "Functionality", "description": "Working interactive features", "weight": 50 },
+          { "id": "rub_035", "criterion": "Design", "description": "Aesthetic and usable design", "weight": 50 }
         ],
         "templates": [],
         "completedAt": null

@@ -20,7 +20,6 @@ const mockUsers: User[] = [
     pendingInvitations: [
       { id: 'inv_1', projectId: 'project_002', projectTitle: 'Test Project', status: 'pending' } as ProjectInvitation
     ],
-    hallOfFameOptIn: false,
     competencies: {
       critical_thinking: { current: 60, baseline: 50 },
       communication: { current: 70, baseline: 60 },
@@ -39,7 +38,6 @@ const mockUsers: User[] = [
     earnedBadgeIds: [],
     joinedProjectIds: [],
     pendingInvitations: [],
-    hallOfFameOptIn: true,
     competencies: {},
   } as User,
 ]
@@ -83,7 +81,6 @@ interface AuthState {
   addNotification: (notification: Omit<Notification, 'id' | 'createdAt'>) => void
   addXP: (amount: number) => void
   addBadge: (badgeId: string, context: string) => void
-  toggleHallOfFameOptIn: () => void
   updateCompetencies: (competencies: User['competencies']) => void
 }
 
@@ -252,18 +249,6 @@ const createTestAuthStore = () => create<AuthState>((set, get) => ({
     })
     
     addXP(15)
-  },
-  
-  toggleHallOfFameOptIn: () => {
-    const { currentUser } = get()
-    if (!currentUser) return
-    
-    set({
-      currentUser: {
-        ...currentUser,
-        hallOfFameOptIn: !currentUser.hallOfFameOptIn,
-      },
-    })
   },
   
   updateCompetencies: (competencies: User['competencies']) => {
@@ -588,34 +573,6 @@ describe('Auth Store', () => {
       })
 
       expect(result.current.currentUser?.xp).toBe(initialXP + 15)
-    })
-  })
-
-  describe('Hall of Fame', () => {
-    it('should toggle hall of fame opt-in', () => {
-      const { result } = renderHook(() => useAuthStore())
-
-      act(() => {
-        result.current.login('user_001')
-      })
-
-      const initialOptIn = result.current.currentUser?.hallOfFameOptIn
-
-      act(() => {
-        result.current.toggleHallOfFameOptIn()
-      })
-
-      expect(result.current.currentUser?.hallOfFameOptIn).toBe(!initialOptIn)
-    })
-
-    it('should not toggle when no user is logged in', () => {
-      const { result } = renderHook(() => useAuthStore())
-
-      act(() => {
-        result.current.toggleHallOfFameOptIn()
-      })
-
-      expect(result.current.currentUser).toBeNull()
     })
   })
 

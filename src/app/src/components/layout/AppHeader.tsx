@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from '@tanstack/react-router'
-import { Bell, LogOut, User, ChevronDown, Settings, LayoutDashboard, FolderPlus, Briefcase, Calendar } from 'lucide-react'
+import { Bell, LogOut, User, ChevronDown, Settings, LayoutDashboard, FolderPlus, Briefcase, Calendar, Shield, PenTool, Compass } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { ThemeToggle } from '@/components/shared/ThemeToggle'
 import { Button } from '@/components/ui/button'
@@ -33,9 +33,13 @@ export function AppHeader() {
     markAllNotificationsRead,
   } = useAuthStore()
 
+  const isAdmin = currentUser?.role === 'admin'
   const isPioneer = currentUser?.role === 'pioneer'
+  const isAdminView = location.pathname.startsWith('/admin')
   const isCreatorView = location.pathname.startsWith('/creator')
   const isExplorerView = location.pathname.startsWith('/explorer') || location.pathname.startsWith('/activity')
+
+  const homeLink = isAdmin ? '/admin' : isCreatorView ? '/creator' : '/explorer'
 
   const handleLogout = () => {
     logout()
@@ -74,7 +78,7 @@ export function AppHeader() {
     <header className="h-16 border-b border-border bg-card px-4 flex items-center justify-between sticky top-0 z-40">
       {/* Logo & View Switcher */}
       <div className="flex items-center gap-4">
-        <Link to={isCreatorView ? "/creator" : "/explorer"} className="flex items-center gap-3">
+        <Link to={homeLink} className="flex items-center gap-3">
           <img 
             src="/android-chrome-192x192.png" 
             alt="Peabee" 
@@ -85,9 +89,22 @@ export function AppHeader() {
           </span>
         </Link>
         
-        {/* Creator/Explorer View Switcher - only for pioneers */}
-        {isPioneer && (
+        {/* View Switcher - for admins and pioneers */}
+        {(isAdmin || isPioneer) && (
           <div className="hidden sm:flex items-center bg-muted rounded-lg p-1">
+            {isAdmin && (
+              <button
+                onClick={() => navigate({ to: '/admin' })}
+                className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                  isAdminView 
+                    ? 'bg-background shadow-sm text-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5 inline mr-1" />
+                Admin
+              </button>
+            )}
             <button
               onClick={() => navigate({ to: '/creator' })}
               className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
@@ -96,6 +113,7 @@ export function AppHeader() {
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
+              <PenTool className="w-3.5 h-3.5 inline mr-1" />
               Creator
             </button>
             <button
@@ -106,6 +124,7 @@ export function AppHeader() {
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
+              <Compass className="w-3.5 h-3.5 inline mr-1" />
               Explorer
             </button>
           </div>
@@ -114,6 +133,34 @@ export function AppHeader() {
 
       {/* Navigation Links - Center */}
       <nav className="hidden md:flex items-center gap-6">
+        {isAdminView && (
+          <>
+            <Link
+              to="/admin"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              activeProps={{ className: 'text-sm font-medium text-foreground' }}
+            >
+              <LayoutDashboard className="w-4 h-4 inline mr-1" />
+              Dashboard
+            </Link>
+            <Link
+              to="/admin/users"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              activeProps={{ className: 'text-sm font-medium text-foreground' }}
+            >
+              <User className="w-4 h-4 inline mr-1" />
+              Users
+            </Link>
+            <Link
+              to="/admin/settings"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              activeProps={{ className: 'text-sm font-medium text-foreground' }}
+            >
+              <Settings className="w-4 h-4 inline mr-1" />
+              Settings
+            </Link>
+          </>
+        )}
         {isCreatorView && (
           <>
             <Link
@@ -255,7 +302,7 @@ export function AppHeader() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="gap-2 px-2">
                   <Avatar className="h-8 w-8">
-                    <AvatarImage src={currentUser.avatar || undefined} />
+                    <AvatarImage src={currentUser.avatarUrl || undefined} />
                     <AvatarFallback className="bg-cyan-600 text-white text-sm">
                       {getInitials(currentUser.name)}
                     </AvatarFallback>

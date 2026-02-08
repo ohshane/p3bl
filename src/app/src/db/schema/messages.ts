@@ -1,16 +1,34 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core'
 import { relations } from 'drizzle-orm'
 import { users } from './users'
-import { teams, aiPersonas } from './teams'
-import { artifacts } from './artifacts'
+import { aiPersonas } from './teams'
+import { projects } from './projects'
 
 // Message types
 export type MessageType = 'text' | 'artifact_share' | 'system' | 'ai_intervention'
 
-// Chat messages
+// Chat rooms - independent entity, one per project
+export const chatRooms = sqliteTable('chat_rooms', {
+  id: text('id').primaryKey(),
+  projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+})
+
+// Chat room members - tracks which users belong to which room
+export const chatRoomMembers = sqliteTable('chat_room_members', {
+  roomId: text('room_id').notNull().references(() => chatRooms.id, { onDelete: 'cascade' }),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  joinedAt: integer('joined_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+}, (table) => [
+  primaryKey({ columns: [table.roomId, table.userId] }),
+])
+
+// Chat messages - belong to a room
 export const chatMessages = sqliteTable('chat_messages', {
   id: text('id').primaryKey(),
-  teamId: text('team_id').notNull().references(() => teams.id, { onDelete: 'cascade' }),
+  roomId: text('room_id').notNull().references(() => chatRooms.id, { onDelete: 'cascade' }),
   userId: text('user_id').references(() => users.id, { onDelete: 'set null' }), // null for AI messages
   personaId: text('persona_id').references(() => aiPersonas.id, { onDelete: 'set null' }), // for AI messages
   content: text('content').notNull(),
@@ -31,7 +49,7 @@ export const messageReactions = sqliteTable('message_reactions', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 })
 
-// Floating bot conversations (separate from team chat)
+// Floating bot conversations (separate from room chat)
 export const floatingBotMessages = sqliteTable('floating_bot_messages', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -41,10 +59,30 @@ export const floatingBotMessages = sqliteTable('floating_bot_messages', {
 })
 
 // Relations
+export const chatRoomsRelations = relations(chatRooms, ({ one, many }) => ({
+  project: one(projects, {
+    fields: [chatRooms.projectId],
+    references: [projects.id],
+  }),
+  members: many(chatRoomMembers),
+  messages: many(chatMessages),
+}))
+
+export const chatRoomMembersRelations = relations(chatRoomMembers, ({ one }) => ({
+  room: one(chatRooms, {
+    fields: [chatRoomMembers.roomId],
+    references: [chatRooms.id],
+  }),
+  user: one(users, {
+    fields: [chatRoomMembers.userId],
+    references: [users.id],
+  }),
+}))
+
 export const chatMessagesRelations = relations(chatMessages, ({ one, many }) => ({
-  team: one(teams, {
-    fields: [chatMessages.teamId],
-    references: [teams.id],
+  room: one(chatRooms, {
+    fields: [chatMessages.roomId],
+    references: [chatRooms.id],
   }),
   user: one(users, {
     fields: [chatMessages.userId],

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
 import { useAuthStore } from '@/stores/authStore'
+import { clearStoredRedirectPath } from '@/lib/authRedirect'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -46,6 +47,7 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
     const result = await login(email.trim(), password)
     
     if (result.success) {
+      clearStoredRedirectPath()
       // Get the user's role to determine redirect
       const user = useAuthStore.getState().currentUser
       

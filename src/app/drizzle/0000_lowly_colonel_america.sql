@@ -1,3 +1,26 @@
+CREATE TABLE `intervention_logs` (
+	`id` text PRIMARY KEY NOT NULL,
+	`intervention_id` text NOT NULL,
+	`team_id` text NOT NULL,
+	`message_id` text,
+	`delivered_at` integer NOT NULL,
+	`acknowledged` integer DEFAULT false,
+	`acknowledged_at` integer
+);
+--> statement-breakpoint
+CREATE TABLE `team_risk_assessments` (
+	`id` text PRIMARY KEY NOT NULL,
+	`project_id` text NOT NULL,
+	`team_id` text NOT NULL,
+	`risk_level` text NOT NULL,
+	`risk_factors` text,
+	`last_activity_at` integer,
+	`sessions_behind` integer DEFAULT 0,
+	`precheck_failure_rate` integer,
+	`assessed_at` integer NOT NULL,
+	FOREIGN KEY (`project_id`) REFERENCES `projects`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
 CREATE TABLE `auth_sessions` (
 	`id` text PRIMARY KEY NOT NULL,
 	`user_id` text NOT NULL,
@@ -30,8 +53,8 @@ CREATE TABLE `users` (
 	`role` text DEFAULT 'explorer' NOT NULL,
 	`xp` integer DEFAULT 0 NOT NULL,
 	`level` integer DEFAULT 1 NOT NULL,
-	`hall_of_fame_opt_in` integer DEFAULT false NOT NULL,
 	`anonymized_name` text,
+	`default_session_difficulty` text DEFAULT 'medium' NOT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL
 );
@@ -66,12 +89,13 @@ CREATE TABLE `project_sessions` (
 	`topic` text,
 	`guide` text,
 	`weight` real DEFAULT 1 NOT NULL,
+	`difficulty` text DEFAULT 'medium' NOT NULL,
 	`deliverable_type` text DEFAULT 'document' NOT NULL,
 	`deliverable_title` text,
 	`deliverable_description` text,
-	`due_date` integer,
+	`start_date` integer,
+	`end_date` integer,
 	`llm_model` text,
-	`expert_review_enabled` integer DEFAULT false,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
 	FOREIGN KEY (`project_id`) REFERENCES `projects`(`id`) ON UPDATE no action ON DELETE cascade
@@ -85,11 +109,10 @@ CREATE TABLE `projects` (
 	`description` text,
 	`background` text,
 	`driving_question` text,
-	`status` text DEFAULT 'draft' NOT NULL,
 	`join_code` text,
 	`join_code_expires_at` integer,
 	`max_participants` integer,
-	`team_size` integer DEFAULT 4,
+	`team_size` integer DEFAULT 2,
 	`start_date` integer,
 	`end_date` integer,
 	`created_at` integer NOT NULL,
@@ -117,7 +140,6 @@ CREATE TABLE `session_rubrics` (
 	`criteria` text NOT NULL,
 	`description` text,
 	`weight` real DEFAULT 1 NOT NULL,
-	`max_score` integer DEFAULT 100 NOT NULL,
 	`order` integer DEFAULT 0 NOT NULL,
 	`created_at` integer NOT NULL,
 	FOREIGN KEY (`session_id`) REFERENCES `project_sessions`(`id`) ON UPDATE no action ON DELETE cascade
@@ -240,32 +262,6 @@ CREATE TABLE `artifacts` (
 	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
-CREATE TABLE `expert_review_comments` (
-	`id` text PRIMARY KEY NOT NULL,
-	`review_id` text NOT NULL,
-	`author_id` text NOT NULL,
-	`author_type` text NOT NULL,
-	`parent_id` text,
-	`content` text NOT NULL,
-	`line_number` integer,
-	`created_at` integer NOT NULL,
-	FOREIGN KEY (`review_id`) REFERENCES `expert_reviews`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`parent_id`) REFERENCES `expert_review_comments`(`id`) ON UPDATE no action ON DELETE cascade
-);
---> statement-breakpoint
-CREATE TABLE `expert_reviews` (
-	`id` text PRIMARY KEY NOT NULL,
-	`artifact_version_id` text NOT NULL,
-	`expert_id` text NOT NULL,
-	`status` text DEFAULT 'pending' NOT NULL,
-	`feedback` text,
-	`score` integer,
-	`created_at` integer NOT NULL,
-	`completed_at` integer,
-	FOREIGN KEY (`artifact_version_id`) REFERENCES `artifact_versions`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`expert_id`) REFERENCES `experts`(`id`) ON UPDATE no action ON DELETE no action
-);
---> statement-breakpoint
 CREATE TABLE `precheck_feedback_items` (
 	`id` text PRIMARY KEY NOT NULL,
 	`precheck_id` text NOT NULL,
@@ -303,7 +299,7 @@ CREATE TABLE `showcase_links` (
 CREATE UNIQUE INDEX `showcase_links_token_unique` ON `showcase_links` (`token`);--> statement-breakpoint
 CREATE TABLE `chat_messages` (
 	`id` text PRIMARY KEY NOT NULL,
-	`team_id` text NOT NULL,
+	`room_id` text NOT NULL,
 	`user_id` text,
 	`persona_id` text,
 	`content` text NOT NULL,
@@ -313,10 +309,28 @@ CREATE TABLE `chat_messages` (
 	`is_edited` integer DEFAULT false NOT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
-	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`room_id`) REFERENCES `chat_rooms`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE set null,
 	FOREIGN KEY (`persona_id`) REFERENCES `ai_personas`(`id`) ON UPDATE no action ON DELETE set null,
 	FOREIGN KEY (`reply_to_id`) REFERENCES `chat_messages`(`id`) ON UPDATE no action ON DELETE set null
+);
+--> statement-breakpoint
+CREATE TABLE `chat_room_members` (
+	`room_id` text NOT NULL,
+	`user_id` text NOT NULL,
+	`joined_at` integer NOT NULL,
+	PRIMARY KEY(`room_id`, `user_id`),
+	FOREIGN KEY (`room_id`) REFERENCES `chat_rooms`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE TABLE `chat_rooms` (
+	`id` text PRIMARY KEY NOT NULL,
+	`project_id` text NOT NULL,
+	`name` text NOT NULL,
+	`created_at` integer NOT NULL,
+	`updated_at` integer NOT NULL,
+	FOREIGN KEY (`project_id`) REFERENCES `projects`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE TABLE `floating_bot_messages` (
@@ -386,19 +400,6 @@ CREATE TABLE `feedback_history` (
 	`created_at` integer NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`project_id`) REFERENCES `projects`(`id`) ON UPDATE no action ON DELETE set null
-);
---> statement-breakpoint
-CREATE TABLE `hall_of_fame_entries` (
-	`id` text PRIMARY KEY NOT NULL,
-	`user_id` text NOT NULL,
-	`month` text NOT NULL,
-	`rank` integer NOT NULL,
-	`xp_earned` integer NOT NULL,
-	`competency_growth` real NOT NULL,
-	`projects_completed` integer NOT NULL,
-	`total_score` real NOT NULL,
-	`created_at` integer NOT NULL,
-	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
 CREATE TABLE `user_badges` (
@@ -479,3 +480,43 @@ CREATE TABLE `notifications` (
 	FOREIGN KEY (`project_id`) REFERENCES `projects`(`id`) ON UPDATE no action ON DELETE cascade,
 	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE cascade
 );
+--> statement-breakpoint
+CREATE TABLE `daily_metrics_aggregate` (
+	`id` text PRIMARY KEY NOT NULL,
+	`project_id` text NOT NULL,
+	`date` text NOT NULL,
+	`avg_confidence` real,
+	`avg_engagement` real,
+	`avg_ai_supported` real,
+	`avg_traditional` real,
+	`sample_count` integer DEFAULT 0 NOT NULL,
+	`created_at` integer NOT NULL,
+	`updated_at` integer NOT NULL,
+	FOREIGN KEY (`project_id`) REFERENCES `projects`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE TABLE `learning_metrics` (
+	`id` text PRIMARY KEY NOT NULL,
+	`project_id` text NOT NULL,
+	`team_id` text,
+	`user_id` text,
+	`metric_type` text NOT NULL,
+	`value` real NOT NULL,
+	`source` text DEFAULT 'system' NOT NULL,
+	`metadata` text,
+	`recorded_at` integer NOT NULL,
+	FOREIGN KEY (`project_id`) REFERENCES `projects`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE TABLE `system_settings` (
+	`id` text PRIMARY KEY NOT NULL,
+	`key` text NOT NULL,
+	`value` text NOT NULL,
+	`description` text,
+	`updated_at` integer NOT NULL,
+	`updated_by` text
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `system_settings_key_unique` ON `system_settings` (`key`);

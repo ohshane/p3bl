@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from '@tanstack/react-router'
 import { useAuthStore } from '@/stores/authStore'
+import { clearStoredRedirectPath } from '@/lib/authRedirect'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -84,6 +85,7 @@ export function RegisterForm({ redirectTo }: RegisterFormProps) {
     })
     
     if (result.success) {
+      clearStoredRedirectPath()
       navigate({ to: redirectTo || '/explorer' })
     }
   }

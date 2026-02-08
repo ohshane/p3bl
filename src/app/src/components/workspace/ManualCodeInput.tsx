@@ -74,7 +74,6 @@ export function ManualCodeInput() {
       if (!result.success) {
         // Check if rate limited
         if ('rateLimited' in result && result.rateLimited) {
-          // Use server-provided cooldown end time if available
           const serverCooldownEnd = 'cooldownEnd' in result && result.cooldownEnd 
             ? new Date(result.cooldownEnd as string) 
             : null
@@ -84,26 +83,22 @@ export function ManualCodeInput() {
           setError(result.error || 'Invalid code. Please check and try again.')
           toast.error(result.error || 'Invalid code')
         }
-        setIsSubmitting(false)
         return
       }
 
-      // Success! Update local state
-      addJoinedProject(result.projectId)
-      
-      // Handle "already a member" case
-      if ('message' in result && result.message === 'Already a member of this project') {
-        toast.info('You are already a member of this project', {
-          description: 'Navigating to your project...',
-        })
-      } else {
+      // Success (both new join and already-a-member)
+      const projectId = result.projectId
+      addJoinedProject(projectId)
+
+      const alreadyMember = 'message' in result && result.message === 'Already a member of this project'
+      if (!alreadyMember) {
         toast.success(`Welcome to ${result.projectTitle || 'the project'}!`, {
           description: 'You have successfully joined.',
         })
       }
 
-      // Navigate to activity zone
-      navigate({ to: `/explorer/project/${result.projectId}` })
+      // Navigate to the project page
+      navigate({ to: `/explorer/project/${projectId}` })
     } catch (err) {
       console.error('Join project error:', err)
       setError('Failed to join project. Please try again.')

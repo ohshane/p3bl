@@ -1,7 +1,18 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Send, Sparkles, AlertTriangle, CheckCircle, Loader2, X } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { Send, Sparkles, AlertTriangle, CheckCircle, Loader2, X, Save } from 'lucide-react'
 import { useActivityStore } from '@/stores/activityStore'
 import { useAuthStore } from '@/stores/authStore'
+import { cn, isValidDate } from '@/lib/utils'
+import { toast } from 'sonner'
+import type { Project, Session, PreCheckResult } from '@/types'
+import { isPast } from 'date-fns'
+
+import {
+  getUserSessionArtifacts,
+  createArtifact as apiCreateArtifact,
+  updateArtifact as apiUpdateArtifact,
+  submitArtifact as apiSubmitArtifact,
+} from '@/server/api/artifacts'
 import {
   Dialog,
   DialogContent,
@@ -10,17 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-
-import { cn } from '@/lib/utils'
-import { toast } from 'sonner'
-import type { Project, Session, PreCheckResult } from '@/types'
-
-import {
-  getUserSessionArtifacts,
-  createArtifact as apiCreateArtifact,
-  updateArtifact as apiUpdateArtifact,
-  submitArtifact as apiSubmitArtifact,
-} from '@/server/api/artifacts'
+import { Button } from '@/components/ui/button'
 
 // Editor components (simplified for now)
 import { RichTextEditor } from './editors/RichTextEditor'
@@ -41,11 +42,13 @@ interface SessionArtifact {
 }
 
 export function SmartOutputBuilder({ project: _project, session, teamId }: SmartOutputBuilderProps) {
-  const [showPreCheckWarning, setShowPreCheckWarning] = useState(false)
   const [artifact, setArtifact] = useState<SessionArtifact | null>(null)
-  const [isLoadingArtifact, setIsLoadingArtifact] = useState(true)
+  const [, setIsLoadingArtifact] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSubmitted, setShowSubmitted] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [showAutoSaved, setShowAutoSaved] = useState(false)
+  const [showLateSubmitDialog, setShowLateSubmitDialog] = useState(false)
   
   const { currentUser, addXP } = useAuthStore()
   const {
@@ -59,6 +62,9 @@ export function SmartOutputBuilder({ project: _project, session, teamId }: Smart
     clearPreCheck,
     setActionHandlers,
   } = useActivityStore()
+
+  // Keep a ref to the latest handleSave so auto-save always calls the current version
+  const handleSaveRef = useRef<(options?: { silent?: boolean }) => Promise<void>>(() => Promise.resolve())
 
   // Load artifact for this session
   useEffect(() => {
@@ -82,9 +88,12 @@ export function SmartOutputBuilder({ project: _project, session, teamId }: Smart
             latestVersion: a.latestVersion,
           })
           setEditorContent(a.content || '')
+          // Content was just loaded from DB, not a user edit — clear dirty flag
+          markSaved()
         } else {
           setArtifact(null)
           setEditorContent('')
+          markSaved()
         }
       } catch (error) {
         console.error('Failed to load artifact:', error)
@@ -97,32 +106,30 @@ export function SmartOutputBuilder({ project: _project, session, teamId }: Smart
     }
     
     loadArtifact()
-  }, [session.id, currentUser, setEditorContent, clearPreCheck])
+  }, [session.id, currentUser, setEditorContent, clearPreCheck, markSaved])
 
-  // Auto-save
-  useEffect(() => {
-    if (!isDirty || !currentUser) return
+  const handleSave = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false
 
-    const timeout = setTimeout(() => {
-      handleSave()
-    }, 5000)
+    if (!currentUser || !teamId) {
+      if (!silent) toast.error('Unable to save', { description: 'Missing user or team context.' })
+      return
+    }
+    
+    const contentToSave = editorContent
 
-    return () => clearTimeout(timeout)
-  }, [editorContent, isDirty])
-
-  const handleSave = useCallback(async () => {
-    if (!currentUser || !teamId) return
+    setIsSaving(true)
     
     try {
       if (artifact) {
         // Update existing artifact
         const result = await apiUpdateArtifact({
-          data: { artifactId: artifact.id, content: editorContent }
+          data: { artifactId: artifact.id, content: contentToSave }
         })
         
         if (result.success) {
           markSaved()
-          toast.success('Draft saved')
+          if (!silent) toast.success('Saved')
         } else {
           toast.error('Failed to save', { description: result.error })
         }
@@ -134,7 +141,7 @@ export function SmartOutputBuilder({ project: _project, session, teamId }: Smart
             sessionId: session.id,
             teamId,
             title: `${session.title} - Draft`,
-            content: editorContent,
+            content: contentToSave,
             contentType: 'document',
           }
         })
@@ -143,24 +150,54 @@ export function SmartOutputBuilder({ project: _project, session, teamId }: Smart
           setArtifact({
             id: result.artifactId,
             title: `${session.title} - Draft`,
-            content: editorContent,
+            content: contentToSave,
             status: 'draft',
             versionCount: 0,
             latestVersion: null,
           })
           markSaved()
-          toast.success('Draft saved')
+          if (!silent) toast.success('Saved')
         } else {
           toast.error('Failed to save', { description: result.error })
         }
       }
     } catch (error) {
       toast.error('Failed to save')
+    } finally {
+      setIsSaving(false)
     }
   }, [artifact, editorContent, currentUser, session, teamId, markSaved])
 
+  // Keep ref up to date so auto-save timer always calls the latest version
+  handleSaveRef.current = handleSave
+
+  // Auto-save: debounce 3s after user stops typing
+  useEffect(() => {
+    if (!isDirty || !currentUser) return
+
+    const timeout = setTimeout(async () => {
+      await handleSaveRef.current({ silent: true })
+      setShowAutoSaved(true)
+    }, 3000)
+
+    return () => clearTimeout(timeout)
+  }, [editorContent, isDirty, currentUser])
+
+  // Clear "Auto saved" indicator after 1 second
+  useEffect(() => {
+    if (showAutoSaved) {
+      const timeout = setTimeout(() => setShowAutoSaved(false), 2000)
+      return () => clearTimeout(timeout)
+    }
+  }, [showAutoSaved])
+
   const handleRunPreCheck = useCallback(async () => {
-    const result = await runPreCheck()
+    // Build rubric context string from session rubric criteria
+    const rubricContext = session.rubric.length > 0
+      ? session.rubric.map(r => `- ${r.criterion} (${r.weight}%): ${r.description}`).join('\n')
+      : undefined
+
+    const result = await runPreCheck(artifact?.id, rubricContext)
     
     if (result.overallStatus === 'critical_issues') {
       toast.warning('Pre-check found critical issues', {
@@ -175,22 +212,14 @@ export function SmartOutputBuilder({ project: _project, session, teamId }: Smart
         description: 'Your work is ready for submission.',
       })
     }
-  }, [runPreCheck])
+  }, [runPreCheck, session.rubric, artifact?.id])
 
-  const handleSubmit = useCallback(async () => {
-    if (preCheckResult?.overallStatus === 'critical_issues') {
-      setShowPreCheckWarning(true)
-      return
-    }
-    
-    // Direct submit without modal
+  const submitArtifact = useCallback(async () => {
     if (!currentUser) return
     
     setIsSubmitting(true)
     try {
-      if (!artifact || isDirty) {
-        await handleSave()
-      }
+      await handleSave({ silent: true })
       
       const artifactId = artifact?.id
       if (!artifactId) {
@@ -221,7 +250,21 @@ export function SmartOutputBuilder({ project: _project, session, teamId }: Smart
     } finally {
       setIsSubmitting(false)
     }
-  }, [preCheckResult, currentUser, artifact, isDirty, handleSave, addXP])
+  }, [currentUser, artifact, handleSave, addXP])
+
+  const isDeliverableNone = session.deliverableType === 'none'
+  const isLateSubmission =
+    isValidDate(session.endDate) && isPast(new Date(session.endDate))
+
+  const handleSubmit = useCallback(async () => {
+    if (isDeliverableNone) return
+    if (isLateSubmission) {
+      setShowLateSubmitDialog(true)
+      return
+    }
+
+    await submitArtifact()
+  }, [isDeliverableNone, isLateSubmission, submitArtifact])
 
   useEffect(() => {
     setActionHandlers({
@@ -237,58 +280,6 @@ export function SmartOutputBuilder({ project: _project, session, teamId }: Smart
     }
   }, [handleRunPreCheck, handleSubmit, setActionHandlers])
 
-  const confirmSubmitFromWarning = async () => {
-    if (!currentUser) return
-    
-    setIsSubmitting(true)
-    try {
-      if (!artifact || isDirty) {
-        await handleSave()
-      }
-      
-      const artifactId = artifact?.id
-      if (!artifactId) {
-        toast.error('Please save your work first')
-        return
-      }
-      
-      const result = await apiSubmitArtifact({
-        data: { artifactId, userId: currentUser.id }
-      })
-      
-      if (result.success) {
-        addXP(20)
-        setShowSubmitted(true)
-        setTimeout(() => setShowSubmitted(false), 2000)
-        
-        setArtifact(prev => prev ? {
-          ...prev,
-          status: 'submitted',
-          latestVersion: result.version || null,
-          versionCount: (prev.versionCount || 0) + 1,
-        } : null)
-      } else {
-        toast.error('Failed to submit', { description: result.error })
-      }
-    } catch (error) {
-      toast.error('Failed to submit')
-    } finally {
-      setIsSubmitting(false)
-      setShowPreCheckWarning(false)
-    }
-  }
-
-  if (isLoadingArtifact) {
-    return (
-      <div className="h-full flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground mx-auto mb-2" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="h-full flex flex-col">
       <div className="flex-1 flex flex-col p-0 min-h-0">
@@ -296,31 +287,55 @@ export function SmartOutputBuilder({ project: _project, session, teamId }: Smart
         <div className="shrink-0 pb-6">
           <div className="rounded-xl border border-border bg-muted/30 p-3">
             <div className="flex items-center justify-between">
-              {/* Pre-check Button - Generate Style */}
-              <button
-                onClick={handleRunPreCheck}
-                disabled={isRunningPreCheck || !editorContent.trim()}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                  "bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white",
-                  "disabled:opacity-40 disabled:cursor-not-allowed"
+              <div className="flex items-center gap-2">
+                {/* Pre-check Button - Generate Style */}
+                <button
+                  onClick={handleRunPreCheck}
+                  disabled={isDeliverableNone || isRunningPreCheck}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                    "bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white",
+                    "disabled:opacity-40 disabled:cursor-not-allowed"
+                  )}
+                >
+                  {isRunningPreCheck ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  <span>{isRunningPreCheck ? 'Checking...' : 'Pre-check'}</span>
+                </button>
+
+                {/* Save Button */}
+                <button
+                  onClick={() => handleSave()}
+                  disabled={isDeliverableNone || isSaving}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                    "border border-border/50 hover:bg-accent",
+                    "disabled:opacity-40 disabled:cursor-not-allowed"
+                  )}
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Save</span>
+                </button>
+
+                {/* Auto saved indicator */}
+                {showAutoSaved && (
+                  <span className="flex items-center gap-1 text-xs font-medium text-emerald-500">
+                    <CheckCircle className="w-3 h-3" />
+                    Auto saved
+                  </span>
                 )}
-              >
-                {isRunningPreCheck ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4" />
-                )}
-                <span>{isRunningPreCheck ? 'Checking...' : 'Pre-check'}</span>
-              </button>
+              </div>
 
               {/* Submit Button */}
               <button
                 onClick={handleSubmit}
-                disabled={!editorContent.trim() || isSubmitting || !teamId || showSubmitted}
+                disabled={isDeliverableNone || isSubmitting}
                 className={cn(
-                  "group flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
-                  "border border-border/50 bg-foreground text-background hover:bg-foreground/90",
+                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out",
+                  "border border-border/50 bg-foreground text-background hover:opacity-90 active:scale-[0.97]",
                   showSubmitted && "bg-emerald-500 border-emerald-500 text-white",
                   "disabled:cursor-not-allowed",
                   !showSubmitted && !isSubmitting && "disabled:opacity-40"
@@ -328,14 +343,10 @@ export function SmartOutputBuilder({ project: _project, session, teamId }: Smart
               >
                 {isSubmitting ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
-                ) : showSubmitted ? (
-                  <CheckCircle className="w-4 h-4" />
                 ) : (
                   <Send className="w-4 h-4" />
                 )}
-                <span>
-                  {isSubmitting ? 'Submitting...' : showSubmitted ? 'Submitted!' : 'Submit'}
-                </span>
+                <span>{showSubmitted ? 'Submitted' : 'Submit'}</span>
               </button>
             </div>
           </div>
@@ -362,33 +373,28 @@ export function SmartOutputBuilder({ project: _project, session, teamId }: Smart
         </div>
       </div>
 
-      {/* Pre-check Warning Dialog - Simple */}
-      <Dialog open={showPreCheckWarning} onOpenChange={setShowPreCheckWarning}>
-        <DialogContent className="sm:max-w-sm">
+      <Dialog open={showLateSubmitDialog} onOpenChange={setShowLateSubmitDialog}>
+        <DialogContent className="sm:max-w-md border-amber-500/40">
           <DialogHeader>
-            <DialogTitle className="text-amber-500">Issues detected</DialogTitle>
-            <DialogDescription className="text-sm">
-              Review the issues before submitting.
+            <DialogTitle className="text-amber-500">Late submission</DialogTitle>
+            <DialogDescription>
+              This session has passed its end time. Submitting now will be marked
+              as late.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-2">
-            <button
-              onClick={() => setShowPreCheckWarning(false)}
-              className="px-4 py-2 rounded-lg text-sm font-medium border border-border hover:bg-accent transition-colors"
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowLateSubmitDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-amber-500 text-white hover:bg-amber-600"
+              onClick={async () => {
+                setShowLateSubmitDialog(false)
+                await submitArtifact()
+              }}
             >
-              Review
-            </button>
-            <button
-              onClick={confirmSubmitFromWarning}
-              disabled={isSubmitting}
-              className={cn(
-                "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
-                "bg-amber-500 text-white hover:bg-amber-600",
-                "disabled:opacity-50 disabled:cursor-not-allowed"
-              )}
-            >
-              {isSubmitting ? 'Submitting...' : 'Submit Anyway'}
-            </button>
+              Submit Late
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

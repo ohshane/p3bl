@@ -21,7 +21,7 @@ import {
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
-export const Route = createFileRoute('/admin/settings')({
+export const Route = createFileRoute('/admin/settings/')({
   component: AdminSettings,
 })
 

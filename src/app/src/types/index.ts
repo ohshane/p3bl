@@ -17,7 +17,6 @@ export interface User {
   level: number
   xp: number
   anonymizedName: string
-  hallOfFameOptIn: boolean
   joinedProjectIds: string[]
   earnedBadgeIds: string[]
   pendingInvitations: ProjectInvitation[]
@@ -112,7 +111,6 @@ export interface RubricItem {
   id: string
   criterion: string
   description: string
-  maxScore: number
   weight: number
 }
 
@@ -215,7 +213,7 @@ export type MessageSender = 'user' | 'ai' | 'system'
 
 export interface ChatMessage {
   id: string
-  teamId: string
+  roomId: string
   senderId: string
   senderName: string
   senderAvatar: string | null
@@ -308,18 +306,6 @@ export const COMPETENCY_LABELS: Record<CompetencyType, string> = {
   collaboration: 'Collaboration',
   creativity: 'Creativity',
   problemSolving: 'Problem Solving',
-}
-
-// ----------------------------------------------------------------------------
-// Hall of Fame Types
-// ----------------------------------------------------------------------------
-
-export interface LeaderboardEntry {
-  rank: number
-  anonymizedName: string
-  level: number
-  xpThisMonth: number
-  isCurrentUser: boolean
 }
 
 // ----------------------------------------------------------------------------
@@ -549,13 +535,4 @@ export interface AssessmentDraft {
   finalizedAt: string | null
 }
 
-// Hall of Fame Selection (C.3.3)
-export interface HallOfFameNomination {
-  id: string
-  teamId: string
-  artifactId: string
-  reason: string
-  nominatedAt: string
-  consentStatus: 'pending' | 'accepted' | 'declined'
-  publishedAt: string | null
-}
+

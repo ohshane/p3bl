@@ -29,7 +29,6 @@ export {
   getUserCompetencies,
   addUserXp,
   getUserXpHistory,
-  getLeaderboard,
 } from './users'
 
 // Project functions
@@ -45,6 +44,9 @@ export {
   getUserInvitations,
   respondToInvitation,
   getProjectParticipants,
+  removeParticipant,
+  searchDelegateUsers,
+  delegateProject,
 } from './projects'
 
 // Session functions
@@ -58,6 +60,7 @@ export {
   addResource,
   deleteResource,
   addRubric,
+  updateRubric,
   deleteRubric,
   updateUserCurrentSession,
   addTemplate,
@@ -81,6 +84,7 @@ export {
 
 // Chat functions
 export {
+  getOrCreateRoom,
   sendMessage,
   getMessages,
   editMessage,

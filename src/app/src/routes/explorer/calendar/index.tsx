@@ -33,7 +33,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { useNavigate } from '@tanstack/react-router'
 
-export const Route = createFileRoute('/explorer/calendar')({
+export const Route = createFileRoute('/explorer/calendar/')({
   component: ExplorerCalendarPage,
 })
 
@@ -193,33 +193,7 @@ function ExplorerCalendarPage() {
     return { allDay, timed }
   }, [userProjects, currentDate])
 
-  // Filter sessions for week view timed blocks
-  const weekSessions = useMemo(() => {
-    const start = startOfWeek(currentDate)
-    const end = endOfWeek(currentDate)
-    
-    const timed: any[] = []
-
-    userProjects.forEach(project => {
-      project.sessions?.forEach(session => {
-        if (!session.startDate || !session.endDate) return
-        const sStart = new Date(session.startDate)
-        const sEnd = new Date(session.endDate)
-        
-        if (sStart < end && sEnd > start) {
-          timed.push({
-            ...session,
-            startDate: sStart.toISOString(),
-            endDate: sEnd.toISOString(),
-            projectTitle: project.title,
-            projectId: project.id
-          })
-        }
-      })
-    })
-
-    return timed
-  }, [userProjects, currentDate])
+  // Timed projects are already computed in weekProjects.timed
 
   if (!isMounted || (isLoadingProjects && userProjects.length === 0)) {
     return (
@@ -436,9 +410,9 @@ function ExplorerCalendarPage() {
 
           {/* Scrollable Grid */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto relative scrollbar-none">
-            <div className="flex min-h-[1536px] relative">
+            <div className="flex h-[1536px] relative">
               {/* Time Axis */}
-              <div className="w-16 flex-shrink-0 border-r border-border bg-muted/5 text-[10px] text-muted-foreground select-none relative z-20">
+              <div className="w-16 flex-shrink-0 border-r border-border bg-muted/5 text-[10px] text-muted-foreground select-none relative z-20 h-[1536px]">
                 {hours.map(h => (
                   <div key={h} className="h-16 border-b border-border/50 text-right pr-2 relative">
                     <span className="-top-2 absolute right-2">{format(new Date().setHours(h, 0, 0, 0), 'ha')}</span>
@@ -474,43 +448,40 @@ function ExplorerCalendarPage() {
                       )}
                       onClick={() => setSelectedDate(day)}
                     >
-                      {/* Render Session Blocks */}
-                      {weekSessions
-                        .filter(s => {
-                          // Show session on any day it spans
-                          const sessionStart = new Date(s.startDate)
-                          const sessionEnd = new Date(s.endDate)
+                      {/* Render Project Blocks */}
+                      {weekProjects.timed
+                        .filter(p => {
+                          const pStart = new Date(p.startDate)
+                          const pEnd = new Date(p.endDate)
                           const dayStart = startOfDay(day)
                           const dayEnd = addDays(dayStart, 1)
-                          return sessionStart < dayEnd && sessionEnd > dayStart
+                          return pStart < dayEnd && pEnd > dayStart
                         })
-                        .map(session => {
-                          const sessionStart = new Date(session.startDate)
-                          const sessionEnd = new Date(session.endDate)
+                        .map(project => {
+                          const pStart = new Date(project.startDate)
+                          const pEnd = new Date(project.endDate)
                           const dayStart = startOfDay(day)
                           const dayEnd = addDays(dayStart, 1)
                           
-                          // Calculate visible portion of session for this day
-                          const visibleStart = sessionStart < dayStart ? dayStart : sessionStart
-                          const visibleEnd = sessionEnd > dayEnd ? dayEnd : sessionEnd
+                          const visibleStart = pStart < dayStart ? dayStart : pStart
+                          const visibleEnd = pEnd > dayEnd ? dayEnd : pEnd
                           
                           const startMin = visibleStart.getHours() * 60 + visibleStart.getMinutes()
                           const duration = differenceInMinutes(visibleEnd, visibleStart)
                           
-                          // Determine if this is start/middle/end day for styling
-                          const isStartDay = isSameDay(sessionStart, day)
-                          const isEndDay = isSameDay(sessionEnd, day)
+                          const isStartDay = isSameDay(pStart, day)
+                          const isEndDay = isSameDay(pEnd, day)
                           
                           return (
                             <div 
-                              key={`session-${session.id}-${day.toISOString()}`}
+                              key={`project-${project.id}-${day.toISOString()}`}
                               style={{
                                 top: `${(startMin / 1440) * 100}%`,
                                 height: `${Math.max((duration / 1440) * 100, 2)}%`,
                                 minHeight: '32px'
                               }}
                               className={cn(
-                                "absolute inset-x-1 bg-cyan-500/10 text-cyan-600 text-[10px] p-1.5 overflow-hidden shadow-sm border border-cyan-500/20 z-10 cursor-pointer hover:bg-cyan-500 hover:text-white transition-all group",
+                                "absolute inset-x-1 bg-purple-500/10 text-purple-600 text-[10px] p-1.5 overflow-hidden shadow-sm border border-purple-500/20 z-10 cursor-pointer hover:bg-purple-500 hover:text-white transition-all group",
                                 isStartDay && isEndDay && "rounded",
                                 isStartDay && !isEndDay && "rounded-t",
                                 !isStartDay && isEndDay && "rounded-b",
@@ -518,14 +489,14 @@ function ExplorerCalendarPage() {
                               )}
                               onClick={(e) => {
                                 e.stopPropagation()
-                                navigate({ to: `/explorer/project/${session.projectId}` })
+                                navigate({ to: `/explorer/project/${project.id}` })
                               }}
                             >
                               <div className="font-bold truncate uppercase tracking-tighter group-hover:text-white">
-                                {session.projectTitle}
+                                {project.title}
                               </div>
                               <div className="text-[9px] opacity-90 truncate group-hover:text-white">
-                                {session.title}
+                                {project.sessionCount} sessions
                               </div>
                             </div>
                           )

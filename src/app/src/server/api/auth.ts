@@ -18,8 +18,6 @@ import {
   passwordResetSchema,
   changePasswordSchema,
   updateProfileSchema,
-  type RegisterInput,
-  type LoginInput,
 } from '@/server/validation/auth'
 
 // Response types
@@ -29,10 +27,11 @@ export type AuthResponse = {
     id: string
     email: string
     name: string
-    role: 'explorer' | 'creator' | 'admin'
+    role: 'explorer' | 'creator' | 'admin' | 'pioneer'
     avatarUrl: string | null
     xp: number
     level: number
+    defaultSessionDifficulty: 'easy' | 'medium' | 'hard'
   }
   accessToken: string
   refreshToken: string
@@ -127,6 +126,7 @@ export const register = createServerFn({ method: 'POST' })
           avatarUrl: null,
           xp: 0,
           level: 1,
+          defaultSessionDifficulty: 'medium',
         },
         accessToken: tokenData.accessToken,
         refreshToken: tokenData.refreshToken,
@@ -204,6 +204,7 @@ export const login = createServerFn({ method: 'POST' })
           avatarUrl: user.avatarUrl,
           xp: user.xp,
           level: user.level,
+          defaultSessionDifficulty: user.defaultSessionDifficulty,
         },
         accessToken: tokenData.accessToken,
         refreshToken: tokenData.refreshToken,
@@ -279,6 +280,7 @@ export const refreshToken = createServerFn({ method: 'POST' })
           avatarUrl: user.avatarUrl,
           xp: user.xp,
           level: user.level,
+          defaultSessionDifficulty: user.defaultSessionDifficulty,
         },
         accessToken,
         refreshToken: data.refreshToken, // Return same refresh token
@@ -453,8 +455,8 @@ export const getCurrentUser = createServerFn({ method: 'GET' })
           avatarUrl: user.avatarUrl,
           xp: user.xp,
           level: user.level,
-          hallOfFameOptIn: user.hallOfFameOptIn,
           anonymizedName: user.anonymizedName,
+          defaultSessionDifficulty: user.defaultSessionDifficulty,
           createdAt: user.createdAt.toISOString(),
         },
       }
@@ -505,7 +507,7 @@ export const updateProfile = createServerFn({ method: 'POST' })
           avatarUrl: updatedUser.avatarUrl,
           xp: updatedUser.xp,
           level: updatedUser.level,
-          hallOfFameOptIn: updatedUser.hallOfFameOptIn,
+          defaultSessionDifficulty: updatedUser.defaultSessionDifficulty,
         },
       }
     } catch (error) {

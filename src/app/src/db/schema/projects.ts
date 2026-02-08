@@ -5,6 +5,7 @@ import { organizations } from './organizations'
 
 // Deliverable types
 export type DeliverableType = 'none' | 'document'
+export type SessionDifficulty = 'easy' | 'medium' | 'hard'
 
 // Projects table
 export const projects = sqliteTable('projects', {
@@ -35,6 +36,7 @@ export const projectSessions = sqliteTable('project_sessions', {
   topic: text('topic'),
   guide: text('guide'), // Rich text guide for the session
   weight: real('weight').notNull().default(1), // For asymmetric timeline
+  difficulty: text('difficulty').$type<SessionDifficulty>().notNull().default('medium'),
   deliverableType: text('deliverable_type').$type<DeliverableType>().notNull().default('document'),
   deliverableTitle: text('deliverable_title'),
   deliverableDescription: text('deliverable_description'),
@@ -64,7 +66,6 @@ export const sessionRubrics = sqliteTable('session_rubrics', {
   criteria: text('criteria').notNull(),
   description: text('description'),
   weight: real('weight').notNull().default(1),
-  maxScore: integer('max_score').notNull().default(100),
   order: integer('order').notNull().default(0),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 })

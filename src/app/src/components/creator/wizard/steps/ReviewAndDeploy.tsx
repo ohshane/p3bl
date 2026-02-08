@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { differenceInMinutes } from "date-fns";
 import {
   FileText,
-  Bot,
   Users,
   Calendar,
   ListChecks,
@@ -39,10 +38,9 @@ function formatDuration(minutes: number): string {
 }
 
 export function ReviewAndDeploy() {
-  const { wizardState, aiPersonas, validateWizard, setWizardStep } = useCreatorStore();
+  const { wizardState, validateWizard, setWizardStep } = useCreatorStore();
   const {
     basicInfo,
-    selectedAIPersonaIds,
     participantParams,
     timeline,
     sessions,
@@ -64,10 +62,6 @@ export function ReviewAndDeploy() {
           new Date(timeline.startDate),
         )
       : 0;
-
-  const selectedPersonas = aiPersonas.filter((p) =>
-    selectedAIPersonaIds.includes(p.id),
-  );
 
   const sections = [
     {
@@ -103,32 +97,9 @@ export function ReviewAndDeploy() {
       ),
     },
     {
-      icon: Bot,
-      title: "AI Personas",
-      targetStep: 3,
-      valid: true, // Optional
-      content: (
-        <div>
-          {selectedPersonas.length === 0 ? (
-            <span className="text-muted-foreground">
-              No AI personas selected
-            </span>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {selectedPersonas.map((p) => (
-                <Badge key={p.id} variant="outline" className="border-border">
-                  {p.name}
-                </Badge>
-              ))}
-            </div>
-          )}
-        </div>
-      ),
-    },
-    {
       icon: Users,
       title: "Team Formation",
-      targetStep: 4,
+      targetStep: 3,
       valid:
         participantParams.projectMode === "personal" ||
         participantParams.teamSize >= 2,
@@ -154,7 +125,7 @@ export function ReviewAndDeploy() {
     {
       icon: Calendar,
       title: "Timeline",
-      targetStep: 5,
+      targetStep: 4,
       valid: !!timeline.startDate && !!timeline.endDate,
       content: (
         <div className="space-y-1">
@@ -186,7 +157,7 @@ export function ReviewAndDeploy() {
     {
       icon: ListChecks,
       title: "Sessions",
-      targetStep: 6,
+      targetStep: 5,
       valid: sessions.length > 0,
       content: (
         <div>

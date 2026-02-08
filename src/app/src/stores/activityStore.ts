@@ -13,7 +13,12 @@ async function callOpenRouterForPreCheck(content: string, rubricContext?: string
   overallScore: 'ready' | 'needs_work' | 'critical_issues'
   score: number
   items: PreCheckItem[]
+  rubricScores?: Record<string, number>
 }> {
+  const rubricScoresInstruction = rubricContext
+    ? `- rubricScores: an object mapping each rubric criterion name to its score (0-100). Use the exact criterion names as keys.\n`
+    : ''
+
   const systemPrompt = `You are an academic writing assistant that reviews student submissions. 
 Analyze the following content and provide feedback.
 
@@ -21,8 +26,8 @@ ${rubricContext ? `Rubric criteria to consider:\n${rubricContext}\n` : ''}
 
 Respond with a JSON object containing:
 - overallScore: "ready" (good to submit), "needs_work" (minor issues), or "critical_issues" (major problems)
-- score: a number from 0-100 representing quality
-- items: an array of feedback items, each with:
+- score: a number from 0-100 representing overall quality${rubricContext ? ' (should reflect the weighted rubric scores)' : ''}
+${rubricScoresInstruction}- items: an array of feedback items, each with:
   - id: unique string
   - severity: "critical", "warning", or "suggestion"
   - message: what the issue is
@@ -47,7 +52,7 @@ Only return valid JSON, no other text.`
           { role: 'user', content: `Please review this submission:\n\n${content}` },
         ],
         max_tokens: 1000,
-        temperature: 0.3,
+        temperature: 0.1,
       }),
     })
 
@@ -233,6 +238,9 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
   submitAction: undefined,
   
   setCurrentProject: (projectId: string | null) => {
+    const { currentProjectId } = get()
+    // Only reset editor state when actually switching projects
+    if (projectId === currentProjectId) return
     set({ 
       currentProjectId: projectId,
       currentSessionIndex: 0,
@@ -244,6 +252,9 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
   },
   
   setCurrentSession: (sessionIndex: number) => {
+    const { currentSessionIndex } = get()
+    // Only reset editor state when actually switching sessions
+    if (sessionIndex === currentSessionIndex) return
     set({ 
       currentSessionIndex: sessionIndex,
       expandedPanel: 'cockpit',
@@ -305,6 +316,7 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
                 message: item.message,
                 suggestion: item.suggestion,
               })),
+              rubricScores: aiResult.rubricScores,
             },
           })
         } catch (error) {

@@ -73,7 +73,7 @@ export const updateProfileSchema = z.object({
     .max(100, 'Name must be less than 100 characters')
     .optional(),
   avatarUrl: z.string().url('Invalid URL').optional().nullable(),
-  hallOfFameOptIn: z.boolean().optional(),
+  defaultSessionDifficulty: z.enum(['easy', 'medium', 'hard']).optional(),
 })
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>

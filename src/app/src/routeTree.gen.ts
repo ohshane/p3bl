@@ -9,53 +9,44 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SignupRouteImport } from './routes/signup'
-import { Route as SigninRouteImport } from './routes/signin'
-import { Route as ExplorerRouteImport } from './routes/explorer'
-import { Route as CreatorRouteImport } from './routes/creator'
-import { Route as AdminRouteImport } from './routes/admin'
+import { Route as ExplorerRouteRouteImport } from './routes/explorer/route'
+import { Route as CreatorRouteRouteImport } from './routes/creator/route'
+import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SignupIndexRouteImport } from './routes/signup/index'
+import { Route as SigninIndexRouteImport } from './routes/signin/index'
 import { Route as ExplorerIndexRouteImport } from './routes/explorer/index'
 import { Route as CreatorIndexRouteImport } from './routes/creator/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
-import { Route as ExplorerPortfolioRouteImport } from './routes/explorer/portfolio'
-import { Route as ExplorerCalendarRouteImport } from './routes/explorer/calendar'
-import { Route as CreatorCalendarRouteImport } from './routes/creator/calendar'
-import { Route as AdminUsersRouteImport } from './routes/admin/users'
-import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
-import { Route as ExplorerProjectProjectIdRouteImport } from './routes/explorer/project.$projectId'
+import { Route as ExplorerPortfolioIndexRouteImport } from './routes/explorer/portfolio/index'
+import { Route as ExplorerCalendarIndexRouteImport } from './routes/explorer/calendar/index'
+import { Route as CreatorCalendarIndexRouteImport } from './routes/creator/calendar/index'
+import { Route as AdminUsersIndexRouteImport } from './routes/admin/users/index'
+import { Route as AdminSettingsIndexRouteImport } from './routes/admin/settings/index'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
 import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
 import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
-import { Route as CreatorProjectNewRouteImport } from './routes/creator/project/new'
-import { Route as CreatorProjectProjectIdRouteImport } from './routes/creator/project.$projectId'
+import { Route as CreatorProjectProjectIdRouteRouteImport } from './routes/creator/project/$projectId/route'
+import { Route as ExplorerProjectProjectIdIndexRouteImport } from './routes/explorer/project/$projectId/index'
 import { Route as DemoStartSsrIndexRouteImport } from './routes/demo/start.ssr.index'
+import { Route as CreatorProjectNewIndexRouteImport } from './routes/creator/project/new/index'
+import { Route as CreatorProjectProjectIdIndexRouteImport } from './routes/creator/project/$projectId/index'
 import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr.spa-mode'
 import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
 import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ssr.data-only'
-import { Route as CreatorProjectProjectIdMonitorRouteImport } from './routes/creator/project/$projectId.monitor'
+import { Route as CreatorProjectProjectIdMonitorIndexRouteImport } from './routes/creator/project/$projectId/monitor/index'
 
-const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SigninRoute = SigninRouteImport.update({
-  id: '/signin',
-  path: '/signin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ExplorerRoute = ExplorerRouteImport.update({
+const ExplorerRouteRoute = ExplorerRouteRouteImport.update({
   id: '/explorer',
   path: '/explorer',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CreatorRoute = CreatorRouteImport.update({
+const CreatorRouteRoute = CreatorRouteRouteImport.update({
   id: '/creator',
   path: '/creator',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRoute = AdminRouteImport.update({
+const AdminRouteRoute = AdminRouteRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => rootRouteImport,
@@ -65,52 +56,56 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SignupIndexRoute = SignupIndexRouteImport.update({
+  id: '/signup/',
+  path: '/signup/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SigninIndexRoute = SigninIndexRouteImport.update({
+  id: '/signin/',
+  path: '/signin/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExplorerIndexRoute = ExplorerIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => ExplorerRoute,
+  getParentRoute: () => ExplorerRouteRoute,
 } as any)
 const CreatorIndexRoute = CreatorIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => CreatorRoute,
+  getParentRoute: () => CreatorRouteRoute,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => AdminRoute,
+  getParentRoute: () => AdminRouteRoute,
 } as any)
-const ExplorerPortfolioRoute = ExplorerPortfolioRouteImport.update({
-  id: '/portfolio',
-  path: '/portfolio',
-  getParentRoute: () => ExplorerRoute,
+const ExplorerPortfolioIndexRoute = ExplorerPortfolioIndexRouteImport.update({
+  id: '/portfolio/',
+  path: '/portfolio/',
+  getParentRoute: () => ExplorerRouteRoute,
 } as any)
-const ExplorerCalendarRoute = ExplorerCalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
-  getParentRoute: () => ExplorerRoute,
+const ExplorerCalendarIndexRoute = ExplorerCalendarIndexRouteImport.update({
+  id: '/calendar/',
+  path: '/calendar/',
+  getParentRoute: () => ExplorerRouteRoute,
 } as any)
-const CreatorCalendarRoute = CreatorCalendarRouteImport.update({
-  id: '/calendar',
-  path: '/calendar',
-  getParentRoute: () => CreatorRoute,
+const CreatorCalendarIndexRoute = CreatorCalendarIndexRouteImport.update({
+  id: '/calendar/',
+  path: '/calendar/',
+  getParentRoute: () => CreatorRouteRoute,
 } as any)
-const AdminUsersRoute = AdminUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
-  getParentRoute: () => AdminRoute,
+const AdminUsersIndexRoute = AdminUsersIndexRouteImport.update({
+  id: '/users/',
+  path: '/users/',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminSettingsRoute = AdminSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AdminRoute,
+const AdminSettingsIndexRoute = AdminSettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
-const ExplorerProjectProjectIdRoute =
-  ExplorerProjectProjectIdRouteImport.update({
-    id: '/project/$projectId',
-    path: '/project/$projectId',
-    getParentRoute: () => ExplorerRoute,
-  } as any)
 const DemoStartServerFuncsRoute = DemoStartServerFuncsRouteImport.update({
   id: '/demo/start/server-funcs',
   path: '/demo/start/server-funcs',
@@ -126,21 +121,34 @@ const DemoApiNamesRoute = DemoApiNamesRouteImport.update({
   path: '/demo/api/names',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CreatorProjectNewRoute = CreatorProjectNewRouteImport.update({
-  id: '/project/new',
-  path: '/project/new',
-  getParentRoute: () => CreatorRoute,
-} as any)
-const CreatorProjectProjectIdRoute = CreatorProjectProjectIdRouteImport.update({
-  id: '/project/$projectId',
-  path: '/project/$projectId',
-  getParentRoute: () => CreatorRoute,
-} as any)
+const CreatorProjectProjectIdRouteRoute =
+  CreatorProjectProjectIdRouteRouteImport.update({
+    id: '/project/$projectId',
+    path: '/project/$projectId',
+    getParentRoute: () => CreatorRouteRoute,
+  } as any)
+const ExplorerProjectProjectIdIndexRoute =
+  ExplorerProjectProjectIdIndexRouteImport.update({
+    id: '/project/$projectId/',
+    path: '/project/$projectId/',
+    getParentRoute: () => ExplorerRouteRoute,
+  } as any)
 const DemoStartSsrIndexRoute = DemoStartSsrIndexRouteImport.update({
   id: '/demo/start/ssr/',
   path: '/demo/start/ssr/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CreatorProjectNewIndexRoute = CreatorProjectNewIndexRouteImport.update({
+  id: '/project/new/',
+  path: '/project/new/',
+  getParentRoute: () => CreatorRouteRoute,
+} as any)
+const CreatorProjectProjectIdIndexRoute =
+  CreatorProjectProjectIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => CreatorProjectProjectIdRouteRoute,
+  } as any)
 const DemoStartSsrSpaModeRoute = DemoStartSsrSpaModeRouteImport.update({
   id: '/demo/start/ssr/spa-mode',
   path: '/demo/start/ssr/spa-mode',
@@ -156,91 +164,93 @@ const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
   path: '/demo/start/ssr/data-only',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CreatorProjectProjectIdMonitorRoute =
-  CreatorProjectProjectIdMonitorRouteImport.update({
-    id: '/monitor',
-    path: '/monitor',
-    getParentRoute: () => CreatorProjectProjectIdRoute,
+const CreatorProjectProjectIdMonitorIndexRoute =
+  CreatorProjectProjectIdMonitorIndexRouteImport.update({
+    id: '/monitor/',
+    path: '/monitor/',
+    getParentRoute: () => CreatorProjectProjectIdRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
-  '/creator': typeof CreatorRouteWithChildren
-  '/explorer': typeof ExplorerRouteWithChildren
-  '/signin': typeof SigninRoute
-  '/signup': typeof SignupRoute
-  '/admin/settings': typeof AdminSettingsRoute
-  '/admin/users': typeof AdminUsersRoute
-  '/creator/calendar': typeof CreatorCalendarRoute
-  '/explorer/calendar': typeof ExplorerCalendarRoute
-  '/explorer/portfolio': typeof ExplorerPortfolioRoute
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/creator': typeof CreatorRouteRouteWithChildren
+  '/explorer': typeof ExplorerRouteRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/creator/': typeof CreatorIndexRoute
   '/explorer/': typeof ExplorerIndexRoute
-  '/creator/project/$projectId': typeof CreatorProjectProjectIdRouteWithChildren
-  '/creator/project/new': typeof CreatorProjectNewRoute
+  '/signin/': typeof SigninIndexRoute
+  '/signup/': typeof SignupIndexRoute
+  '/creator/project/$projectId': typeof CreatorProjectProjectIdRouteRouteWithChildren
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
-  '/explorer/project/$projectId': typeof ExplorerProjectProjectIdRoute
-  '/creator/project/$projectId/monitor': typeof CreatorProjectProjectIdMonitorRoute
+  '/admin/settings/': typeof AdminSettingsIndexRoute
+  '/admin/users/': typeof AdminUsersIndexRoute
+  '/creator/calendar/': typeof CreatorCalendarIndexRoute
+  '/explorer/calendar/': typeof ExplorerCalendarIndexRoute
+  '/explorer/portfolio/': typeof ExplorerPortfolioIndexRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
+  '/creator/project/$projectId/': typeof CreatorProjectProjectIdIndexRoute
+  '/creator/project/new/': typeof CreatorProjectNewIndexRoute
   '/demo/start/ssr/': typeof DemoStartSsrIndexRoute
+  '/explorer/project/$projectId/': typeof ExplorerProjectProjectIdIndexRoute
+  '/creator/project/$projectId/monitor/': typeof CreatorProjectProjectIdMonitorIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/signin': typeof SigninRoute
-  '/signup': typeof SignupRoute
-  '/admin/settings': typeof AdminSettingsRoute
-  '/admin/users': typeof AdminUsersRoute
-  '/creator/calendar': typeof CreatorCalendarRoute
-  '/explorer/calendar': typeof ExplorerCalendarRoute
-  '/explorer/portfolio': typeof ExplorerPortfolioRoute
   '/admin': typeof AdminIndexRoute
   '/creator': typeof CreatorIndexRoute
   '/explorer': typeof ExplorerIndexRoute
-  '/creator/project/$projectId': typeof CreatorProjectProjectIdRouteWithChildren
-  '/creator/project/new': typeof CreatorProjectNewRoute
+  '/signin': typeof SigninIndexRoute
+  '/signup': typeof SignupIndexRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
-  '/explorer/project/$projectId': typeof ExplorerProjectProjectIdRoute
-  '/creator/project/$projectId/monitor': typeof CreatorProjectProjectIdMonitorRoute
+  '/admin/settings': typeof AdminSettingsIndexRoute
+  '/admin/users': typeof AdminUsersIndexRoute
+  '/creator/calendar': typeof CreatorCalendarIndexRoute
+  '/explorer/calendar': typeof ExplorerCalendarIndexRoute
+  '/explorer/portfolio': typeof ExplorerPortfolioIndexRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
+  '/creator/project/$projectId': typeof CreatorProjectProjectIdIndexRoute
+  '/creator/project/new': typeof CreatorProjectNewIndexRoute
   '/demo/start/ssr': typeof DemoStartSsrIndexRoute
+  '/explorer/project/$projectId': typeof ExplorerProjectProjectIdIndexRoute
+  '/creator/project/$projectId/monitor': typeof CreatorProjectProjectIdMonitorIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRouteWithChildren
-  '/creator': typeof CreatorRouteWithChildren
-  '/explorer': typeof ExplorerRouteWithChildren
-  '/signin': typeof SigninRoute
-  '/signup': typeof SignupRoute
-  '/admin/settings': typeof AdminSettingsRoute
-  '/admin/users': typeof AdminUsersRoute
-  '/creator/calendar': typeof CreatorCalendarRoute
-  '/explorer/calendar': typeof ExplorerCalendarRoute
-  '/explorer/portfolio': typeof ExplorerPortfolioRoute
+  '/admin': typeof AdminRouteRouteWithChildren
+  '/creator': typeof CreatorRouteRouteWithChildren
+  '/explorer': typeof ExplorerRouteRouteWithChildren
   '/admin/': typeof AdminIndexRoute
   '/creator/': typeof CreatorIndexRoute
   '/explorer/': typeof ExplorerIndexRoute
-  '/creator/project/$projectId': typeof CreatorProjectProjectIdRouteWithChildren
-  '/creator/project/new': typeof CreatorProjectNewRoute
+  '/signin/': typeof SigninIndexRoute
+  '/signup/': typeof SignupIndexRoute
+  '/creator/project/$projectId': typeof CreatorProjectProjectIdRouteRouteWithChildren
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
-  '/explorer/project/$projectId': typeof ExplorerProjectProjectIdRoute
-  '/creator/project/$projectId/monitor': typeof CreatorProjectProjectIdMonitorRoute
+  '/admin/settings/': typeof AdminSettingsIndexRoute
+  '/admin/users/': typeof AdminUsersIndexRoute
+  '/creator/calendar/': typeof CreatorCalendarIndexRoute
+  '/explorer/calendar/': typeof ExplorerCalendarIndexRoute
+  '/explorer/portfolio/': typeof ExplorerPortfolioIndexRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
+  '/creator/project/$projectId/': typeof CreatorProjectProjectIdIndexRoute
+  '/creator/project/new/': typeof CreatorProjectNewIndexRoute
   '/demo/start/ssr/': typeof DemoStartSsrIndexRoute
+  '/explorer/project/$projectId/': typeof ExplorerProjectProjectIdIndexRoute
+  '/creator/project/$projectId/monitor/': typeof CreatorProjectProjectIdMonitorIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -249,87 +259,89 @@ export interface FileRouteTypes {
     | '/admin'
     | '/creator'
     | '/explorer'
-    | '/signin'
-    | '/signup'
-    | '/admin/settings'
-    | '/admin/users'
-    | '/creator/calendar'
-    | '/explorer/calendar'
-    | '/explorer/portfolio'
     | '/admin/'
     | '/creator/'
     | '/explorer/'
+    | '/signin/'
+    | '/signup/'
     | '/creator/project/$projectId'
-    | '/creator/project/new'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
-    | '/explorer/project/$projectId'
-    | '/creator/project/$projectId/monitor'
+    | '/admin/settings/'
+    | '/admin/users/'
+    | '/creator/calendar/'
+    | '/explorer/calendar/'
+    | '/explorer/portfolio/'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
+    | '/creator/project/$projectId/'
+    | '/creator/project/new/'
     | '/demo/start/ssr/'
+    | '/explorer/project/$projectId/'
+    | '/creator/project/$projectId/monitor/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
+    | '/creator'
+    | '/explorer'
     | '/signin'
     | '/signup'
+    | '/demo/api/names'
+    | '/demo/start/api-request'
+    | '/demo/start/server-funcs'
     | '/admin/settings'
     | '/admin/users'
     | '/creator/calendar'
     | '/explorer/calendar'
     | '/explorer/portfolio'
-    | '/admin'
-    | '/creator'
-    | '/explorer'
-    | '/creator/project/$projectId'
-    | '/creator/project/new'
-    | '/demo/api/names'
-    | '/demo/start/api-request'
-    | '/demo/start/server-funcs'
-    | '/explorer/project/$projectId'
-    | '/creator/project/$projectId/monitor'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
+    | '/creator/project/$projectId'
+    | '/creator/project/new'
     | '/demo/start/ssr'
+    | '/explorer/project/$projectId'
+    | '/creator/project/$projectId/monitor'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/creator'
     | '/explorer'
-    | '/signin'
-    | '/signup'
-    | '/admin/settings'
-    | '/admin/users'
-    | '/creator/calendar'
-    | '/explorer/calendar'
-    | '/explorer/portfolio'
     | '/admin/'
     | '/creator/'
     | '/explorer/'
+    | '/signin/'
+    | '/signup/'
     | '/creator/project/$projectId'
-    | '/creator/project/new'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
-    | '/explorer/project/$projectId'
-    | '/creator/project/$projectId/monitor'
+    | '/admin/settings/'
+    | '/admin/users/'
+    | '/creator/calendar/'
+    | '/explorer/calendar/'
+    | '/explorer/portfolio/'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
+    | '/creator/project/$projectId/'
+    | '/creator/project/new/'
     | '/demo/start/ssr/'
+    | '/explorer/project/$projectId/'
+    | '/creator/project/$projectId/monitor/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRouteWithChildren
-  CreatorRoute: typeof CreatorRouteWithChildren
-  ExplorerRoute: typeof ExplorerRouteWithChildren
-  SigninRoute: typeof SigninRoute
-  SignupRoute: typeof SignupRoute
+  AdminRouteRoute: typeof AdminRouteRouteWithChildren
+  CreatorRouteRoute: typeof CreatorRouteRouteWithChildren
+  ExplorerRouteRoute: typeof ExplorerRouteRouteWithChildren
+  SigninIndexRoute: typeof SigninIndexRoute
+  SignupIndexRoute: typeof SignupIndexRoute
   DemoApiNamesRoute: typeof DemoApiNamesRoute
   DemoStartApiRequestRoute: typeof DemoStartApiRequestRoute
   DemoStartServerFuncsRoute: typeof DemoStartServerFuncsRoute
@@ -341,39 +353,25 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof SignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/signin': {
-      id: '/signin'
-      path: '/signin'
-      fullPath: '/signin'
-      preLoaderRoute: typeof SigninRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/explorer': {
       id: '/explorer'
       path: '/explorer'
       fullPath: '/explorer'
-      preLoaderRoute: typeof ExplorerRouteImport
+      preLoaderRoute: typeof ExplorerRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/creator': {
       id: '/creator'
       path: '/creator'
       fullPath: '/creator'
-      preLoaderRoute: typeof CreatorRouteImport
+      preLoaderRoute: typeof CreatorRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
       id: '/admin'
       path: '/admin'
       fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
+      preLoaderRoute: typeof AdminRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -383,68 +381,75 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/signup/': {
+      id: '/signup/'
+      path: '/signup'
+      fullPath: '/signup/'
+      preLoaderRoute: typeof SignupIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signin/': {
+      id: '/signin/'
+      path: '/signin'
+      fullPath: '/signin/'
+      preLoaderRoute: typeof SigninIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/explorer/': {
       id: '/explorer/'
       path: '/'
       fullPath: '/explorer/'
       preLoaderRoute: typeof ExplorerIndexRouteImport
-      parentRoute: typeof ExplorerRoute
+      parentRoute: typeof ExplorerRouteRoute
     }
     '/creator/': {
       id: '/creator/'
       path: '/'
       fullPath: '/creator/'
       preLoaderRoute: typeof CreatorIndexRouteImport
-      parentRoute: typeof CreatorRoute
+      parentRoute: typeof CreatorRouteRoute
     }
     '/admin/': {
       id: '/admin/'
       path: '/'
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
-      parentRoute: typeof AdminRoute
+      parentRoute: typeof AdminRouteRoute
     }
-    '/explorer/portfolio': {
-      id: '/explorer/portfolio'
+    '/explorer/portfolio/': {
+      id: '/explorer/portfolio/'
       path: '/portfolio'
-      fullPath: '/explorer/portfolio'
-      preLoaderRoute: typeof ExplorerPortfolioRouteImport
-      parentRoute: typeof ExplorerRoute
+      fullPath: '/explorer/portfolio/'
+      preLoaderRoute: typeof ExplorerPortfolioIndexRouteImport
+      parentRoute: typeof ExplorerRouteRoute
     }
-    '/explorer/calendar': {
-      id: '/explorer/calendar'
+    '/explorer/calendar/': {
+      id: '/explorer/calendar/'
       path: '/calendar'
-      fullPath: '/explorer/calendar'
-      preLoaderRoute: typeof ExplorerCalendarRouteImport
-      parentRoute: typeof ExplorerRoute
+      fullPath: '/explorer/calendar/'
+      preLoaderRoute: typeof ExplorerCalendarIndexRouteImport
+      parentRoute: typeof ExplorerRouteRoute
     }
-    '/creator/calendar': {
-      id: '/creator/calendar'
+    '/creator/calendar/': {
+      id: '/creator/calendar/'
       path: '/calendar'
-      fullPath: '/creator/calendar'
-      preLoaderRoute: typeof CreatorCalendarRouteImport
-      parentRoute: typeof CreatorRoute
+      fullPath: '/creator/calendar/'
+      preLoaderRoute: typeof CreatorCalendarIndexRouteImport
+      parentRoute: typeof CreatorRouteRoute
     }
-    '/admin/users': {
-      id: '/admin/users'
+    '/admin/users/': {
+      id: '/admin/users/'
       path: '/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AdminUsersRouteImport
-      parentRoute: typeof AdminRoute
+      fullPath: '/admin/users/'
+      preLoaderRoute: typeof AdminUsersIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
-    '/admin/settings': {
-      id: '/admin/settings'
+    '/admin/settings/': {
+      id: '/admin/settings/'
       path: '/settings'
-      fullPath: '/admin/settings'
-      preLoaderRoute: typeof AdminSettingsRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/explorer/project/$projectId': {
-      id: '/explorer/project/$projectId'
-      path: '/project/$projectId'
-      fullPath: '/explorer/project/$projectId'
-      preLoaderRoute: typeof ExplorerProjectProjectIdRouteImport
-      parentRoute: typeof ExplorerRoute
+      fullPath: '/admin/settings/'
+      preLoaderRoute: typeof AdminSettingsIndexRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/demo/start/server-funcs': {
       id: '/demo/start/server-funcs'
@@ -467,19 +472,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoApiNamesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/creator/project/new': {
-      id: '/creator/project/new'
-      path: '/project/new'
-      fullPath: '/creator/project/new'
-      preLoaderRoute: typeof CreatorProjectNewRouteImport
-      parentRoute: typeof CreatorRoute
-    }
     '/creator/project/$projectId': {
       id: '/creator/project/$projectId'
       path: '/project/$projectId'
       fullPath: '/creator/project/$projectId'
-      preLoaderRoute: typeof CreatorProjectProjectIdRouteImport
-      parentRoute: typeof CreatorRoute
+      preLoaderRoute: typeof CreatorProjectProjectIdRouteRouteImport
+      parentRoute: typeof CreatorRouteRoute
+    }
+    '/explorer/project/$projectId/': {
+      id: '/explorer/project/$projectId/'
+      path: '/project/$projectId'
+      fullPath: '/explorer/project/$projectId/'
+      preLoaderRoute: typeof ExplorerProjectProjectIdIndexRouteImport
+      parentRoute: typeof ExplorerRouteRoute
     }
     '/demo/start/ssr/': {
       id: '/demo/start/ssr/'
@@ -487,6 +492,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/demo/start/ssr/'
       preLoaderRoute: typeof DemoStartSsrIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/creator/project/new/': {
+      id: '/creator/project/new/'
+      path: '/project/new'
+      fullPath: '/creator/project/new/'
+      preLoaderRoute: typeof CreatorProjectNewIndexRouteImport
+      parentRoute: typeof CreatorRouteRoute
+    }
+    '/creator/project/$projectId/': {
+      id: '/creator/project/$projectId/'
+      path: '/'
+      fullPath: '/creator/project/$projectId/'
+      preLoaderRoute: typeof CreatorProjectProjectIdIndexRouteImport
+      parentRoute: typeof CreatorProjectProjectIdRouteRoute
     }
     '/demo/start/ssr/spa-mode': {
       id: '/demo/start/ssr/spa-mode'
@@ -509,86 +528,93 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoStartSsrDataOnlyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/creator/project/$projectId/monitor': {
-      id: '/creator/project/$projectId/monitor'
+    '/creator/project/$projectId/monitor/': {
+      id: '/creator/project/$projectId/monitor/'
       path: '/monitor'
-      fullPath: '/creator/project/$projectId/monitor'
-      preLoaderRoute: typeof CreatorProjectProjectIdMonitorRouteImport
-      parentRoute: typeof CreatorProjectProjectIdRoute
+      fullPath: '/creator/project/$projectId/monitor/'
+      preLoaderRoute: typeof CreatorProjectProjectIdMonitorIndexRouteImport
+      parentRoute: typeof CreatorProjectProjectIdRouteRoute
     }
   }
 }
 
-interface AdminRouteChildren {
-  AdminSettingsRoute: typeof AdminSettingsRoute
-  AdminUsersRoute: typeof AdminUsersRoute
+interface AdminRouteRouteChildren {
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminSettingsIndexRoute: typeof AdminSettingsIndexRoute
+  AdminUsersIndexRoute: typeof AdminUsersIndexRoute
 }
 
-const AdminRouteChildren: AdminRouteChildren = {
-  AdminSettingsRoute: AdminSettingsRoute,
-  AdminUsersRoute: AdminUsersRoute,
+const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminIndexRoute: AdminIndexRoute,
+  AdminSettingsIndexRoute: AdminSettingsIndexRoute,
+  AdminUsersIndexRoute: AdminUsersIndexRoute,
 }
 
-const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
+  AdminRouteRouteChildren,
+)
 
-interface CreatorProjectProjectIdRouteChildren {
-  CreatorProjectProjectIdMonitorRoute: typeof CreatorProjectProjectIdMonitorRoute
+interface CreatorProjectProjectIdRouteRouteChildren {
+  CreatorProjectProjectIdIndexRoute: typeof CreatorProjectProjectIdIndexRoute
+  CreatorProjectProjectIdMonitorIndexRoute: typeof CreatorProjectProjectIdMonitorIndexRoute
 }
 
-const CreatorProjectProjectIdRouteChildren: CreatorProjectProjectIdRouteChildren =
+const CreatorProjectProjectIdRouteRouteChildren: CreatorProjectProjectIdRouteRouteChildren =
   {
-    CreatorProjectProjectIdMonitorRoute: CreatorProjectProjectIdMonitorRoute,
+    CreatorProjectProjectIdIndexRoute: CreatorProjectProjectIdIndexRoute,
+    CreatorProjectProjectIdMonitorIndexRoute:
+      CreatorProjectProjectIdMonitorIndexRoute,
   }
 
-const CreatorProjectProjectIdRouteWithChildren =
-  CreatorProjectProjectIdRoute._addFileChildren(
-    CreatorProjectProjectIdRouteChildren,
+const CreatorProjectProjectIdRouteRouteWithChildren =
+  CreatorProjectProjectIdRouteRoute._addFileChildren(
+    CreatorProjectProjectIdRouteRouteChildren,
   )
 
-interface CreatorRouteChildren {
-  CreatorCalendarRoute: typeof CreatorCalendarRoute
+interface CreatorRouteRouteChildren {
   CreatorIndexRoute: typeof CreatorIndexRoute
-  CreatorProjectProjectIdRoute: typeof CreatorProjectProjectIdRouteWithChildren
-  CreatorProjectNewRoute: typeof CreatorProjectNewRoute
+  CreatorProjectProjectIdRouteRoute: typeof CreatorProjectProjectIdRouteRouteWithChildren
+  CreatorCalendarIndexRoute: typeof CreatorCalendarIndexRoute
+  CreatorProjectNewIndexRoute: typeof CreatorProjectNewIndexRoute
 }
 
-const CreatorRouteChildren: CreatorRouteChildren = {
-  CreatorCalendarRoute: CreatorCalendarRoute,
+const CreatorRouteRouteChildren: CreatorRouteRouteChildren = {
   CreatorIndexRoute: CreatorIndexRoute,
-  CreatorProjectProjectIdRoute: CreatorProjectProjectIdRouteWithChildren,
-  CreatorProjectNewRoute: CreatorProjectNewRoute,
+  CreatorProjectProjectIdRouteRoute:
+    CreatorProjectProjectIdRouteRouteWithChildren,
+  CreatorCalendarIndexRoute: CreatorCalendarIndexRoute,
+  CreatorProjectNewIndexRoute: CreatorProjectNewIndexRoute,
 }
 
-const CreatorRouteWithChildren =
-  CreatorRoute._addFileChildren(CreatorRouteChildren)
+const CreatorRouteRouteWithChildren = CreatorRouteRoute._addFileChildren(
+  CreatorRouteRouteChildren,
+)
 
-interface ExplorerRouteChildren {
-  ExplorerCalendarRoute: typeof ExplorerCalendarRoute
-  ExplorerPortfolioRoute: typeof ExplorerPortfolioRoute
+interface ExplorerRouteRouteChildren {
   ExplorerIndexRoute: typeof ExplorerIndexRoute
-  ExplorerProjectProjectIdRoute: typeof ExplorerProjectProjectIdRoute
+  ExplorerCalendarIndexRoute: typeof ExplorerCalendarIndexRoute
+  ExplorerPortfolioIndexRoute: typeof ExplorerPortfolioIndexRoute
+  ExplorerProjectProjectIdIndexRoute: typeof ExplorerProjectProjectIdIndexRoute
 }
 
-const ExplorerRouteChildren: ExplorerRouteChildren = {
-  ExplorerCalendarRoute: ExplorerCalendarRoute,
-  ExplorerPortfolioRoute: ExplorerPortfolioRoute,
+const ExplorerRouteRouteChildren: ExplorerRouteRouteChildren = {
   ExplorerIndexRoute: ExplorerIndexRoute,
-  ExplorerProjectProjectIdRoute: ExplorerProjectProjectIdRoute,
+  ExplorerCalendarIndexRoute: ExplorerCalendarIndexRoute,
+  ExplorerPortfolioIndexRoute: ExplorerPortfolioIndexRoute,
+  ExplorerProjectProjectIdIndexRoute: ExplorerProjectProjectIdIndexRoute,
 }
 
-const ExplorerRouteWithChildren = ExplorerRoute._addFileChildren(
-  ExplorerRouteChildren,
+const ExplorerRouteRouteWithChildren = ExplorerRouteRoute._addFileChildren(
+  ExplorerRouteRouteChildren,
 )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRouteWithChildren,
-  CreatorRoute: CreatorRouteWithChildren,
-  ExplorerRoute: ExplorerRouteWithChildren,
-  SigninRoute: SigninRoute,
-  SignupRoute: SignupRoute,
+  AdminRouteRoute: AdminRouteRouteWithChildren,
+  CreatorRouteRoute: CreatorRouteRouteWithChildren,
+  ExplorerRouteRoute: ExplorerRouteRouteWithChildren,
+  SigninIndexRoute: SigninIndexRoute,
+  SignupIndexRoute: SignupIndexRoute,
   DemoApiNamesRoute: DemoApiNamesRoute,
   DemoStartApiRequestRoute: DemoStartApiRequestRoute,
   DemoStartServerFuncsRoute: DemoStartServerFuncsRoute,

@@ -4,9 +4,10 @@ import { v4 as uuidv4 } from 'uuid'
 import { db } from '@/db'
 import {
   chatMessages,
+  chatRooms,
+  chatRoomMembers,
   messageReactions,
   floatingBotMessages,
-  teamMembers,
   teams,
   aiPersonas,
 } from '@/db/schema'
@@ -14,24 +15,90 @@ import { z } from 'zod'
 
 // Validation schemas
 const sendMessageSchema = z.object({
-  teamId: z.string(),
+  roomId: z.string(),
   userId: z.string().optional(), // null for AI messages
   personaId: z.string().optional(), // for AI messages
   content: z.string().min(1).max(10000),
   type: z.enum(['text', 'artifact_share', 'system', 'ai_intervention']).default('text'),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
   replyToId: z.string().optional(),
 })
 
 const getMessagesSchema = z.object({
-  teamId: z.string(),
+  roomId: z.string(),
   limit: z.number().int().min(1).max(100).default(50),
   before: z.string().optional(), // message ID to paginate before
   after: z.string().optional(), // message ID to paginate after
 })
 
+const getOrCreateRoomSchema = z.object({
+  projectId: z.string(),
+  userId: z.string(),
+  roomName: z.string().optional(),
+})
+
 /**
- * Send a message
+ * Get or create a chat room for a project.
+ * Adds the user as a member if not already in the room.
+ */
+export const getOrCreateRoom = createServerFn({ method: 'POST' })
+  .inputValidator((data: unknown) => getOrCreateRoomSchema.parse(data))
+  .handler(async ({ data }) => {
+    try {
+      // Look for existing room for this project
+      const existingRoom = await db.query.chatRooms.findFirst({
+        where: eq(chatRooms.projectId, data.projectId),
+      })
+
+      let roomId: string
+
+      if (existingRoom) {
+        roomId = existingRoom.id
+      } else {
+        // Create a new room
+        roomId = uuidv4()
+        const now = new Date()
+        await db.insert(chatRooms).values({
+          id: roomId,
+          projectId: data.projectId,
+          name: data.roomName || 'Group Chat',
+          createdAt: now,
+          updatedAt: now,
+        })
+      }
+
+      // Ensure the user is a member of this room
+      const existingMember = await db.query.chatRoomMembers.findFirst({
+        where: and(
+          eq(chatRoomMembers.roomId, roomId),
+          eq(chatRoomMembers.userId, data.userId),
+        ),
+      })
+
+      if (!existingMember) {
+        await db.insert(chatRoomMembers).values({
+          roomId,
+          userId: data.userId,
+          joinedAt: new Date(),
+        })
+      }
+
+      return {
+        success: true,
+        room: {
+          id: roomId,
+          projectId: data.projectId,
+          name: existingRoom?.name || data.roomName || 'Group Chat',
+        },
+      }
+    } catch (error) {
+      console.error('Get or create room error:', error)
+      return { success: false, error: 'Failed to get or create room' }
+    }
+  })
+
+/**
+ * Send a message to a room
  */
 export const sendMessage = createServerFn({ method: 'POST' })
   .inputValidator((data: unknown) => sendMessageSchema.parse(data))
@@ -42,7 +109,7 @@ export const sendMessage = createServerFn({ method: 'POST' })
 
       await db.insert(chatMessages).values({
         id: messageId,
-        teamId: data.teamId,
+        roomId: data.roomId,
         userId: data.userId,
         personaId: data.personaId,
         content: data.content,
@@ -109,14 +176,14 @@ export const sendMessage = createServerFn({ method: 'POST' })
   })
 
 /**
- * Get messages for a team
+ * Get messages for a room
  */
 export const getMessages = createServerFn({ method: 'GET' })
   .inputValidator((data: unknown) => getMessagesSchema.parse(data))
   .handler(async ({ data }) => {
     try {
       // Build where clause for pagination
-      let whereClause = eq(chatMessages.teamId, data.teamId)
+      let whereClause = eq(chatMessages.roomId, data.roomId)
 
       if (data.before) {
         const beforeMsg = await db.query.chatMessages.findFirst({
@@ -124,7 +191,7 @@ export const getMessages = createServerFn({ method: 'GET' })
         })
         if (beforeMsg) {
           whereClause = and(
-            eq(chatMessages.teamId, data.teamId),
+            eq(chatMessages.roomId, data.roomId),
             lt(chatMessages.createdAt, beforeMsg.createdAt)
           )!
         }
@@ -136,7 +203,7 @@ export const getMessages = createServerFn({ method: 'GET' })
         })
         if (afterMsg) {
           whereClause = and(
-            eq(chatMessages.teamId, data.teamId),
+            eq(chatMessages.roomId, data.roomId),
             gt(chatMessages.createdAt, afterMsg.createdAt)
           )!
         }

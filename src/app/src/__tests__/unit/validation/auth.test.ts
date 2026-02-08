@@ -225,7 +225,6 @@ describe('Auth validation schemas', () => {
       const data = {
         name: 'New Name',
         avatarUrl: 'https://example.com/avatar.jpg',
-        hallOfFameOptIn: true,
       }
 
       const result = updateProfileSchema.safeParse(data)

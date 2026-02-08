@@ -527,13 +527,6 @@ test.describe('Explorer Portfolio', () => {
     }
   })
 
-  test('should show Hall of Fame opt-in toggle', async ({ page }) => {
-    const hallOfFameToggle = page.locator('text=/hall of fame|leaderboard|opt/i').first()
-
-    if (await hallOfFameToggle.isVisible({ timeout: 5000 })) {
-      await expect(hallOfFameToggle).toBeVisible()
-    }
-  })
 })
 
 test.describe('Explorer Navigation', () => {

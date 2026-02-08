@@ -34,7 +34,6 @@ export function setupTestDb() {
       role TEXT DEFAULT 'explorer' NOT NULL,
       xp INTEGER DEFAULT 0 NOT NULL,
       level INTEGER DEFAULT 1 NOT NULL,
-      hall_of_fame_opt_in INTEGER DEFAULT 0 NOT NULL,
       anonymized_name TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
@@ -131,7 +130,6 @@ export function setupTestDb() {
       criteria TEXT NOT NULL,
       description TEXT,
       weight REAL DEFAULT 1 NOT NULL,
-      max_score INTEGER DEFAULT 100 NOT NULL,
       "order" INTEGER DEFAULT 0 NOT NULL,
       created_at INTEGER NOT NULL,
       FOREIGN KEY (session_id) REFERENCES project_sessions(id) ON DELETE CASCADE
@@ -372,18 +370,6 @@ export function setupTestDb() {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
       FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
     );`,
-    `CREATE TABLE IF NOT EXISTS hall_of_fame_entries (
-      id TEXT PRIMARY KEY NOT NULL,
-      user_id TEXT NOT NULL,
-      month TEXT NOT NULL,
-      rank INTEGER NOT NULL,
-      xp_earned INTEGER NOT NULL,
-      competency_growth REAL NOT NULL,
-      projects_completed INTEGER NOT NULL,
-      total_score REAL NOT NULL,
-      created_at INTEGER NOT NULL,
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    );`,
     `CREATE TABLE IF NOT EXISTS notifications (
       id TEXT PRIMARY KEY NOT NULL,
       user_id TEXT NOT NULL,
@@ -485,7 +471,6 @@ export function clearTestDb() {
     DELETE FROM projects;
     DELETE FROM xp_transactions;
     DELETE FROM feedback_history;
-    DELETE FROM hall_of_fame_entries;
     DELETE FROM experience_synthesis;
     DELETE FROM competency_scores;
     DELETE FROM user_badges;

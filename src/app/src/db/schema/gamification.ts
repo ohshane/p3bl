@@ -79,19 +79,6 @@ export const feedbackHistory = sqliteTable('feedback_history', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 })
 
-// Hall of Fame entries (monthly snapshots)
-export const hallOfFameEntries = sqliteTable('hall_of_fame_entries', {
-  id: text('id').primaryKey(),
-  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  month: text('month').notNull(), // Format: "2024-01"
-  rank: integer('rank').notNull(),
-  xpEarned: integer('xp_earned').notNull(),
-  competencyGrowth: real('competency_growth').notNull(),
-  projectsCompleted: integer('projects_completed').notNull(),
-  totalScore: real('total_score').notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
-})
-
 // Relations
 export const badgesRelations = relations(badges, ({ many }) => ({
   userBadges: many(userBadges),
@@ -141,12 +128,5 @@ export const feedbackHistoryRelations = relations(feedbackHistory, ({ one }) => 
   project: one(projects, {
     fields: [feedbackHistory.projectId],
     references: [projects.id],
-  }),
-}))
-
-export const hallOfFameEntriesRelations = relations(hallOfFameEntries, ({ one }) => ({
-  user: one(users, {
-    fields: [hallOfFameEntries.userId],
-    references: [users.id],
   }),
 }))

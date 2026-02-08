@@ -37,10 +37,11 @@ export function RichTextEditor({ value, onChange }: RichTextEditorProps) {
     },
   })
 
-  // Sync external value changes
+  // Sync external value changes (e.g. loading saved content)
+  // emitUpdate: false prevents triggering onUpdate -> onChange -> setEditorContent loop
   useEffect(() => {
     if (editor && value !== editor.getHTML()) {
-      editor.commands.setContent(value)
+      editor.commands.setContent(value, { emitUpdate: false })
     }
   }, [value, editor])
 

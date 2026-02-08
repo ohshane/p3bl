@@ -29,13 +29,14 @@ import {
   addRubric as apiAddRubric,
   addResource as apiAddResource,
   addTemplate as apiAddTemplate,
+  removeParticipant as apiRemoveParticipant,
 } from '@/server/api'
 
 // Default wizard state
 const defaultWizardState: WizardState = {
   mode: 'keyword',
   currentStep: 1,
-  totalSteps: 7,
+  totalSteps: 6,
   uploadedFiles: [],
   ragProcessingStatus: 'idle',
   basicInfo: {
@@ -59,20 +60,23 @@ const defaultWizardState: WizardState = {
 
 // Difficulty to weight mapping
 const DIFFICULTY_WEIGHTS: Record<'easy' | 'medium' | 'hard', number> = {
-  easy: 70,
+  easy: 60,
   medium: 100,
   hard: 140,
 }
 
 // Helper to create default session
-function createDefaultSession(index: number): Omit<CreatorSession, 'id'> {
+function createDefaultSession(
+  index: number,
+  difficulty: SessionDifficulty = 'medium'
+): Omit<CreatorSession, 'id'> {
   return {
     index,
     title: `Session ${index + 1}`,
     topic: '',
     guide: '',
-    difficulty: 'medium',
-    weight: DIFFICULTY_WEIGHTS.medium,
+    difficulty,
+    weight: DIFFICULTY_WEIGHTS[difficulty],
     startDate: '',
     endDate: '',
     deliverableType: 'document',
@@ -122,6 +126,9 @@ interface CreatorState {
   
   // Wizard state
   wizardState: WizardState
+
+  // Persisted defaults
+  lastSessionDifficulty: SessionDifficulty
   
   // UI State
   currentProjectId: string | null
@@ -163,6 +170,7 @@ interface CreatorState {
   setSelectedAIPersonas: (ids: string[]) => void
   updateParticipantParams: (params: Partial<WizardState['participantParams']>) => void
   setTimeline: (timeline: WizardState['timeline']) => void
+  setLastSessionDifficulty: (difficulty: SessionDifficulty) => void
   addSession: () => void
   updateSession: (index: number, updates: Partial<Omit<CreatorSession, 'id'>>) => void
   removeSession: (index: number) => void
@@ -181,6 +189,7 @@ interface CreatorState {
   regenerateJoinCode: (projectId: string, creatorId: string) => Promise<string | null>
   
   // Team actions
+  removeParticipant: (projectId: string, userId: string) => Promise<boolean>
   updateTeamRisk: (projectId: string, teamId: string, riskLevel: 'green' | 'yellow' | 'red', reason: string | null) => void
   
   // Intervention actions (now async)
@@ -221,6 +230,8 @@ export const useCreatorStore = create<CreatorState>()(
       error: null,
       
       wizardState: { ...defaultWizardState },
+
+      lastSessionDifficulty: 'medium',
       
       currentProjectId: null,
       activeView: 'dashboard',
@@ -303,21 +314,30 @@ export const useCreatorStore = create<CreatorState>()(
               teamFormationMode: 'automatic' as const,
               startDate: p.startDate || '',
               endDate: p.endDate || '',
-              sessions: p.sessions?.map((s: any, idx: number) => ({
-                id: s.id,
-                index: s.order || idx,
-                title: s.title,
-                topic: s.topic || '',
-                guide: s.guide || '',
-                weight: 100,
-                startDate: s.startDate || '',
-                endDate: s.endDate || '',
-                deliverableType: s.deliverableType || 'document',
-                rubric: [],
-                resources: [],
-                templates: [],
-                llmModel: 'gpt-4',
-              })) || [],
+              sessions: p.sessions?.map((s: any, idx: number) => {
+                const difficulty = s.difficulty || 'medium'
+                return {
+                  id: s.id,
+                  index: s.order || idx,
+                  title: s.title,
+                  topic: s.topic || '',
+                  guide: s.guide || '',
+                  difficulty,
+                  weight: s.weight ?? DIFFICULTY_WEIGHTS[difficulty as SessionDifficulty],
+                  startDate: s.startDate || '',
+                  endDate: s.endDate || '',
+                  deliverableType: s.deliverableType || 'document',
+                  rubric: (s.rubrics || []).map((r: any) => ({
+                    id: r.id,
+                    criterion: r.criteria,
+                    description: r.description || '',
+                    weight: r.weight,
+                  })),
+                  resources: [],
+                  templates: [],
+                  llmModel: s.llmModel || 'gpt-4',
+                }
+              }) || [],
               teams: [], // Will be populated by fetchLiveMatrix
               aiPersonaIds: [],
               expertIds: [],
@@ -525,15 +545,15 @@ export const useCreatorStore = create<CreatorState>()(
           }
         }
         
-        // Step 4: Teams validation
-        if (step === 4) {
+        // Step 3: Teams validation
+        if (step === 3) {
           if (wizardState.participantParams.projectMode === 'team' && wizardState.participantParams.teamSize < 2) {
             return { success: false, error: 'Team size must be at least 2' }
           }
         }
         
-        // Step 5: Timeline validation
-        if (step === 5) {
+        // Step 4: Timeline validation
+        if (step === 4) {
           if (!wizardState.timeline.startDate) {
             return { success: false, error: 'Start date is required' }
           }
@@ -542,10 +562,19 @@ export const useCreatorStore = create<CreatorState>()(
           }
         }
         
-        // Step 6: Sessions validation
-        if (step === 6) {
+        // Step 5: Sessions validation
+        if (step === 5) {
           if (wizardState.sessions.length === 0) {
             return { success: false, error: 'At least one session is required' }
+          }
+          // Validate rubric weights sum to 100% for sessions with deliverables
+          for (const session of wizardState.sessions) {
+            if (session.deliverableType !== 'none' && session.rubric.length > 0) {
+              const totalWeight = session.rubric.reduce((sum, r) => sum + r.weight, 0)
+              if (totalWeight !== 100) {
+                return { success: false, error: `Rubric weights for "${session.title || 'Untitled session'}" must add up to 100% (currently ${totalWeight}%)` }
+              }
+            }
           }
         }
         
@@ -596,6 +625,10 @@ export const useCreatorStore = create<CreatorState>()(
           wizardState: { ...state.wizardState, timeline },
         }))
       },
+
+      setLastSessionDifficulty: (difficulty: SessionDifficulty) => {
+        set({ lastSessionDifficulty: difficulty })
+      },
       
       addSession: () => {
         set(state => {
@@ -603,7 +636,10 @@ export const useCreatorStore = create<CreatorState>()(
           return {
             wizardState: {
               ...state.wizardState,
-              sessions: [...state.wizardState.sessions, createDefaultSession(newIndex)],
+              sessions: [
+                ...state.wizardState.sessions,
+                createDefaultSession(newIndex, state.lastSessionDifficulty),
+              ],
             },
           }
         })
@@ -623,6 +659,10 @@ export const useCreatorStore = create<CreatorState>()(
               return { ...s, ...newUpdates }
             }),
           },
+          lastSessionDifficulty:
+            updates.difficulty && updates.difficulty !== state.wizardState.sessions[index]?.difficulty
+              ? (updates.difficulty as SessionDifficulty)
+              : state.lastSessionDifficulty,
         }))
       },
       
@@ -643,6 +683,10 @@ export const useCreatorStore = create<CreatorState>()(
             ...state.wizardState,
             sessions: sessions.map((s, i) => ({ ...s, index: i })),
           },
+          lastSessionDifficulty:
+            sessions.length > 0
+              ? (sessions[sessions.length - 1].difficulty as SessionDifficulty)
+              : state.lastSessionDifficulty,
         }))
       },
       
@@ -661,7 +705,11 @@ export const useCreatorStore = create<CreatorState>()(
             sessions: data.sessions,
             isValid: true,
             validationErrors: {},
-          }
+          },
+          lastSessionDifficulty:
+            data.sessions.length > 0
+              ? (data.sessions[data.sessions.length - 1].difficulty as SessionDifficulty)
+              : state.lastSessionDifficulty,
         }))
       },
       
@@ -748,6 +796,7 @@ export const useCreatorStore = create<CreatorState>()(
                     topic: session.topic,
                     guide: session.guide,
                     weight: session.weight,
+                    difficulty: session.difficulty,
                     deliverableType: session.deliverableType,
                     startDate: session.startDate,
                     endDate: session.endDate,
@@ -766,7 +815,6 @@ export const useCreatorStore = create<CreatorState>()(
                         criteria: rubric.criterion,
                         description: rubric.description,
                         weight: rubric.weight,
-                        maxScore: rubric.maxScore,
                       },
                     })
                   }
@@ -884,6 +932,22 @@ export const useCreatorStore = create<CreatorState>()(
       },
       
       // Team actions
+      removeParticipant: async (projectId: string, userId: string) => {
+        try {
+          const result = await apiRemoveParticipant({ data: { projectId, userId } })
+          if (result.success) {
+            // Refresh participants and live matrix
+            await get().fetchParticipants(projectId)
+            await get().fetchLiveMatrix(projectId)
+            return true
+          }
+          return false
+        } catch (error) {
+          console.error('Failed to remove participant:', error)
+          return false
+        }
+      },
+      
       updateTeamRisk: (projectId: string, teamId: string, riskLevel: 'green' | 'yellow' | 'red', reason: string | null) => {
         set(state => ({
           projects: state.projects.map(p =>
@@ -995,6 +1059,7 @@ export const useCreatorStore = create<CreatorState>()(
       partialize: (state) => ({
         wizardState: state.wizardState,
         currentProjectId: state.currentProjectId,
+        lastSessionDifficulty: state.lastSessionDifficulty,
         // Don't persist projects - fetch fresh from API
       }),
     }

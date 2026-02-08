@@ -17,18 +17,14 @@ function CreatorLayout() {
     }
   }, [isAuthenticated, navigate])
 
-  // Check if user is a creator or pioneer (admins should use /admin)
+  // Redirect explorers to /explorer (admins, creators, and pioneers can access)
   useEffect(() => {
-    if (currentUser && currentUser.role !== 'creator' && currentUser.role !== 'pioneer') {
-      if (currentUser.role === 'admin') {
-        navigate({ to: '/admin' })
-      } else {
-        navigate({ to: '/explorer' })
-      }
+    if (currentUser && currentUser.role === 'explorer') {
+      navigate({ to: '/explorer' })
     }
   }, [currentUser, navigate])
 
-  if (!currentUser || (currentUser.role !== 'creator' && currentUser.role !== 'pioneer')) {
+  if (!currentUser || currentUser.role === 'explorer') {
     return null
   }
 

@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { differenceInMinutes, addMinutes, format } from "date-fns";
 import { useCreatorStore } from "@/stores/creatorStore";
+import { useAuthStore } from "@/stores/authStore";
+import { updateUser } from "@/server/api";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -150,7 +152,7 @@ For each session, provide:
 - difficulty: "easy", "medium", or "hard"
 - guide: Detailed instructions for students (2-3 paragraphs)
 - deliverableType: "none" or "document" based on the project nature and divergence level
-- rubric: Array of 3-4 criteria, each with criterion name, description, maxScore (25), and weight (25)`;
+ - rubric: Array of 3-4 criteria, each with criterion name, description, and weight (integer percentage 0-100, no decimals, weights must sum to exactly 100)`;
 
 // JSON schema for structured session output
 const SESSION_RESPONSE_SCHEMA = {
@@ -173,10 +175,9 @@ const SESSION_RESPONSE_SCHEMA = {
               properties: {
                 criterion: { type: "string" },
                 description: { type: "string" },
-                maxScore: { type: "number" },
-                weight: { type: "number" }
+                weight: { type: "integer", minimum: 0, maximum: 100 }
               },
-              required: ["criterion", "description", "maxScore", "weight"],
+              required: ["criterion", "description", "weight"],
               additionalProperties: false
             }
           }
@@ -299,7 +300,6 @@ Create a well-structured learning journey that helps students answer the driving
       rubric: (s.rubric || []).map((r: any) => ({
         criterion: r.criterion || "",
         description: r.description || "",
-        maxScore: r.maxScore || 25,
         weight: r.weight || 25,
       })),
     }));
@@ -326,6 +326,7 @@ function getRecommendedSessionCount(minutes: number): number {
 export function VariableSessionBuilder() {
   const { wizardState, addSession, updateSession, removeSession, setSessions } =
     useCreatorStore();
+  const { currentUser, setUser } = useAuthStore();
   const { sessions, timeline, basicInfo, validationErrors } = wizardState;
 
   const [expandedSession, setExpandedSession] = useState<number | null>(null);
@@ -355,6 +356,31 @@ export function VariableSessionBuilder() {
   // Session count state with recommended default
   const [sessionCount, setSessionCount] = useState(() =>
     getRecommendedSessionCount(totalMinutes),
+  );
+
+  const persistDefaultDifficulty = useCallback(
+    async (difficulty: SessionDifficulty) => {
+      if (!currentUser?.id) return;
+      try {
+        const result = await updateUser({
+          data: {
+            userId: currentUser.id,
+            defaultSessionDifficulty: difficulty,
+          },
+        });
+
+        if (result.success) {
+          setUser({
+            ...currentUser,
+            defaultSessionDifficulty:
+              result.user.defaultSessionDifficulty ?? difficulty,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to save default session difficulty:", error);
+      }
+    },
+    [currentUser, setUser],
   );
 
   // Calculate normalized weights and session dates
@@ -638,12 +664,14 @@ export function VariableSessionBuilder() {
   // Rubric management
   const addRubricItem = (sessionIndex: number) => {
     const currentRubric = sessions[sessionIndex].rubric || [];
+    // Calculate remaining weight to distribute
+    const usedWeight = currentRubric.reduce((sum, r) => sum + r.weight, 0);
+    const remainingWeight = Math.max(0, 100 - usedWeight);
     const newItem: RubricItem = {
       id: `rubric_${Date.now()}`,
       criterion: "",
       description: "",
-      maxScore: 25,
-      weight: 25,
+      weight: remainingWeight,
     };
     updateSession(sessionIndex, { rubric: [...currentRubric, newItem] });
   };
@@ -1060,9 +1088,10 @@ export function VariableSessionBuilder() {
                       {DIFFICULTY_OPTIONS.map((opt) => (
                         <button
                           key={opt.value}
-                          onClick={() =>
-                            updateSession(index, { difficulty: opt.value })
-                          }
+                          onClick={() => {
+                            updateSession(index, { difficulty: opt.value });
+                            persistDefaultDifficulty(opt.value);
+                          }}
                           className={cn(
                             "flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all border",
                             session.difficulty === opt.value
@@ -1111,6 +1140,7 @@ export function VariableSessionBuilder() {
                             onClick={() =>
                               updateSession(index, {
                                 deliverableType: type.value,
+                                ...(type.value === 'none' ? { rubric: [] } : {}),
                               })
                             }
                             className={cn(
@@ -1128,12 +1158,28 @@ export function VariableSessionBuilder() {
                     </div>
                   </div>
 
-                  {/* Rubric - Modern Card Design */}
-                  <div className="rounded-xl border border-border bg-muted/30 p-4 mt-6">
+                  {/* Rubric - Modern Card Design (only shown when deliverable type is not 'none') */}
+                  {session.deliverableType !== 'none' && (() => {
+                    const totalWeight = session.rubric.reduce((sum, r) => sum + r.weight, 0);
+                    const isWeightValid = session.rubric.length === 0 || totalWeight === 100;
+                    return (
+                    <div className="rounded-xl border border-border bg-muted/30 p-4 mt-6">
                     <div className="flex items-center justify-between mb-4">
-                      <label className="text-sm font-medium text-foreground">
-                        Rubric Criteria
-                      </label>
+                      <div className="flex items-center gap-3">
+                        <label className="text-sm font-medium text-foreground">
+                          Rubric Criteria
+                        </label>
+                        {session.rubric.length > 0 && (
+                          <span className={cn(
+                            "text-xs font-medium px-2 py-0.5 rounded-full",
+                            isWeightValid
+                              ? "bg-emerald-500/10 text-emerald-500"
+                              : "bg-red-500/10 text-red-500"
+                          )}>
+                            {totalWeight}% / 100%
+                          </span>
+                        )}
+                      </div>
                       <button
                         onClick={() => addRubricItem(index)}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border/50 bg-background hover:bg-accent/50 transition-colors"
@@ -1185,38 +1231,25 @@ export function VariableSessionBuilder() {
                                   placeholder="Description"
                                   className="bg-background border-border/50 text-sm"
                                 />
-                                <div className="flex gap-2">
-                                  <div className="flex-1">
-                                    <label className="text-xs text-muted-foreground mb-1 block">
-                                      Max Score
-                                    </label>
-                                    <Input
-                                      type="number"
-                                      value={item.maxScore}
-                                      onChange={(e) =>
-                                        updateRubricItem(index, rubricIndex, {
-                                          maxScore:
-                                            parseInt(e.target.value) || 0,
-                                        })
-                                      }
-                                      className="bg-background border-border/50 text-sm"
-                                    />
-                                  </div>
-                                  <div className="flex-1">
-                                    <label className="text-xs text-muted-foreground mb-1 block">
-                                      Weight %
-                                    </label>
-                                    <Input
-                                      type="number"
-                                      value={item.weight}
-                                      onChange={(e) =>
-                                        updateRubricItem(index, rubricIndex, {
-                                          weight: parseInt(e.target.value) || 0,
-                                        })
-                                      }
-                                      className="bg-background border-border/50 text-sm"
-                                    />
-                                  </div>
+                                <div>
+                                  <label className="text-xs text-muted-foreground mb-1 block">
+                                    Weight %
+                                  </label>
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    value={item.weight}
+                                    onChange={(e) =>
+                                      updateRubricItem(index, rubricIndex, {
+                                        weight: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)),
+                                      })
+                                    }
+                                    className={cn(
+                                      "bg-background border-border/50 text-sm w-24",
+                                      !isWeightValid && "border-red-500/50"
+                                    )}
+                                  />
                                 </div>
                               </div>
                               <button
@@ -1230,9 +1263,16 @@ export function VariableSessionBuilder() {
                             </div>
                           </div>
                         ))}
+                        {!isWeightValid && (
+                          <p className="text-xs text-red-500 mt-2">
+                            Weights must add up to 100% (currently {totalWeight}%)
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
+                  );
+                  })()}
                 </div>
               )}
             </div>

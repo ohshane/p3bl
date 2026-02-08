@@ -1,5 +1,7 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 import { relations } from 'drizzle-orm'
+
+export type SessionDifficultyPreference = 'easy' | 'medium' | 'hard'
 
 // User roles
 export type UserRole = 'explorer' | 'creator' | 'admin' | 'pioneer'
@@ -14,8 +16,11 @@ export const users = sqliteTable('users', {
   role: text('role').$type<UserRole>().notNull().default('explorer'),
   xp: integer('xp').notNull().default(0),
   level: integer('level').notNull().default(1),
-  hallOfFameOptIn: integer('hall_of_fame_opt_in', { mode: 'boolean' }).notNull().default(false),
   anonymizedName: text('anonymized_name'),
+  defaultSessionDifficulty: text('default_session_difficulty')
+    .$type<SessionDifficultyPreference>()
+    .notNull()
+    .default('medium'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 })
