@@ -1023,100 +1023,87 @@ interface TeamSizeEditorProps {
 }
 
 function TeamSizeEditor({ value, onSave }: TeamSizeEditorProps) {
-  const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(String(value))
   const [saving, setSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setDraft(String(value))
+    if (document.activeElement !== inputRef.current) {
+      setDraft(String(value))
+    }
   }, [value])
 
-  useEffect(() => {
-    if (editing && inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.select()
-    }
-  }, [editing])
-
-  const handleSave = async () => {
-    const num = parseInt(draft, 10)
-    if (isNaN(num) || num < 2 || num > 10) {
-      toast.error('Team size must be between 2 and 10')
-      setDraft(String(value))
-      setEditing(false)
-      return
-    }
-    if (num === value) {
-      setEditing(false)
-      return
-    }
+  const handleChange = async (delta: number) => {
+    const newVal = Math.max(2, Math.min(10, value + delta))
+    if (newVal === value) return
     setSaving(true)
     try {
-      await onSave(num)
-      setEditing(false)
-    } catch {
-      toast.error('Failed to save')
-      setDraft(String(value))
-      setEditing(false)
+      await onSave(newVal)
     } finally {
       setSaving(false)
     }
   }
 
-  if (editing) {
-    return (
-      <div className="flex items-center gap-1">
-        <Input
-          ref={inputRef}
-          type="number"
-          min={2}
-          max={10}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleSave()
-            if (e.key === 'Escape') {
-              setDraft(String(value))
-              setEditing(false)
-            }
-          }}
-          className="w-16 h-7 text-sm text-right"
-          disabled={saving}
-        />
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={handleSave}
-          disabled={saving}
-          className="h-6 w-6 text-green-500 hover:text-green-400 hover:bg-green-500/10"
-        >
-          <Check className="w-3 h-3" />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={() => {
-            setDraft(String(value))
-            setEditing(false)
-          }}
-          disabled={saving}
-          className="h-6 w-6 text-muted-foreground hover:text-foreground"
-        >
-          <X className="w-3 h-3" />
-        </Button>
-      </div>
-    )
+  const commitValue = async () => {
+    const num = parseInt(draft, 10)
+    if (isNaN(num) || num < 2 || num > 10) {
+      setDraft(String(value))
+      return
+    }
+    if (num === value) return
+    setSaving(true)
+    try {
+      await onSave(num)
+    } catch {
+      setDraft(String(value))
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
-    <span
-      className="group/edit cursor-pointer inline-flex items-center gap-1 text-foreground"
-      onClick={() => setEditing(true)}
-    >
-      {value} members
-      <Pencil className="w-3 h-3 text-muted-foreground shrink-0" />
-    </span>
+    <div className="flex items-center h-6 rounded border border-border bg-muted/30">
+      <button
+        type="button"
+        onClick={() => handleChange(-1)}
+        disabled={saving || value <= 2}
+        className="px-1.5 h-full text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed rounded-l text-xs font-medium"
+      >
+        -
+      </button>
+      <input
+        ref={inputRef}
+        type="number"
+        min={2}
+        max={10}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commitValue}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault()
+            commitValue()
+          }
+          if (e.key === 'Escape') {
+            setDraft(String(value))
+            inputRef.current?.blur()
+          }
+        }}
+        disabled={saving}
+        className={cn(
+          'w-8 text-center text-xs font-medium tabular-nums bg-transparent border-none outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]',
+          saving && 'opacity-50',
+        )}
+      />
+      <button
+        type="button"
+        onClick={() => handleChange(1)}
+        disabled={saving || value >= 10}
+        className="px-1.5 h-full text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed rounded-r text-xs font-medium"
+      >
+        +
+      </button>
+    </div>
   )
 }
 
@@ -1356,11 +1343,11 @@ function ProjectDetailPage() {
                   }}
                   editable
                   multiline
-                  className="text-foreground italic"
+                  className="text-foreground"
                   placeholder="Add a driving question..."
                 />
               ) : (
-                <p className="text-foreground italic">
+                <p className="text-foreground">
                   {project.drivingQuestion || (
                     <span className="text-muted-foreground">No driving question</span>
                   )}
@@ -1670,9 +1657,30 @@ function ProjectDetailPage() {
                     )}
                     Type
                   </span>
-                  <span className="text-foreground">
-                    {project.teamSize === 1 ? 'Individual' : 'Group'}
-                  </span>
+                  {isEditable ? (
+                    <Select
+                      value={project.teamSize === 1 ? 'individual' : 'group'}
+                      onValueChange={async (val) => {
+                        try {
+                          await saveProjectField({ teamSize: val === 'individual' ? 1 : 2 })
+                        } catch {
+                          toast.error('Failed to save type')
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-7 w-auto text-xs px-2 border-border">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="individual">Individual</SelectItem>
+                        <SelectItem value="group">Group</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <span className="text-foreground">
+                      {project.teamSize === 1 ? 'Individual' : 'Group'}
+                    </span>
+                  )}
                 </div>
                 {/* Team Size */}
                 {project.teamSize > 1 && (
