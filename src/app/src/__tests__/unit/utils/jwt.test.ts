@@ -17,7 +17,7 @@ describe('JWT utilities', () => {
   const testPayload = {
     userId: 'test-user-id',
     email: 'test@example.com',
-    role: 'explorer' as const,
+    role: ['explorer'] as ('explorer' | 'creator' | 'admin')[],
   }
 
   describe('generateAccessToken', () => {
@@ -95,7 +95,7 @@ describe('JWT utilities', () => {
       expect(payload).not.toBeNull()
       expect(payload?.sub).toBe(testPayload.userId)
       expect(payload?.email).toBe(testPayload.email)
-      expect(payload?.role).toBe(testPayload.role)
+      expect(payload?.role).toEqual(testPayload.role)
       expect(payload?.type).toBe('access')
     })
 

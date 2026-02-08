@@ -53,9 +53,9 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
       
       if (redirectTo) {
         navigate({ to: redirectTo })
-      } else if (user?.role === 'admin') {
+      } else if (user?.role?.includes('admin')) {
         navigate({ to: '/admin' })
-      } else if (user?.role === 'creator' || user?.role === 'pioneer') {
+      } else if (user?.role?.includes('creator')) {
         navigate({ to: '/creator' })
       } else {
         navigate({ to: '/explorer' })

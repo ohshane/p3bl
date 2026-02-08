@@ -33,13 +33,15 @@ export function AppHeader() {
     markAllNotificationsRead,
   } = useAuthStore()
 
-  const isAdmin = currentUser?.role === 'admin'
-  const isPioneer = currentUser?.role === 'pioneer'
+  const roles = currentUser?.role ?? []
+  const hasAdmin = roles.includes('admin')
+  const hasCreator = roles.includes('creator')
+  const hasExplorer = roles.includes('explorer')
   const isAdminView = location.pathname.startsWith('/admin')
   const isCreatorView = location.pathname.startsWith('/creator')
   const isExplorerView = location.pathname.startsWith('/explorer') || location.pathname.startsWith('/activity')
 
-  const homeLink = isAdmin ? '/admin' : isCreatorView ? '/creator' : '/explorer'
+  const homeLink = hasAdmin ? '/admin' : isCreatorView ? '/creator' : '/explorer'
 
   const handleLogout = () => {
     logout()
@@ -89,10 +91,10 @@ export function AppHeader() {
           </span>
         </Link>
         
-        {/* View Switcher - for admins and pioneers */}
-        {(isAdmin || isPioneer) && (
+        {/* View Switcher - shows all roles the user has */}
+        {roles.length > 0 && (
           <div className="hidden sm:flex items-center bg-muted rounded-lg p-1">
-            {isAdmin && (
+            {hasAdmin && (
               <button
                 onClick={() => navigate({ to: '/admin' })}
                 className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
@@ -105,28 +107,32 @@ export function AppHeader() {
                 Admin
               </button>
             )}
-            <button
-              onClick={() => navigate({ to: '/creator' })}
-              className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
-                isCreatorView 
-                  ? 'bg-background shadow-sm text-foreground' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <PenTool className="w-3.5 h-3.5 inline mr-1" />
-              Creator
-            </button>
-            <button
-              onClick={() => navigate({ to: '/explorer' })}
-              className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
-                isExplorerView 
-                  ? 'bg-background shadow-sm text-foreground' 
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Compass className="w-3.5 h-3.5 inline mr-1" />
-              Explorer
-            </button>
+            {hasCreator && (
+              <button
+                onClick={() => navigate({ to: '/creator' })}
+                className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                  isCreatorView 
+                    ? 'bg-background shadow-sm text-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <PenTool className="w-3.5 h-3.5 inline mr-1" />
+                Creator
+              </button>
+            )}
+            {hasExplorer && (
+              <button
+                onClick={() => navigate({ to: '/explorer' })}
+                className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                  isExplorerView 
+                    ? 'bg-background shadow-sm text-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Compass className="w-3.5 h-3.5 inline mr-1" />
+                Explorer
+              </button>
+            )}
           </div>
         )}
       </div>

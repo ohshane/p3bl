@@ -11,11 +11,11 @@ import {
   Compass, 
   PenTool, 
   Shield,
-  Rocket,
   ArrowRight,
   Loader2,
   Settings
 } from 'lucide-react'
+import type { UserRole } from '@/db/schema/users'
 
 export const Route = createFileRoute('/admin/')({
   component: AdminDashboard,
@@ -25,7 +25,6 @@ interface Stats {
   totalUsers: number
   explorers: number
   creators: number
-  pioneers: number
   admins: number
 }
 
@@ -33,7 +32,7 @@ interface RecentUser {
   id: string
   name: string
   email: string
-  role: 'explorer' | 'creator' | 'pioneer' | 'admin'
+  role: UserRole[]
   createdAt: string
 }
 
@@ -69,8 +68,6 @@ function AdminDashboard() {
         return 'bg-amber-500/10 text-amber-400 border-amber-500/20'
       case 'creator':
         return 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-      case 'pioneer':
-        return 'bg-green-500/10 text-green-400 border-green-500/20'
       default:
         return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
     }
@@ -82,8 +79,6 @@ function AdminDashboard() {
         return <Shield className="w-3 h-3" />
       case 'creator':
         return <PenTool className="w-3 h-3" />
-      case 'pioneer':
-        return <Rocket className="w-3 h-3" />
       default:
         return <Compass className="w-3 h-3" />
     }
@@ -128,13 +123,6 @@ function AdminDashboard() {
       bg: 'bg-purple-500/10'
     },
     { 
-      label: 'Pioneers', 
-      value: stats?.pioneers || 0, 
-      icon: Rocket,
-      color: 'text-green-400',
-      bg: 'bg-green-500/10'
-    },
-    { 
       label: 'Admins', 
       value: stats?.admins || 0, 
       icon: Shield,
@@ -163,7 +151,7 @@ function AdminDashboard() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {statCards.map((stat) => (
           <Card key={stat.label} className="bg-card border-border">
             <CardContent className="pt-6">
@@ -221,10 +209,14 @@ function AdminDashboard() {
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <Badge className={`${getRoleBadgeColor(user.role)} gap-1`}>
-                      {getRoleIcon(user.role)}
-                      {user.role}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1">
+                      {user.role.map((r) => (
+                        <Badge key={r} className={`${getRoleBadgeColor(r)} gap-1`}>
+                          {getRoleIcon(r)}
+                          {r}
+                        </Badge>
+                      ))}
+                    </div>
                     <span className="text-sm text-muted-foreground">
                       {new Date(user.createdAt).toLocaleDateString()}
                     </span>
@@ -245,7 +237,7 @@ function AdminDashboard() {
               Create New User
             </CardTitle>
             <CardDescription>
-              Add explorers, creators, pioneers, or admins to the system
+              Add users and assign roles to the system
             </CardDescription>
           </CardHeader>
           <CardContent>

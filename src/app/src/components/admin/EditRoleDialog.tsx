@@ -9,13 +9,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { updateUserRole } from "@/server/api/admin";
 import {
@@ -24,14 +17,14 @@ import {
   Shield,
   Compass,
   PenTool,
-  Rocket,
 } from "lucide-react";
+import type { UserRole } from "@/db/schema/users";
 
 interface User {
   id: string;
   name: string;
   email: string;
-  role: "explorer" | "creator" | "pioneer" | "admin";
+  role: UserRole[];
 }
 
 interface EditRoleDialogProps {
@@ -41,24 +34,71 @@ interface EditRoleDialogProps {
   onRoleUpdated: () => void;
 }
 
+const ROLE_CONFIG: {
+  value: UserRole;
+  label: string;
+  description: string;
+  icon: typeof Shield;
+  colorClass: string;
+}[] = [
+  {
+    value: "admin",
+    label: "Admin",
+    description: "Full system access including user management",
+    icon: Shield,
+    colorClass: "text-amber-400",
+  },
+  {
+    value: "creator",
+    label: "Creator",
+    description: "Can create projects, sessions, and manage explorers",
+    icon: PenTool,
+    colorClass: "text-purple-400",
+  },
+  {
+    value: "explorer",
+    label: "Explorer",
+    description: "Can join projects and complete learning activities",
+    icon: Compass,
+    colorClass: "text-cyan-400",
+  },
+];
+
 export function EditRoleDialog({
   open,
   onOpenChange,
   user,
   onRoleUpdated,
 }: EditRoleDialogProps) {
-  const [role, setRole] = useState<
-    "explorer" | "creator" | "pioneer" | "admin"
-  >(user?.role || "explorer");
+  const [selectedRoles, setSelectedRoles] = useState<UserRole[]>(
+    user?.role ?? ["explorer"]
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Update role when user changes
+  // Update roles when user changes
   useState(() => {
     if (user) {
-      setRole(user.role);
+      setSelectedRoles([...user.role]);
     }
   });
+
+  const toggleRole = (role: UserRole) => {
+    setSelectedRoles((prev) => {
+      if (prev.includes(role)) {
+        // Don't allow removing the last role
+        if (prev.length <= 1) return prev;
+        return prev.filter((r) => r !== role);
+      }
+      return [...prev, role];
+    });
+  };
+
+  const rolesChanged = () => {
+    if (!user) return false;
+    if (selectedRoles.length !== user.role.length) return true;
+    return !selectedRoles.every((r) => user.role.includes(r));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +111,7 @@ export function EditRoleDialog({
       const result = await updateUserRole({
         data: {
           userId: user.id,
-          role,
+          role: selectedRoles,
         },
       });
 
@@ -82,7 +122,7 @@ export function EditRoleDialog({
         setError(result.error);
       }
     } catch (err) {
-      setError("Failed to update role");
+      setError("Failed to update roles");
     } finally {
       setLoading(false);
     }
@@ -92,22 +132,9 @@ export function EditRoleDialog({
     if (!newOpen) {
       setError(null);
     } else if (user) {
-      setRole(user.role);
+      setSelectedRoles([...user.role]);
     }
     onOpenChange(newOpen);
-  };
-
-  const getRoleIcon = (r: string) => {
-    switch (r) {
-      case "admin":
-        return <Shield className="w-4 h-4 text-amber-400" />;
-      case "creator":
-        return <PenTool className="w-4 h-4 text-purple-400" />;
-      case "pioneer":
-        return <Rocket className="w-4 h-4 text-green-400" />;
-      default:
-        return <Compass className="w-4 h-4 text-cyan-400" />;
-    }
   };
 
   if (!user) return null;
@@ -116,9 +143,9 @@ export function EditRoleDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="bg-card border-border sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Change User Role</DialogTitle>
+          <DialogTitle>Change User Roles</DialogTitle>
           <DialogDescription className="text-muted-foreground">
-            Update the role for {user.name}
+            Update the roles for {user.name}
           </DialogDescription>
         </DialogHeader>
 
@@ -133,59 +160,68 @@ export function EditRoleDialog({
           <div className="p-4 bg-muted rounded-lg">
             <p className="font-medium text-foreground">{user.name}</p>
             <p className="text-sm text-muted-foreground">{user.email}</p>
-            <div className="flex items-center gap-2 mt-2">
-              {getRoleIcon(user.role)}
-              <span className="text-sm text-muted-foreground">
-                Current role: {user.role}
-              </span>
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              {user.role.map((r) => {
+                const config = ROLE_CONFIG.find((c) => c.value === r);
+                if (!config) return null;
+                const Icon = config.icon;
+                return (
+                  <span
+                    key={r}
+                    className="inline-flex items-center gap-1 text-sm text-muted-foreground"
+                  >
+                    <Icon className={`w-3.5 h-3.5 ${config.colorClass}`} />
+                    {config.label}
+                  </span>
+                );
+              })}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="role">New Role</Label>
-            <Select
-              value={role}
-              onValueChange={(v) => setRole(v as typeof role)}
-            >
-              <SelectTrigger className="bg-background border-border">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-popover border-border">
-                <SelectItem value="explorer">
-                  <div className="flex items-center gap-2">
-                    <Compass className="w-4 h-4 text-cyan-400" />
-                    Explorer
-                  </div>
-                </SelectItem>
-                <SelectItem value="creator">
-                  <div className="flex items-center gap-2">
-                    <PenTool className="w-4 h-4 text-purple-400" />
-                    Creator
-                  </div>
-                </SelectItem>
-                <SelectItem value="pioneer">
-                  <div className="flex items-center gap-2">
-                    <Rocket className="w-4 h-4 text-green-400" />
-                    Pioneer (Creator & Explorer)
-                  </div>
-                </SelectItem>
-                <SelectItem value="admin">
-                  <div className="flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-amber-400" />
-                    Admin
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>Roles</Label>
+            <div className="space-y-2">
+              {ROLE_CONFIG.map((config) => {
+                const Icon = config.icon;
+                const isSelected = selectedRoles.includes(config.value);
+                const isLastRole =
+                  isSelected && selectedRoles.length <= 1;
+
+                return (
+                  <label
+                    key={config.value}
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      isSelected
+                        ? "border-cyan-500/50 bg-cyan-500/5"
+                        : "border-border bg-background hover:bg-muted/50"
+                    } ${isLastRole ? "opacity-60 cursor-not-allowed" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleRole(config.value)}
+                      disabled={isLastRole}
+                      className="mt-1 rounded border-border"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Icon
+                          className={`w-4 h-4 ${config.colorClass}`}
+                        />
+                        <span className="font-medium text-foreground text-sm">
+                          {config.label}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {config.description}
+                      </p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
             <p className="text-xs text-muted-foreground">
-              {role === "explorer" &&
-                "Can join projects and complete learning activities"}
-              {role === "creator" &&
-                "Can create projects, sessions, and manage explorers"}
-              {role === "pioneer" &&
-                "Early adopter with special access privileges"}
-              {role === "admin" &&
-                "Full system access including user management"}
+              At least one role must be selected.
             </p>
           </div>
 
@@ -201,7 +237,7 @@ export function EditRoleDialog({
             <Button
               type="submit"
               className="bg-cyan-600 hover:bg-cyan-700"
-              disabled={loading || role === user.role}
+              disabled={loading || !rolesChanged()}
             >
               {loading ? (
                 <>
@@ -209,7 +245,7 @@ export function EditRoleDialog({
                   Updating...
                 </>
               ) : (
-                "Update Role"
+                "Update Roles"
               )}
             </Button>
           </DialogFooter>

@@ -6,14 +6,14 @@
 // User & Authentication Types
 // ----------------------------------------------------------------------------
 
-export type UserRole = 'explorer' | 'creator' | 'admin' | 'pioneer'
+export type UserRole = 'explorer' | 'creator' | 'admin'
 
 export interface User {
   id: string
   name: string
   email: string
   avatar: string | null
-  role: UserRole
+  role: UserRole[]
   level: number
   xp: number
   anonymizedName: string

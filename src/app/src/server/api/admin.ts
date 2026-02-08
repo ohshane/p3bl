@@ -5,14 +5,14 @@ import { db } from '@/db'
 import { users, systemSettings, SETTING_KEYS, DEFAULT_SETTINGS, type SettingKey } from '@/db/schema'
 import { hashPassword } from '@/server/auth'
 import { z } from 'zod'
-import type { UserRole } from '@/db/schema/users'
+import { type UserRole, parseRoles, serializeRoles } from '@/db/schema/users'
 
 // Validation schemas
 const listUsersSchema = z.object({
   page: z.number().int().min(1).default(1),
   limit: z.number().int().min(1).max(100).default(20),
   search: z.string().optional(),
-  role: z.enum(['explorer', 'creator', 'pioneer', 'admin']).optional(),
+  role: z.enum(['explorer', 'creator', 'admin']).optional(),
   sortBy: z.enum(['name', 'email', 'createdAt', 'role']).default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 })
@@ -21,12 +21,12 @@ const createUserSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
-  role: z.enum(['explorer', 'creator', 'pioneer', 'admin']),
+  role: z.array(z.enum(['explorer', 'creator', 'admin'])).min(1, 'At least one role is required'),
 })
 
 const updateUserRoleSchema = z.object({
   userId: z.string(),
-  role: z.enum(['explorer', 'creator', 'pioneer', 'admin']),
+  role: z.array(z.enum(['explorer', 'creator', 'admin'])).min(1, 'At least one role is required'),
 })
 
 const deleteUserSchema = z.object({
@@ -48,7 +48,7 @@ export type UserListItem = {
   id: string
   email: string
   name: string
-  role: UserRole
+  role: UserRole[]
   avatarUrl: string | null
   xp: number
   level: number
@@ -102,7 +102,8 @@ export const listUsers = createServerFn({ method: 'GET' })
       }
       
       if (role) {
-        whereConditions.push(eq(users.role, role))
+        // Role is stored as JSON array, use LIKE to find users with this role
+        whereConditions.push(like(users.role, `%"${role}"%`))
       }
 
       // Get total count
@@ -149,6 +150,7 @@ export const listUsers = createServerFn({ method: 'GET' })
         success: true,
         users: userResults.map(u => ({
           ...u,
+          role: parseRoles(u.role),
           createdAt: u.createdAt.toISOString(),
         })),
         total,
@@ -196,13 +198,14 @@ export const createUser = createServerFn({ method: 'POST' })
       // Create user
       const userId = uuidv4()
       const now = new Date()
+      const roles: UserRole[] = data.role
 
       await db.insert(users).values({
         id: userId,
         email: data.email.toLowerCase(),
         passwordHash,
         name: data.name,
-        role: data.role,
+        role: serializeRoles(roles),
         xp: 0,
         level: 1,
         anonymizedName: generateAnonymizedName(),
@@ -216,7 +219,7 @@ export const createUser = createServerFn({ method: 'POST' })
           id: userId,
           email: data.email.toLowerCase(),
           name: data.name,
-          role: data.role,
+          role: roles,
           avatarUrl: null,
           xp: 0,
           level: 1,
@@ -239,7 +242,7 @@ export const updateUserRole = createServerFn({ method: 'POST' })
   })
   .handler(async ({ data }): Promise<AdminActionResponse> => {
     try {
-      const { userId, role } = data
+      const { userId, role: newRoles } = data
 
       // Check if user exists
       const user = await db.query.users.findFirst({
@@ -250,21 +253,25 @@ export const updateUserRole = createServerFn({ method: 'POST' })
         return { success: false, error: 'User not found' }
       }
 
-      // Don't allow changing the last admin's role
-      if (user.role === 'admin' && role !== 'admin') {
+      const currentRoles = parseRoles(user.role)
+
+      // Don't allow removing admin from the last admin
+      if (currentRoles.includes('admin') && !newRoles.includes('admin')) {
         const adminCount = await db
           .select({ count: sql<number>`count(*)` })
           .from(users)
-          .where(eq(users.role, 'admin'))
+          .where(like(users.role, '%"admin"%'))
         
         if (Number(adminCount[0]?.count || 0) <= 1) {
-          return { success: false, error: 'Cannot change role of the last admin' }
+          return { success: false, error: 'Cannot remove admin role from the last admin' }
         }
       }
 
+      const roles: UserRole[] = newRoles
+
       // Update role
       await db.update(users)
-        .set({ role, updatedAt: new Date() })
+        .set({ role: serializeRoles(roles), updatedAt: new Date() })
         .where(eq(users.id, userId))
 
       return {
@@ -273,13 +280,13 @@ export const updateUserRole = createServerFn({ method: 'POST' })
           id: user.id,
           email: user.email,
           name: user.name,
-          role,
+          role: roles,
           avatarUrl: user.avatarUrl,
           xp: user.xp,
           level: user.level,
           createdAt: user.createdAt.toISOString(),
         },
-        message: `User role updated to ${role}`,
+        message: `User roles updated to ${roles.join(', ')}`,
       }
     } catch (error) {
       console.error('Update user role error:', error)
@@ -308,11 +315,12 @@ export const deleteUser = createServerFn({ method: 'POST' })
       }
 
       // Don't allow deleting the last admin
-      if (user.role === 'admin') {
+      const userRoles = parseRoles(user.role)
+      if (userRoles.includes('admin')) {
         const adminCount = await db
           .select({ count: sql<number>`count(*)` })
           .from(users)
-          .where(eq(users.role, 'admin'))
+          .where(like(users.role, '%"admin"%'))
         
         if (Number(adminCount[0]?.count || 0) <= 1) {
           return { success: false, error: 'Cannot delete the last admin' }
@@ -353,7 +361,7 @@ export const getUserDetails = createServerFn({ method: 'GET' })
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role,
+          role: parseRoles(user.role),
           avatarUrl: user.avatarUrl,
           xp: user.xp,
           level: user.level,
@@ -422,22 +430,17 @@ export const getAdminStats = createServerFn({ method: 'GET' })
       const [explorers] = await db
         .select({ count: sql<number>`count(*)` })
         .from(users)
-        .where(eq(users.role, 'explorer'))
+        .where(like(users.role, '%"explorer"%'))
 
       const [creators] = await db
         .select({ count: sql<number>`count(*)` })
         .from(users)
-        .where(eq(users.role, 'creator'))
-
-      const [pioneers] = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(users)
-        .where(eq(users.role, 'pioneer'))
+        .where(like(users.role, '%"creator"%'))
 
       const [admins] = await db
         .select({ count: sql<number>`count(*)` })
         .from(users)
-        .where(eq(users.role, 'admin'))
+        .where(like(users.role, '%"admin"%'))
 
       // Get recent users (last 7 days)
       const sevenDaysAgo = new Date()
@@ -462,11 +465,11 @@ export const getAdminStats = createServerFn({ method: 'GET' })
           totalUsers: Number(totalUsers.count),
           explorers: Number(explorers.count),
           creators: Number(creators.count),
-          pioneers: Number(pioneers.count),
           admins: Number(admins.count),
         },
         recentUsers: recentUsers.map(u => ({
           ...u,
+          role: parseRoles(u.role),
           createdAt: u.createdAt.toISOString(),
         })),
       }

@@ -490,7 +490,7 @@ export interface TestUser {
   email: string
   password: string
   name: string
-  role: 'explorer' | 'creator' | 'admin'
+  role: string
 }
 
 export async function createTestUser(overrides: Partial<TestUser> = {}): Promise<TestUser> {
@@ -505,7 +505,7 @@ export async function createTestUser(overrides: Partial<TestUser> = {}): Promise
     email: overrides.email || `test-${id.substring(0, 8)}@example.com`,
     password,
     name: overrides.name || `Test User ${id.substring(0, 8)}`,
-    role: overrides.role || 'explorer',
+    role: overrides.role || '["explorer"]',
   }
 
   await db.insert(schema.users).values({

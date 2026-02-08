@@ -14,7 +14,7 @@ const REFRESH_TOKEN_EXPIRY = '7d' // 7 days
 export interface TokenPayload extends jose.JWTPayload {
   sub: string // User ID
   email: string
-  role: 'explorer' | 'creator' | 'admin' | 'pioneer'
+  role: ('explorer' | 'creator' | 'admin')[]
   type: 'access' | 'refresh'
   sessionId?: string // For refresh tokens
 }
@@ -32,7 +32,7 @@ export interface TokenPair {
 export async function generateAccessToken(payload: {
   userId: string
   email: string
-  role: 'explorer' | 'creator' | 'admin' | 'pioneer'
+  role: ('explorer' | 'creator' | 'admin')[]
 }): Promise<{ token: string; expiresAt: Date }> {
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
   
@@ -58,7 +58,7 @@ export async function generateAccessToken(payload: {
 export async function generateRefreshToken(payload: {
   userId: string
   email: string
-  role: 'explorer' | 'creator' | 'admin' | 'pioneer'
+  role: ('explorer' | 'creator' | 'admin')[]
   sessionId: string
 }): Promise<{ token: string; expiresAt: Date }> {
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
@@ -86,7 +86,7 @@ export async function generateRefreshToken(payload: {
 export async function generateTokenPair(payload: {
   userId: string
   email: string
-  role: 'explorer' | 'creator' | 'admin' | 'pioneer'
+  role: ('explorer' | 'creator' | 'admin')[]
 }): Promise<TokenPair & { sessionId: string }> {
   const sessionId = uuidv4()
   

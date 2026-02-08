@@ -17,14 +17,14 @@ function CreatorLayout() {
     }
   }, [isAuthenticated, navigate])
 
-  // Redirect explorers to /explorer (admins, creators, and pioneers can access)
+  // Redirect users without creator role to /explorer
   useEffect(() => {
-    if (currentUser && currentUser.role === 'explorer') {
+    if (currentUser && !currentUser.role.includes('creator')) {
       navigate({ to: '/explorer' })
     }
   }, [currentUser, navigate])
 
-  if (!currentUser || currentUser.role === 'explorer') {
+  if (!currentUser || !currentUser.role.includes('creator')) {
     return null
   }
 

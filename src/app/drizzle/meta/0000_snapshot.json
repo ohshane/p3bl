@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "e4c46ccc-0641-4408-81aa-597d96d771c4",
+  "id": "daddb2b6-9652-43c9-85b2-2c43036046c3",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "intervention_logs": {
@@ -351,7 +351,7 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false,
-          "default": "'explorer'"
+          "default": "'[\"explorer\"]'"
         },
         "xp": {
           "name": "xp",

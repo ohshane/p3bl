@@ -24,8 +24,8 @@ function AdminLayout() {
     }
     
     // Redirect non-admins to their appropriate dashboard
-    if (currentUser && currentUser.role !== 'admin') {
-      if (currentUser.role === 'creator' || currentUser.role === 'pioneer') {
+    if (currentUser && !currentUser.role.includes('admin')) {
+      if (currentUser.role.includes('creator')) {
         navigate({ to: '/creator' })
       } else {
         navigate({ to: '/explorer' })
@@ -34,7 +34,7 @@ function AdminLayout() {
   }, [isAuthenticated, currentUser, navigate])
 
   // Don't render until auth check is complete
-  if (!isAuthenticated || !currentUser || currentUser.role !== 'admin') {
+  if (!isAuthenticated || !currentUser || !currentUser.role.includes('admin')) {
     return (
       <div className="min-h-[calc(100vh-4rem)] bg-background flex items-center justify-center">
         <div className="text-muted-foreground">Loading...</div>

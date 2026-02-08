@@ -5,7 +5,7 @@ import { getProjectTimeStatus } from '@/lib/utils'
 export interface UserContext {
   user: {
     name: string
-    role: string
+    role: string[]
     level: number
     xp: number
   } | null
@@ -97,7 +97,7 @@ ${PLATFORM_FAQ.map((faq, i) => `${i + 1}. ${faq}`).join('\n')}
   return `
 USER CONTEXT:
 - Name: ${currentUser.name}
-- Role: ${currentUser.role}
+- Roles: ${currentUser.role.join(', ')}
 - Level: ${currentUser.level} (${currentUser.xp} XP)
 
 WORKSPACE STATUS:

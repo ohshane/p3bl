@@ -50,7 +50,7 @@ CREATE TABLE `users` (
 	`password_hash` text NOT NULL,
 	`name` text NOT NULL,
 	`avatar_url` text,
-	`role` text DEFAULT 'explorer' NOT NULL,
+	`role` text DEFAULT '["explorer"]' NOT NULL,
 	`xp` integer DEFAULT 0 NOT NULL,
 	`level` integer DEFAULT 1 NOT NULL,
 	`anonymized_name` text,

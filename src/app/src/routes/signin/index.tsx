@@ -28,9 +28,9 @@ function LoginPage() {
         return
       }
 
-      if (currentUser.role === 'admin') {
+      if (currentUser.role.includes('admin')) {
         navigate({ to: '/admin' })
-      } else if (currentUser.role === 'creator' || currentUser.role === 'pioneer') {
+      } else if (currentUser.role.includes('creator')) {
         navigate({ to: '/creator' })
       } else {
         navigate({ to: '/explorer' })

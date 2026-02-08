@@ -15,7 +15,6 @@ import {
   Search,
   Shield,
   PenTool,
-  Rocket,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -63,15 +62,15 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
     id: string
     name: string
     email: string
-    role: string
+    role: string[]
     avatarUrl: string | null
   }>>([])
   const [selectedDelegate, setSelectedDelegate] = useState<typeof delegateResults[number] | null>(null)
   const [isSearching, setIsSearching] = useState(false)
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const userRole = currentUser?.role
-  const showJoinButton = userRole === 'admin' || userRole === 'pioneer'
+  const userRoles = currentUser?.role ?? []
+  const showJoinButton = userRoles.includes('explorer')
 
   // Force re-render every second to update progress and time info
   useEffect(() => {
@@ -284,8 +283,6 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
         return <Shield className="w-3 h-3" />
       case 'creator':
         return <PenTool className="w-3 h-3" />
-      case 'pioneer':
-        return <Rocket className="w-3 h-3" />
       default:
         return null
     }
@@ -297,8 +294,6 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
         return 'bg-amber-500/10 text-amber-400 border-amber-500/20'
       case 'creator':
         return 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-      case 'pioneer':
-        return 'bg-green-500/10 text-green-400 border-green-500/20'
       default:
         return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
     }
@@ -540,10 +535,14 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
                       <p className="font-medium text-foreground text-sm truncate">{user.name}</p>
                       <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                     </div>
-                    <Badge className={`${getRoleBadgeColor(user.role)} gap-1 text-[10px] shrink-0`}>
-                      {getRoleIcon(user.role)}
-                      {user.role}
-                    </Badge>
+                    <div className="flex gap-1 shrink-0">
+                      {(Array.isArray(user.role) ? user.role : [user.role]).map((r: string) => (
+                        <Badge key={r} className={`${getRoleBadgeColor(r)} gap-1 text-[10px]`}>
+                          {getRoleIcon(r)}
+                          {r}
+                        </Badge>
+                      ))}
+                    </div>
                   </button>
                 ))}
               </div>

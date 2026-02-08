@@ -10,16 +10,40 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { createUser } from '@/server/api/admin'
-import { Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react'
+import { Loader2, AlertCircle, Eye, EyeOff, Shield, PenTool, Compass } from 'lucide-react'
+import type { UserRole } from '@/db/schema/users'
+
+const ROLE_CONFIG: {
+  value: UserRole
+  label: string
+  description: string
+  icon: typeof Shield
+  colorClass: string
+}[] = [
+  {
+    value: 'admin',
+    label: 'Admin',
+    description: 'Full system access including user management',
+    icon: Shield,
+    colorClass: 'text-amber-400',
+  },
+  {
+    value: 'creator',
+    label: 'Creator',
+    description: 'Can create projects, sessions, and manage explorers',
+    icon: PenTool,
+    colorClass: 'text-purple-400',
+  },
+  {
+    value: 'explorer',
+    label: 'Explorer',
+    description: 'Can join projects and complete learning activities',
+    icon: Compass,
+    colorClass: 'text-cyan-400',
+  },
+]
 
 interface CreateUserDialogProps {
   open: boolean
@@ -31,7 +55,7 @@ export function CreateUserDialog({ open, onOpenChange, onUserCreated }: CreateUs
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState<'explorer' | 'creator' | 'pioneer' | 'admin'>('explorer')
+  const [selectedRoles, setSelectedRoles] = useState<UserRole[]>(['explorer'])
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -40,9 +64,20 @@ export function CreateUserDialog({ open, onOpenChange, onUserCreated }: CreateUs
     setName('')
     setEmail('')
     setPassword('')
-    setRole('explorer')
+    setSelectedRoles(['explorer'])
     setShowPassword(false)
     setError(null)
+  }
+
+  const toggleRole = (role: UserRole) => {
+    setSelectedRoles((prev) => {
+      if (prev.includes(role)) {
+        // Don't allow removing the last role
+        if (prev.length <= 1) return prev
+        return prev.filter((r) => r !== role)
+      }
+      return [...prev, role]
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -56,7 +91,7 @@ export function CreateUserDialog({ open, onOpenChange, onUserCreated }: CreateUs
           name: name.trim(),
           email: email.trim(),
           password,
-          role,
+          role: selectedRoles,
         }
       })
 
@@ -152,23 +187,46 @@ export function CreateUserDialog({ open, onOpenChange, onUserCreated }: CreateUs
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="role">Role</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as typeof role)}>
-              <SelectTrigger className="bg-background border-border">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-popover border-border">
-                <SelectItem value="explorer">Explorer</SelectItem>
-                <SelectItem value="creator">Creator (Instructor)</SelectItem>
-                <SelectItem value="pioneer">Pioneer (Early Adopter)</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>Roles</Label>
+            <div className="space-y-2">
+              {ROLE_CONFIG.map((config) => {
+                const Icon = config.icon
+                const isSelected = selectedRoles.includes(config.value)
+                const isLastRole = isSelected && selectedRoles.length <= 1
+
+                return (
+                  <label
+                    key={config.value}
+                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
+                      isSelected
+                        ? 'border-cyan-500/50 bg-cyan-500/5'
+                        : 'border-border bg-background hover:bg-muted/50'
+                    } ${isLastRole ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleRole(config.value)}
+                      disabled={isLastRole}
+                      className="mt-1 rounded border-border"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Icon className={`w-4 h-4 ${config.colorClass}`} />
+                        <span className="font-medium text-foreground text-sm">
+                          {config.label}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {config.description}
+                      </p>
+                    </div>
+                  </label>
+                )
+              })}
+            </div>
             <p className="text-xs text-muted-foreground">
-              {role === 'explorer' && 'Can join projects and learn'}
-              {role === 'creator' && 'Can create and manage projects'}
-              {role === 'pioneer' && 'Early adopter with special access'}
-              {role === 'admin' && 'Full system access including user management'}
+              At least one role must be selected.
             </p>
           </div>
 

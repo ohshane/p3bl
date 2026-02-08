@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState, useRef, useCallback, useMemo } from 'react'
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import {
   ArrowLeft,
   Settings,
@@ -18,16 +18,16 @@ import {
   Pencil,
   ChevronDown,
   GripVertical,
-} from 'lucide-react'
-import { toast } from 'sonner'
-import { differenceInMinutes, addMinutes, format } from 'date-fns'
-import { useAuthStore } from '@/stores/authStore'
-import { useCreatorStore } from '@/stores/creatorStore'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+} from "lucide-react";
+import { toast } from "sonner";
+import { differenceInMinutes, addMinutes, format } from "date-fns";
+import { useAuthStore } from "@/stores/authStore";
+import { useCreatorStore } from "@/stores/creatorStore";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 import {
   Select,
@@ -35,15 +35,19 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from "@/components/ui/select";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip'
-import { JoinCode } from '@/components/creator/JoinCode'
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
+} from "@/components/ui/tooltip";
+import { JoinCode } from "@/components/creator/JoinCode";
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,9 +57,17 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { updateProject } from '@/server/api/projects'
-import { createSession, deleteSession, reorderSessions, updateSession as apiUpdateSession, addRubric, deleteRubric, updateRubric } from '@/server/api/sessions'
+} from "@/components/ui/alert-dialog";
+import { updateProject } from "@/server/api/projects";
+import {
+  createSession,
+  deleteSession,
+  reorderSessions,
+  updateSession as apiUpdateSession,
+  addRubric,
+  deleteRubric,
+  updateRubric,
+} from "@/server/api/sessions";
 import {
   cn,
   safeFormatDate,
@@ -63,12 +75,18 @@ import {
   getProjectTimeStatus,
   getProjectProgress,
   getProjectTimeInfo,
-} from '@/lib/utils'
-import type { CreatorProjectStatus, CreatorSession, SessionDifficulty, DeliverableType, RubricItem } from '@/types'
+} from "@/lib/utils";
+import type {
+  CreatorProjectStatus,
+  CreatorSession,
+  SessionDifficulty,
+  DeliverableType,
+  RubricItem,
+} from "@/types";
 
-export const Route = createFileRoute('/creator/project/$projectId/')({
+export const Route = createFileRoute("/creator/project/$projectId/")({
   component: ProjectDetailPage,
-})
+});
 
 // ─── Constants ─────────────────────────────────────────────────────────────
 
@@ -76,128 +94,141 @@ const DIFFICULTY_WEIGHTS: Record<SessionDifficulty, number> = {
   easy: 60,
   medium: 100,
   hard: 140,
-}
+};
 
 function formatDuration(minutes: number): string {
   if (minutes < 60) {
-    return `${minutes} min`
+    return `${minutes} min`;
   } else if (minutes < 1440) {
-    const hours = Math.floor(minutes / 60)
-    const mins = minutes % 60
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours} hour${hours > 1 ? 's' : ''}`
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return mins > 0
+      ? `${hours}h ${mins}m`
+      : `${hours} hour${hours > 1 ? "s" : ""}`;
   } else if (minutes < 10080) {
-    const days = Math.floor(minutes / 1440)
-    const hours = Math.floor((minutes % 1440) / 60)
-    return hours > 0 ? `${days}d ${hours}h` : `${days} day${days > 1 ? 's' : ''}`
+    const days = Math.floor(minutes / 1440);
+    const hours = Math.floor((minutes % 1440) / 60);
+    return hours > 0
+      ? `${days}d ${hours}h`
+      : `${days} day${days > 1 ? "s" : ""}`;
   } else {
-    const weeks = Math.floor(minutes / 10080)
-    const days = Math.floor((minutes % 10080) / 1440)
-    return days > 0 ? `${weeks}w ${days}d` : `${weeks} week${weeks > 1 ? 's' : ''}`
+    const weeks = Math.floor(minutes / 10080);
+    const days = Math.floor((minutes % 10080) / 1440);
+    return days > 0
+      ? `${weeks}w ${days}d`
+      : `${weeks} week${weeks > 1 ? "s" : ""}`;
   }
 }
 
-function formatSessionDuration(sessionMinutes: number, totalMinutes: number): string {
+function formatSessionDuration(
+  sessionMinutes: number,
+  totalMinutes: number,
+): string {
   if (totalMinutes < 1440) {
-    if (sessionMinutes < 60) return `${sessionMinutes} min`
-    const hours = Math.round((sessionMinutes / 60) * 10) / 10
-    return `${hours}h`
+    if (sessionMinutes < 60) return `${sessionMinutes} min`;
+    const hours = Math.round((sessionMinutes / 60) * 10) / 10;
+    return `${hours}h`;
   } else if (totalMinutes < 10080) {
     if (sessionMinutes < 1440) {
-      const hours = Math.round(sessionMinutes / 60)
-      return `${hours}h`
+      const hours = Math.round(sessionMinutes / 60);
+      return `${hours}h`;
     }
-    const days = Math.round((sessionMinutes / 1440) * 10) / 10
-    return `${days}d`
+    const days = Math.round((sessionMinutes / 1440) * 10) / 10;
+    return `${days}d`;
   } else {
-    const days = Math.round(sessionMinutes / 1440)
-    return `${days} day${days > 1 ? 's' : ''}`
+    const days = Math.round(sessionMinutes / 1440);
+    return `${days} day${days > 1 ? "s" : ""}`;
   }
 }
 
 function formatTimelineDateForScale(dateStr: string, totalMinutes: number) {
   if (totalMinutes < 1440) {
-    return safeFormatDate(dateStr, 'MMM d HH:mm', '?')
+    return safeFormatDate(dateStr, "MMM d HH:mm", "?");
   }
-  return safeFormatDate(dateStr, 'MMM d', '?')
+  return safeFormatDate(dateStr, "MMM d", "?");
 }
 
 // ─── Inline Editable Components ────────────────────────────────────────────
 
 interface InlineTextProps {
-  value: string
-  onSave: (value: string) => Promise<void>
-  editable: boolean
-  className?: string
-  inputClassName?: string
-  placeholder?: string
-  multiline?: boolean
+  value: string;
+  onSave: (value: string) => Promise<void>;
+  editable: boolean;
+  className?: string;
+  inputClassName?: string;
+  placeholder?: string;
+  multiline?: boolean;
 }
 
 function InlineText({
   value,
   onSave,
   editable,
-  className = '',
-  inputClassName = '',
-  placeholder = 'Click to edit...',
+  className = "",
+  inputClassName = "",
+  placeholder = "Click to edit...",
   multiline = false,
 }: InlineTextProps) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(value)
-  const [saving, setSaving] = useState(false)
-  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    setDraft(value)
-  }, [value])
+    setDraft(value);
+  }, [value]);
 
   useEffect(() => {
     if (editing && inputRef.current) {
-      inputRef.current.focus()
-      inputRef.current.select()
+      inputRef.current.focus();
+      inputRef.current.select();
     }
-  }, [editing])
+  }, [editing]);
 
   const handleSave = async () => {
-    const trimmed = draft.trim()
+    const trimmed = draft.trim();
     if (trimmed === value) {
-      setEditing(false)
-      return
+      setEditing(false);
+      return;
     }
-    setSaving(true)
+    setSaving(true);
     try {
-      await onSave(trimmed)
-      setEditing(false)
+      await onSave(trimmed);
+      setEditing(false);
     } catch {
-      toast.error('Failed to save')
-      setDraft(value)
-      setEditing(false)
+      toast.error("Failed to save");
+      setDraft(value);
+      setEditing(false);
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const handleCancel = () => {
-    setDraft(value)
-    setEditing(false)
-  }
+    setDraft(value);
+    setEditing(false);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !multiline) {
-      e.preventDefault()
-      handleSave()
+    if (e.key === "Enter" && !multiline) {
+      e.preventDefault();
+      handleSave();
     }
-    if (e.key === 'Enter' && multiline && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault()
-      handleSave()
+    if (e.key === "Enter" && multiline && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      handleSave();
     }
-    if (e.key === 'Escape') {
-      handleCancel()
+    if (e.key === "Escape") {
+      handleCancel();
     }
-  }
+  };
 
   if (!editable) {
-    return <span className={className}>{value || <span className="text-muted-foreground italic">Not set</span>}</span>
+    return (
+      <span className={className}>
+        {value || <span className="text-muted-foreground italic">Not set</span>}
+      </span>
+    );
   }
 
   if (editing) {
@@ -243,7 +274,7 @@ function InlineText({
           <X className="w-4 h-4" />
         </Button>
       </div>
-    )
+    );
   }
 
   return (
@@ -251,85 +282,98 @@ function InlineText({
       className={`group/edit cursor-pointer inline-flex items-center gap-2 ${className}`}
       onClick={() => setEditing(true)}
     >
-      {value || <span className="text-muted-foreground italic">{placeholder}</span>}
+      {value || (
+        <span className="text-muted-foreground italic">{placeholder}</span>
+      )}
       <Pencil className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
     </span>
-  )
+  );
 }
 
 // ─── Rubric Editor ─────────────────────────────────────────────────────────
 
 interface RubricEditorProps {
-  sessionId: string
-  rubric: RubricItem[]
-  editable: boolean
-  onChanged: () => Promise<void>
+  sessionId: string;
+  rubric: RubricItem[];
+  editable: boolean;
+  onChanged: () => Promise<void>;
 }
 
-function RubricEditor({ sessionId, rubric, editable, onChanged }: RubricEditorProps) {
-  const [saving, setSaving] = useState<string | null>(null)
+function RubricEditor({
+  sessionId,
+  rubric,
+  editable,
+  onChanged,
+}: RubricEditorProps) {
+  const [saving, setSaving] = useState<string | null>(null);
 
   const handleAdd = async () => {
-    const usedWeight = rubric.reduce((sum, r) => sum + r.weight, 0)
-    const remainingWeight = Math.max(0, 100 - usedWeight)
-    setSaving('add')
+    const usedWeight = rubric.reduce((sum, r) => sum + r.weight, 0);
+    const remainingWeight = Math.max(0, 100 - usedWeight);
+    setSaving("add");
     try {
       const result = await addRubric({
         data: {
           sessionId,
-          criteria: 'New criterion',
-          description: '',
+          criteria: "New criterion",
+          description: "",
           weight: remainingWeight,
         },
-      })
+      });
       if (result.success) {
-        await onChanged()
+        await onChanged();
       } else {
-        toast.error('Failed to add rubric')
+        toast.error("Failed to add rubric");
       }
     } catch {
-      toast.error('Failed to add rubric')
+      toast.error("Failed to add rubric");
     } finally {
-      setSaving(null)
+      setSaving(null);
     }
-  }
+  };
 
   const handleDelete = async (rubricId: string) => {
-    setSaving(rubricId)
+    setSaving(rubricId);
     try {
       const result = await deleteRubric({
         data: { rubricId },
-      })
+      });
       if (result.success) {
-        await onChanged()
+        await onChanged();
       } else {
-        toast.error('Failed to delete rubric')
+        toast.error("Failed to delete rubric");
       }
     } catch {
-      toast.error('Failed to delete rubric')
+      toast.error("Failed to delete rubric");
     } finally {
-      setSaving(null)
+      setSaving(null);
     }
-  }
+  };
 
   if (!editable) {
-    if (rubric.length === 0) return null
+    if (rubric.length === 0) return null;
     return (
       <div className="mt-2">
         <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1.5">
           <BookOpen className="w-3 h-3" />
-          {rubric.length} rubric {rubric.length === 1 ? 'criterion' : 'criteria'}
+          {rubric.length} rubric{" "}
+          {rubric.length === 1 ? "criterion" : "criteria"}
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           {rubric.map((r) => (
-            <div key={r.id} className="flex items-center gap-2 text-xs text-muted-foreground pl-4">
-              <span className="text-foreground">{r.criterion}</span>
-              <span className="text-[10px]">({r.weight}%)</span>
+            <div key={r.id} className="pl-4">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="text-foreground">{r.criterion}</span>
+                <span className="text-[10px]">({r.weight}%)</span>
+              </div>
+              {r.description && (
+                <p className="text-[11px] text-muted-foreground mt-0.5">{r.description}</p>
+              )}
             </div>
           ))}
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -343,10 +387,10 @@ function RubricEditor({ sessionId, rubric, editable, onChanged }: RubricEditorPr
           size="sm"
           variant="ghost"
           onClick={handleAdd}
-          disabled={saving === 'add'}
+          disabled={saving === "add"}
           className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
         >
-          {saving === 'add' ? (
+          {saving === "add" ? (
             <Loader2 className="w-3 h-3 animate-spin" />
           ) : (
             <Plus className="w-3 h-3" />
@@ -367,7 +411,7 @@ function RubricEditor({ sessionId, rubric, editable, onChanged }: RubricEditorPr
             ))}
           </div>
           {(() => {
-            const total = rubric.reduce((sum, r) => sum + r.weight, 0)
+            const total = rubric.reduce((sum, r) => sum + r.weight, 0);
             if (total !== 100) {
               return (
                 <Badge
@@ -376,79 +420,90 @@ function RubricEditor({ sessionId, rubric, editable, onChanged }: RubricEditorPr
                 >
                   Total: {total}% (must equal 100%)
                 </Badge>
-              )
+              );
             }
-            return null
+            return null;
           })()}
         </>
       )}
     </div>
-  )
+  );
 }
 
 // ─── Rubric Item Editor ────────────────────────────────────────────────────
 
 interface RubricItemEditorProps {
-  item: RubricItem
-  saving: boolean
-  onDelete: () => Promise<void>
-  onChanged: () => Promise<void>
+  item: RubricItem;
+  saving: boolean;
+  onDelete: () => Promise<void>;
+  onChanged: () => Promise<void>;
 }
 
-function RubricItemEditor({ item, saving, onDelete, onChanged }: RubricItemEditorProps) {
-  const [weightSaving, setWeightSaving] = useState(false)
-  const [weightDraft, setWeightDraft] = useState(String(item.weight))
-  const weightInputRef = useRef<HTMLInputElement>(null)
+function RubricItemEditor({
+  item,
+  saving,
+  onDelete,
+  onChanged,
+}: RubricItemEditorProps) {
+  const [weightSaving, setWeightSaving] = useState(false);
+  const [weightDraft, setWeightDraft] = useState(String(item.weight));
+  const weightInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (document.activeElement !== weightInputRef.current) {
-      setWeightDraft(String(item.weight))
+      setWeightDraft(String(item.weight));
     }
-  }, [item.weight])
+  }, [item.weight]);
 
-  const saveRubricField = async (updates: { criteria?: string; description?: string; weight?: number }) => {
-    const result = await updateRubric({ data: { rubricId: item.id, updates } })
+  const saveRubricField = async (updates: {
+    criteria?: string;
+    description?: string;
+    weight?: number;
+  }) => {
+    const result = await updateRubric({ data: { rubricId: item.id, updates } });
     if (result.success) {
-      toast.success('Saved')
-      await onChanged()
+      toast.success("Saved");
+      await onChanged();
     } else {
-      throw new Error('Failed to save')
+      throw new Error("Failed to save");
     }
-  }
+  };
 
   const handleWeightChange = async (delta: number) => {
-    const newWeight = Math.max(0, Math.min(100, item.weight + delta))
-    if (newWeight === item.weight) return
-    setWeightSaving(true)
+    const newWeight = Math.max(0, Math.min(100, item.weight + delta));
+    if (newWeight === item.weight) return;
+    setWeightSaving(true);
     try {
-      await saveRubricField({ weight: newWeight })
+      await saveRubricField({ weight: newWeight });
     } finally {
-      setWeightSaving(false)
+      setWeightSaving(false);
     }
-  }
+  };
 
   const commitWeight = async () => {
-    const num = parseInt(weightDraft, 10)
+    const num = parseInt(weightDraft, 10);
     if (isNaN(num) || num < 0 || num > 100) {
-      setWeightDraft(String(item.weight))
-      return
+      setWeightDraft(String(item.weight));
+      return;
     }
-    if (num === item.weight) return
-    setWeightSaving(true)
+    if (num === item.weight) return;
+    setWeightSaving(true);
     try {
-      await saveRubricField({ weight: num })
+      await saveRubricField({ weight: num });
     } catch {
-      setWeightDraft(String(item.weight))
+      setWeightDraft(String(item.weight));
     } finally {
-      setWeightSaving(false)
+      setWeightSaving(false);
     }
-  }
+  };
 
   return (
-    <div className={cn(
-      'p-2 rounded bg-background border border-border/50 space-y-1',
-      saving && 'opacity-60',
-    )}>
+    <div
+      className={cn(
+        "p-2 rounded bg-background border border-border/50 space-y-1",
+        saving && "opacity-60",
+      )}
+    >
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
           <InlineText
@@ -478,19 +533,19 @@ function RubricItemEditor({ item, saving, onDelete, onChanged }: RubricItemEdito
               onChange={(e) => setWeightDraft(e.target.value)}
               onBlur={commitWeight}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  commitWeight()
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  commitWeight();
                 }
-                if (e.key === 'Escape') {
-                  setWeightDraft(String(item.weight))
-                  weightInputRef.current?.blur()
+                if (e.key === "Escape") {
+                  setWeightDraft(String(item.weight));
+                  weightInputRef.current?.blur();
                 }
               }}
               disabled={weightSaving}
               className={cn(
-                'w-8 text-center text-xs font-medium tabular-nums bg-transparent border-none outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]',
-                weightSaving && 'opacity-50',
+                "w-8 text-center text-xs font-medium tabular-nums bg-transparent border-none outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]",
+                weightSaving && "opacity-50",
               )}
             />
             <span className="text-xs text-muted-foreground pr-1">%</span>
@@ -516,7 +571,7 @@ function RubricItemEditor({ item, saving, onDelete, onChanged }: RubricItemEdito
       </div>
       <div className="pl-0">
         <InlineText
-          value={item.description || ''}
+          value={item.description || ""}
           onSave={async (val) => saveRubricField({ description: val })}
           editable
           className="text-[11px] text-muted-foreground"
@@ -524,40 +579,46 @@ function RubricItemEditor({ item, saving, onDelete, onChanged }: RubricItemEdito
         />
       </div>
     </div>
-  )
+  );
 }
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
 interface SessionWithDates {
-  session: CreatorSession
-  index: number
-  calculatedStartDate: string
-  calculatedEndDate: string
-  isoStartDate: string
-  isoEndDate: string
-  sessionMinutes: number
-  percentage: number
-  weight: number
+  session: CreatorSession;
+  index: number;
+  calculatedStartDate: string;
+  calculatedEndDate: string;
+  isoStartDate: string;
+  isoEndDate: string;
+  sessionMinutes: number;
+  percentage: number;
+  weight: number;
 }
 
 // ─── Expanded Session Info ──────────────────────────────────────────────────
 
 interface ExpandedSessionInfoProps {
-  session: SessionWithDates
-  durationMinutes: number
-  onSessionDateChange: (startIso: string, endIso: string) => void
+  session: SessionWithDates;
+  durationMinutes: number;
+  onSessionDateChange: (startIso: string, endIso: string) => void;
 }
 
-function ExpandedSessionInfo({ session, durationMinutes, onSessionDateChange }: ExpandedSessionInfoProps) {
+function ExpandedSessionInfo({
+  session,
+  durationMinutes,
+  onSessionDateChange,
+}: ExpandedSessionInfoProps) {
   const toLocal = (iso: string) => {
-    const d = new Date(iso)
-    if (isNaN(d.getTime())) return ''
-    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-  }
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return "";
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+  };
 
-  const startLocal = toLocal(session.isoStartDate)
-  const endLocal = toLocal(session.isoEndDate)
+  const startLocal = toLocal(session.isoStartDate);
+  const endLocal = toLocal(session.isoEndDate);
 
   return (
     <div className="mt-2 p-3 bg-muted/30 rounded-lg border border-border text-sm">
@@ -569,7 +630,8 @@ function ExpandedSessionInfo({ session, durationMinutes, onSessionDateChange }: 
           {session.session.title}
         </span>
         <span className="text-xs text-muted-foreground ml-auto">
-          {formatSessionDuration(session.sessionMinutes, durationMinutes)} ({session.percentage}%)
+          {formatSessionDuration(session.sessionMinutes, durationMinutes)} (
+          {session.percentage}%)
         </span>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -581,9 +643,9 @@ function ExpandedSessionInfo({ session, durationMinutes, onSessionDateChange }: 
             type="datetime-local"
             value={startLocal}
             onChange={(e) => {
-              if (!e.target.value) return
-              const newStart = new Date(e.target.value).toISOString()
-              onSessionDateChange(newStart, session.isoEndDate)
+              if (!e.target.value) return;
+              const newStart = new Date(e.target.value).toISOString();
+              onSessionDateChange(newStart, session.isoEndDate);
             }}
             className="bg-background border-border text-xs h-8"
           />
@@ -597,199 +659,231 @@ function ExpandedSessionInfo({ session, durationMinutes, onSessionDateChange }: 
             value={endLocal}
             min={startLocal}
             onChange={(e) => {
-              if (!e.target.value) return
-              const newEnd = new Date(e.target.value).toISOString()
-              onSessionDateChange(session.isoStartDate, newEnd)
+              if (!e.target.value) return;
+              const newEnd = new Date(e.target.value).toISOString();
+              onSessionDateChange(session.isoStartDate, newEnd);
             }}
             className="bg-background border-border text-xs h-8"
           />
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 // ─── Timeline Editor Component ─────────────────────────────────────────────
 
 interface TimelineEditorProps {
-  projectId: string
-  startDate: string
-  endDate: string
-  sessions: CreatorSession[]
-  onSaved: () => Promise<void>
+  projectId: string;
+  startDate: string;
+  endDate: string;
+  sessions: CreatorSession[];
+  onSaved: () => Promise<void>;
 }
 
-function TimelineEditor({ projectId, startDate, endDate, sessions, onSaved }: TimelineEditorProps) {
+function TimelineEditor({
+  projectId,
+  startDate,
+  endDate,
+  sessions,
+  onSaved,
+}: TimelineEditorProps) {
   // Local draft state for the timeline
-  const [draftStartDate, setDraftStartDate] = useState(startDate)
-  const [draftEndDate, setDraftEndDate] = useState(endDate)
+  const [draftStartDate, setDraftStartDate] = useState(startDate);
+  const [draftEndDate, setDraftEndDate] = useState(endDate);
   const [draftWeights, setDraftWeights] = useState<number[]>(() =>
-    sessions.map(s => s.weight || DIFFICULTY_WEIGHTS[s.difficulty as SessionDifficulty] || 100),
-  )
-  const [saving, setSaving] = useState(false)
-  const [dirty, setDirty] = useState(false)
+    sessions.map(
+      (s) =>
+        s.weight ||
+        DIFFICULTY_WEIGHTS[s.difficulty as SessionDifficulty] ||
+        100,
+    ),
+  );
+  const [saving, setSaving] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
   // Timeline drag state
-  const [draggingHandle, setDraggingHandle] = useState<number | null>(null)
-  const timelineRef = useRef<HTMLDivElement>(null)
-  const [expandedSession, setExpandedSession] = useState<number | null>(0)
+  const [draggingHandle, setDraggingHandle] = useState<number | null>(null);
+  const timelineRef = useRef<HTMLDivElement>(null);
+  const [expandedSession, setExpandedSession] = useState<number | null>(0);
 
   // Sync from props when they change externally
   useEffect(() => {
-    setDraftStartDate(startDate)
-    setDraftEndDate(endDate)
-    setDraftWeights(sessions.map(s => s.weight || DIFFICULTY_WEIGHTS[s.difficulty as SessionDifficulty] || 100))
-    setDirty(false)
-  }, [startDate, endDate, sessions])
+    setDraftStartDate(startDate);
+    setDraftEndDate(endDate);
+    setDraftWeights(
+      sessions.map(
+        (s) =>
+          s.weight ||
+          DIFFICULTY_WEIGHTS[s.difficulty as SessionDifficulty] ||
+          100,
+      ),
+    );
+    setDirty(false);
+  }, [startDate, endDate, sessions]);
 
   // Parse dates
   const startDateTime = useMemo(() => {
-    if (isValidDate(draftStartDate)) return new Date(draftStartDate)
-    return new Date()
-  }, [draftStartDate])
+    if (isValidDate(draftStartDate)) return new Date(draftStartDate);
+    return new Date();
+  }, [draftStartDate]);
 
   const endDateTime = useMemo(() => {
-    if (isValidDate(draftEndDate)) return new Date(draftEndDate)
-    return addMinutes(startDateTime, 5)
-  }, [draftEndDate, startDateTime])
+    if (isValidDate(draftEndDate)) return new Date(draftEndDate);
+    return addMinutes(startDateTime, 5);
+  }, [draftEndDate, startDateTime]);
 
   const durationMinutes = useMemo(() => {
-    return Math.max(0, differenceInMinutes(endDateTime, startDateTime))
-  }, [startDateTime, endDateTime])
+    return Math.max(0, differenceInMinutes(endDateTime, startDateTime));
+  }, [startDateTime, endDateTime]);
 
   // Convert ISO to datetime-local format for inputs
   const startDateLocal = useMemo(() => {
-    const d = startDateTime
-    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-  }, [startDateTime])
+    const d = startDateTime;
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+  }, [startDateTime]);
 
   const endDateLocal = useMemo(() => {
-    const d = endDateTime
-    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-  }, [endDateTime])
+    const d = endDateTime;
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString()
+      .slice(0, 16);
+  }, [endDateTime]);
 
   // Calculate session distribution
-  const totalWeight = draftWeights.reduce((sum, w) => sum + w, 0)
+  const totalWeight = draftWeights.reduce((sum, w) => sum + w, 0);
 
   const sessionsWithDates: SessionWithDates[] = useMemo(() => {
     if (!isValidDate(draftStartDate) || sessions.length === 0) {
       return sessions.map((session, index) => ({
         session,
         index,
-        calculatedStartDate: '',
-        calculatedEndDate: '',
-        isoStartDate: '',
-        isoEndDate: '',
+        calculatedStartDate: "",
+        calculatedEndDate: "",
+        isoStartDate: "",
+        isoEndDate: "",
         sessionMinutes: 0,
         percentage: sessions.length > 0 ? Math.round(100 / sessions.length) : 0,
         weight: draftWeights[index] || 100,
-      }))
+      }));
     }
 
-    let currentDate = new Date(draftStartDate)
+    let currentDate = new Date(draftStartDate);
     return sessions.map((session, index) => {
-      const weight = draftWeights[index] || 100
-      const proportion = totalWeight > 0 ? weight / totalWeight : 0
-      const sessionMinutes = Math.max(1, Math.round(durationMinutes * proportion))
-      const sStart = currentDate
-      const sEnd = addMinutes(currentDate, sessionMinutes)
-      currentDate = sEnd
+      const weight = draftWeights[index] || 100;
+      const proportion = totalWeight > 0 ? weight / totalWeight : 0;
+      const sessionMinutes = Math.max(
+        1,
+        Math.round(durationMinutes * proportion),
+      );
+      const sStart = currentDate;
+      const sEnd = addMinutes(currentDate, sessionMinutes);
+      currentDate = sEnd;
 
       return {
         session,
         index,
-        calculatedStartDate: format(sStart, 'yyyy-MM-dd HH:mm'),
-        calculatedEndDate: format(sEnd, 'yyyy-MM-dd HH:mm'),
+        calculatedStartDate: format(sStart, "yyyy-MM-dd HH:mm"),
+        calculatedEndDate: format(sEnd, "yyyy-MM-dd HH:mm"),
         isoStartDate: sStart.toISOString(),
         isoEndDate: sEnd.toISOString(),
         sessionMinutes,
         percentage: Math.round(proportion * 100),
         weight,
-      }
-    })
-  }, [sessions, draftStartDate, durationMinutes, totalWeight, draftWeights])
+      };
+    });
+  }, [sessions, draftStartDate, durationMinutes, totalWeight, draftWeights]);
 
   // ─── Event Handlers ────────────────────────────────────────────────────
 
   const handleStartChange = (localValue: string) => {
-    if (!localValue) return
-    const newStart = new Date(localValue)
+    if (!localValue) return;
+    const newStart = new Date(localValue);
     // Keep same duration
-    const newEnd = addMinutes(newStart, durationMinutes)
-    setDraftStartDate(newStart.toISOString())
-    setDraftEndDate(newEnd.toISOString())
-    setDirty(true)
-  }
+    const newEnd = addMinutes(newStart, durationMinutes);
+    setDraftStartDate(newStart.toISOString());
+    setDraftEndDate(newEnd.toISOString());
+    setDirty(true);
+  };
 
   const handleEndChange = (localValue: string) => {
-    if (!localValue) return
-    const newEnd = new Date(localValue)
-    setDraftEndDate(newEnd.toISOString())
-    setDirty(true)
-  }
+    if (!localValue) return;
+    const newEnd = new Date(localValue);
+    setDraftEndDate(newEnd.toISOString());
+    setDirty(true);
+  };
 
   // Timeline drag
   const handleTimelineDrag = useCallback(
     (e: React.MouseEvent | MouseEvent) => {
-      if (draggingHandle === null || !timelineRef.current) return
+      if (draggingHandle === null || !timelineRef.current) return;
 
-      const rect = timelineRef.current.getBoundingClientRect()
-      const mouseX = e.clientX - rect.left
-      const totalWidth = rect.width
+      const rect = timelineRef.current.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const totalWidth = rect.width;
 
-      let cumulativePercent = 0
+      let cumulativePercent = 0;
       for (let i = 0; i < draggingHandle; i++) {
-        cumulativePercent += sessionsWithDates[i]?.percentage || 0
+        cumulativePercent += sessionsWithDates[i]?.percentage || 0;
       }
 
-      const newPercent = Math.max(5, Math.min(95, (mouseX / totalWidth) * 100))
+      const newPercent = Math.max(5, Math.min(95, (mouseX / totalWidth) * 100));
 
-      const leftWeight = draftWeights[draggingHandle]
-      const rightWeight = draftWeights[draggingHandle + 1]
-      if (leftWeight === undefined || rightWeight === undefined) return
+      const leftWeight = draftWeights[draggingHandle];
+      const rightWeight = draftWeights[draggingHandle + 1];
+      if (leftWeight === undefined || rightWeight === undefined) return;
 
-      const leftPercent = sessionsWithDates[draggingHandle]?.percentage || 0
-      const rightPercent = sessionsWithDates[draggingHandle + 1]?.percentage || 0
-      const combinedPercent = leftPercent + rightPercent
+      const leftPercent = sessionsWithDates[draggingHandle]?.percentage || 0;
+      const rightPercent =
+        sessionsWithDates[draggingHandle + 1]?.percentage || 0;
+      const combinedPercent = leftPercent + rightPercent;
 
-      const newLeftPercent = Math.max(5, Math.min(combinedPercent - 5, newPercent - cumulativePercent))
+      const newLeftPercent = Math.max(
+        5,
+        Math.min(combinedPercent - 5, newPercent - cumulativePercent),
+      );
 
-      const totalWeightForBoth = leftWeight + rightWeight
-      const newLeftWeight = Math.max(1, Math.round((newLeftPercent / combinedPercent) * totalWeightForBoth))
-      const newRightWeight = Math.max(1, totalWeightForBoth - newLeftWeight)
+      const totalWeightForBoth = leftWeight + rightWeight;
+      const newLeftWeight = Math.max(
+        1,
+        Math.round((newLeftPercent / combinedPercent) * totalWeightForBoth),
+      );
+      const newRightWeight = Math.max(1, totalWeightForBoth - newLeftWeight);
 
-      setDraftWeights(prev => {
-        const next = [...prev]
-        next[draggingHandle] = newLeftWeight
-        next[draggingHandle + 1] = newRightWeight
-        return next
-      })
-      setDirty(true)
+      setDraftWeights((prev) => {
+        const next = [...prev];
+        next[draggingHandle] = newLeftWeight;
+        next[draggingHandle + 1] = newRightWeight;
+        return next;
+      });
+      setDirty(true);
     },
     [draggingHandle, sessionsWithDates, draftWeights],
-  )
+  );
 
   const handleMouseUp = useCallback(() => {
-    setDraggingHandle(null)
-  }, [])
+    setDraggingHandle(null);
+  }, []);
 
   useEffect(() => {
     if (draggingHandle !== null) {
-      const handleMove = (e: MouseEvent) => handleTimelineDrag(e)
-      const handleUp = () => handleMouseUp()
-      window.addEventListener('mousemove', handleMove)
-      window.addEventListener('mouseup', handleUp)
+      const handleMove = (e: MouseEvent) => handleTimelineDrag(e);
+      const handleUp = () => handleMouseUp();
+      window.addEventListener("mousemove", handleMove);
+      window.addEventListener("mouseup", handleUp);
       return () => {
-        window.removeEventListener('mousemove', handleMove)
-        window.removeEventListener('mouseup', handleUp)
-      }
+        window.removeEventListener("mousemove", handleMove);
+        window.removeEventListener("mouseup", handleUp);
+      };
     }
-  }, [draggingHandle, handleTimelineDrag, handleMouseUp])
+  }, [draggingHandle, handleTimelineDrag, handleMouseUp]);
 
   // ─── Save All ──────────────────────────────────────────────────────────
 
   const handleSaveTimeline = async () => {
-    setSaving(true)
+    setSaving(true);
     try {
       // 1. Save project start/end dates
       const projResult = await updateProject({
@@ -800,11 +894,11 @@ function TimelineEditor({ projectId, startDate, endDate, sessions, onSaved }: Ti
             endDate: draftEndDate,
           },
         },
-      })
+      });
       if (!projResult.success) {
-        toast.error('Failed to save project dates')
-        setSaving(false)
-        return
+        toast.error("Failed to save project dates");
+        setSaving(false);
+        return;
       }
 
       // 2. Save all session dates and weights
@@ -818,25 +912,25 @@ function TimelineEditor({ projectId, startDate, endDate, sessions, onSaved }: Ti
               weight: s.weight,
             },
           },
-        })
-      })
+        });
+      });
 
-      const results = await Promise.all(sessionPromises)
-      const allSuccess = results.every(r => r.success)
+      const results = await Promise.all(sessionPromises);
+      const allSuccess = results.every((r) => r.success);
 
       if (allSuccess) {
-        toast.success('Timeline saved')
-        setDirty(false)
-        await onSaved()
+        toast.success("Timeline saved");
+        setDirty(false);
+        await onSaved();
       } else {
-        toast.error('Some session updates failed')
+        toast.error("Some session updates failed");
       }
     } catch {
-      toast.error('Failed to save timeline')
+      toast.error("Failed to save timeline");
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   // ─── Render ────────────────────────────────────────────────────────────
 
@@ -877,7 +971,8 @@ function TimelineEditor({ projectId, startDate, endDate, sessions, onSaved }: Ti
             {formatDuration(durationMinutes)}
           </span>
           <span className="text-xs text-muted-foreground">
-            {safeFormatDate(draftStartDate, 'MMM d HH:mm', '?')} - {safeFormatDate(draftEndDate, 'MMM d HH:mm', '?')}
+            {safeFormatDate(draftStartDate, "MMM d HH:mm", "?")} -{" "}
+            {safeFormatDate(draftEndDate, "MMM d HH:mm", "?")}
           </span>
         </div>
       )}
@@ -887,14 +982,16 @@ function TimelineEditor({ projectId, startDate, endDate, sessions, onSaved }: Ti
         <div>
           <label className="text-xs font-medium text-muted-foreground mb-2 block">
             Session Distribution
-            <span className="text-[10px] font-normal ml-1">(drag handles to adjust)</span>
+            <span className="text-[10px] font-normal ml-1">
+              (drag handles to adjust)
+            </span>
           </label>
-           <div className="px-6">
+          <div className="px-6">
             <div
               ref={timelineRef}
               className={cn(
-                'flex h-8 rounded-md overflow-hidden border border-border bg-muted/30 relative',
-                draggingHandle !== null && 'cursor-col-resize',
+                "flex h-8 rounded-md overflow-hidden border border-border bg-muted/30 relative",
+                draggingHandle !== null && "cursor-col-resize",
               )}
             >
               {sessionsWithDates.map((s, index) => (
@@ -908,22 +1005,43 @@ function TimelineEditor({ projectId, startDate, endDate, sessions, onSaved }: Ti
                       <TooltipTrigger asChild>
                         <div
                           className={cn(
-                            'h-full flex items-center justify-center text-foreground bg-background border-y border-l border-border/70 transition-colors duration-200 ease-out hover:bg-cyan-500/35',
-                            expandedSession === index && 'bg-cyan-500/35',
-                            index === sessionsWithDates.length - 1 && 'border-r',
+                            "h-full flex items-center justify-center text-foreground bg-background border-y border-l border-border/70 transition-colors duration-200 ease-out hover:bg-cyan-500/35",
+                            expandedSession === index && "bg-cyan-500/35",
+                            index === sessionsWithDates.length - 1 &&
+                              "border-r",
                           )}
-                          onClick={() => setExpandedSession(expandedSession === index ? null : index)}
+                          onClick={() =>
+                            setExpandedSession(
+                              expandedSession === index ? null : index,
+                            )
+                          }
                         >
-                          <span className="text-[11px] font-semibold">{index + 1}</span>
+                          <span className="text-[11px] font-semibold">
+                            {index + 1}
+                          </span>
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p className="font-medium">{s.session.title || `Session ${index + 1}`}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatSessionDuration(s.sessionMinutes, durationMinutes)} ({s.percentage}%)
+                        <p className="font-medium">
+                          {s.session.title || `Session ${index + 1}`}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {formatTimelineDateForScale(s.isoStartDate, durationMinutes)} - {formatTimelineDateForScale(s.isoEndDate, durationMinutes)}
+                          {formatSessionDuration(
+                            s.sessionMinutes,
+                            durationMinutes,
+                          )}{" "}
+                          ({s.percentage}%)
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatTimelineDateForScale(
+                            s.isoStartDate,
+                            durationMinutes,
+                          )}{" "}
+                          -{" "}
+                          {formatTimelineDateForScale(
+                            s.isoEndDate,
+                            durationMinutes,
+                          )}
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -933,20 +1051,20 @@ function TimelineEditor({ projectId, startDate, endDate, sessions, onSaved }: Ti
                   {index < sessionsWithDates.length - 1 && (
                     <div
                       className={cn(
-                        'absolute right-0 top-0 h-full w-3 cursor-col-resize z-10 flex items-center justify-center translate-x-1/2 group',
-                        draggingHandle === index && 'bg-cyan-500/20',
+                        "absolute right-0 top-0 h-full w-3 cursor-col-resize z-10 flex items-center justify-center translate-x-1/2 group",
+                        draggingHandle === index && "bg-cyan-500/20",
                       )}
                       onMouseDown={(e) => {
-                        e.preventDefault()
-                        e.stopPropagation()
-                        setDraggingHandle(index)
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setDraggingHandle(index);
                       }}
                     >
                       <div
                         className={cn(
-                          'w-1 h-5 rounded-full bg-border transition-colors',
-                          'group-hover:bg-cyan-500 group-hover:w-1.5',
-                          draggingHandle === index && 'bg-cyan-500 w-1.5',
+                          "w-1 h-5 rounded-full bg-border transition-colors",
+                          "group-hover:bg-cyan-500 group-hover:w-1.5",
+                          draggingHandle === index && "bg-cyan-500 w-1.5",
                         )}
                       />
                     </div>
@@ -958,8 +1076,19 @@ function TimelineEditor({ projectId, startDate, endDate, sessions, onSaved }: Ti
             <div className="flex justify-between mt-1 mb-4 text-[10px] text-muted-foreground">
               {sessionsWithDates.length > 0 && (
                 <>
-                  <span>{formatTimelineDateForScale(sessionsWithDates[0].isoStartDate, durationMinutes)}</span>
-                  <span>{formatTimelineDateForScale(sessionsWithDates[sessionsWithDates.length - 1].isoEndDate, durationMinutes)}</span>
+                  <span>
+                    {formatTimelineDateForScale(
+                      sessionsWithDates[0].isoStartDate,
+                      durationMinutes,
+                    )}
+                  </span>
+                  <span>
+                    {formatTimelineDateForScale(
+                      sessionsWithDates[sessionsWithDates.length - 1]
+                        .isoEndDate,
+                      durationMinutes,
+                    )}
+                  </span>
                 </>
               )}
             </div>
@@ -972,19 +1101,32 @@ function TimelineEditor({ projectId, startDate, endDate, sessions, onSaved }: Ti
               durationMinutes={durationMinutes}
               onSessionDateChange={(startIso, endIso) => {
                 // Recalculate weight for this session based on new duration
-                const newSessionMinutes = Math.max(1, differenceInMinutes(new Date(endIso), new Date(startIso)))
-                const otherWeightsTotal = draftWeights.reduce((sum, w, i) => i === expandedSession ? sum : sum + w, 0)
-                const otherMinutes = durationMinutes - newSessionMinutes
+                const newSessionMinutes = Math.max(
+                  1,
+                  differenceInMinutes(new Date(endIso), new Date(startIso)),
+                );
+                const otherWeightsTotal = draftWeights.reduce(
+                  (sum, w, i) => (i === expandedSession ? sum : sum + w),
+                  0,
+                );
+                const otherMinutes = durationMinutes - newSessionMinutes;
                 // weight / otherWeightsTotal = newSessionMinutes / otherMinutes
-                const newWeight = otherMinutes > 0 && otherWeightsTotal > 0
-                  ? Math.max(1, Math.round((newSessionMinutes / otherMinutes) * otherWeightsTotal))
-                  : draftWeights[expandedSession]
-                setDraftWeights(prev => {
-                  const next = [...prev]
-                  next[expandedSession] = newWeight
-                  return next
-                })
-                setDirty(true)
+                const newWeight =
+                  otherMinutes > 0 && otherWeightsTotal > 0
+                    ? Math.max(
+                        1,
+                        Math.round(
+                          (newSessionMinutes / otherMinutes) *
+                            otherWeightsTotal,
+                        ),
+                      )
+                    : draftWeights[expandedSession];
+                setDraftWeights((prev) => {
+                  const next = [...prev];
+                  next[expandedSession] = newWeight;
+                  return next;
+                });
+                setDirty(true);
               }}
             />
           )}
@@ -1012,54 +1154,54 @@ function TimelineEditor({ projectId, startDate, endDate, sessions, onSaved }: Ti
         </Button>
       )}
     </div>
-  )
+  );
 }
 
 // ─── Team Size Editor ──────────────────────────────────────────────────────
 
 interface TeamSizeEditorProps {
-  value: number
-  onSave: (value: number) => Promise<void>
+  value: number;
+  onSave: (value: number) => Promise<void>;
 }
 
 function TeamSizeEditor({ value, onSave }: TeamSizeEditorProps) {
-  const [draft, setDraft] = useState(String(value))
-  const [saving, setSaving] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [draft, setDraft] = useState(String(value));
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (document.activeElement !== inputRef.current) {
-      setDraft(String(value))
+      setDraft(String(value));
     }
-  }, [value])
+  }, [value]);
 
   const handleChange = async (delta: number) => {
-    const newVal = Math.max(2, Math.min(10, value + delta))
-    if (newVal === value) return
-    setSaving(true)
+    const newVal = Math.max(2, Math.min(10, value + delta));
+    if (newVal === value) return;
+    setSaving(true);
     try {
-      await onSave(newVal)
+      await onSave(newVal);
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const commitValue = async () => {
-    const num = parseInt(draft, 10)
+    const num = parseInt(draft, 10);
     if (isNaN(num) || num < 2 || num > 10) {
-      setDraft(String(value))
-      return
+      setDraft(String(value));
+      return;
     }
-    if (num === value) return
-    setSaving(true)
+    if (num === value) return;
+    setSaving(true);
     try {
-      await onSave(num)
+      await onSave(num);
     } catch {
-      setDraft(String(value))
+      setDraft(String(value));
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   return (
     <div className="flex items-center h-6 rounded border border-border bg-muted/30">
@@ -1080,19 +1222,19 @@ function TeamSizeEditor({ value, onSave }: TeamSizeEditorProps) {
         onChange={(e) => setDraft(e.target.value)}
         onBlur={commitValue}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault()
-            commitValue()
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commitValue();
           }
-          if (e.key === 'Escape') {
-            setDraft(String(value))
-            inputRef.current?.blur()
+          if (e.key === "Escape") {
+            setDraft(String(value));
+            inputRef.current?.blur();
           }
         }}
         disabled={saving}
         className={cn(
-          'w-8 text-center text-xs font-medium tabular-nums bg-transparent border-none outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]',
-          saving && 'opacity-50',
+          "w-8 text-center text-xs font-medium tabular-nums bg-transparent border-none outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]",
+          saving && "opacity-50",
         )}
       />
       <button
@@ -1104,87 +1246,87 @@ function TeamSizeEditor({ value, onSave }: TeamSizeEditorProps) {
         +
       </button>
     </div>
-  )
+  );
 }
 
 // ─── Main Page ─────────────────────────────────────────────────────────────
 
 function ProjectDetailPage() {
-  const navigate = useNavigate()
-  const { projectId } = Route.useParams()
-  const { isAuthenticated, currentUser } = useAuthStore()
-  const { getProject, fetchProjects } = useCreatorStore()
+  const navigate = useNavigate();
+  const { projectId } = Route.useParams();
+  const { isAuthenticated, currentUser } = useAuthStore();
+  const { getProject, fetchProjects } = useCreatorStore();
 
-  const project = getProject(projectId)
-  const [dragIdx, setDragIdx] = useState<number | null>(null)
-  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
-  const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null)
-  const [deleteLoading, setDeleteLoading] = useState(false)
+  const project = getProject(projectId);
+  const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Fetch projects if not loaded yet
   useEffect(() => {
     if (currentUser?.id && !project) {
-      fetchProjects(currentUser.id)
+      fetchProjects(currentUser.id);
     }
-  }, [currentUser?.id, project, fetchProjects])
+  }, [currentUser?.id, project, fetchProjects]);
 
   // Redirect to landing if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate({ to: '/' })
+      navigate({ to: "/" });
     }
-  }, [isAuthenticated, navigate])
+  }, [isAuthenticated, navigate]);
 
-  // Redirect explorers to /explorer
+  // Redirect users without creator role
   useEffect(() => {
-    if (currentUser && currentUser.role === 'explorer') {
-      navigate({ to: '/explorer' })
+    if (currentUser && !currentUser.role.includes("creator")) {
+      navigate({ to: "/explorer" });
     }
-  }, [currentUser, navigate])
+  }, [currentUser, navigate]);
 
   // Helper to save project-level fields
   const saveProjectField = useCallback(
     async (updates: Record<string, unknown>) => {
-      if (!project || !currentUser?.id) return
+      if (!project || !currentUser?.id) return;
       const result = await updateProject({
         data: { projectId: project.id, updates },
-      })
+      });
       if (result.success) {
-        toast.success('Saved')
-        await fetchProjects(currentUser.id)
+        toast.success("Saved");
+        await fetchProjects(currentUser.id);
       } else {
-        throw new Error('Failed to save')
+        throw new Error("Failed to save");
       }
     },
     [project, currentUser?.id, fetchProjects],
-  )
+  );
 
   // Helper to save session-level fields
   const saveSessionField = useCallback(
     async (sessionId: string, updates: Record<string, unknown>) => {
-      if (!currentUser?.id) return
+      if (!currentUser?.id) return;
       const result = await apiUpdateSession({
         data: { sessionId, updates },
-      })
+      });
       if (result.success) {
-        toast.success('Saved')
-        await fetchProjects(currentUser.id)
+        toast.success("Saved");
+        await fetchProjects(currentUser.id);
       } else {
-        throw new Error('Failed to save')
+        throw new Error("Failed to save");
       }
     },
     [currentUser?.id, fetchProjects],
-  )
+  );
 
   // Callback for timeline editor to refresh data
   const handleTimelineSaved = useCallback(async () => {
     if (currentUser?.id) {
-      await fetchProjects(currentUser.id)
+      await fetchProjects(currentUser.id);
     }
-  }, [currentUser?.id, fetchProjects])
+  }, [currentUser?.id, fetchProjects]);
 
-  if (!currentUser || currentUser.role === 'explorer') {
-    return null
+  if (!currentUser || !currentUser.role.includes("creator")) {
+    return null;
   }
 
   if (!project) {
@@ -1197,39 +1339,39 @@ function ProjectDetailPage() {
           <p className="text-muted-foreground mb-4">
             The project you're looking for doesn't exist.
           </p>
-          <Button onClick={() => navigate({ to: '/creator' })}>
+          <Button onClick={() => navigate({ to: "/creator" })}>
             Back to Dashboard
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   const status: CreatorProjectStatus = getProjectTimeStatus(
     project.startDate,
     project.endDate,
-  )
-  const progress = getProjectProgress(project.startDate, project.endDate)
-  const timeInfo = getProjectTimeInfo(project.startDate, project.endDate)
-  const isEditable = status === 'scheduled'
+  );
+  const progress = getProjectProgress(project.startDate, project.endDate);
+  const timeInfo = getProjectTimeInfo(project.startDate, project.endDate);
+  const isEditable = status === "scheduled";
 
   const statusColors: Record<CreatorProjectStatus, string> = {
-    scheduled: 'bg-amber-500/10 text-amber-500 border-amber-500/30',
-    opened: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/30',
-    closed: 'bg-green-500/10 text-green-500 border-green-500/30',
-  }
+    scheduled: "bg-amber-500/10 text-amber-500 border-amber-500/30",
+    opened: "bg-cyan-500/10 text-cyan-500 border-cyan-500/30",
+    closed: "bg-green-500/10 text-green-500 border-green-500/30",
+  };
 
   const statusLabels: Record<CreatorProjectStatus, string> = {
-    scheduled: 'Scheduled',
-    opened: 'Opened',
-    closed: 'Closed',
-  }
+    scheduled: "Scheduled",
+    opened: "Opened",
+    closed: "Closed",
+  };
 
   const difficultyColors: Record<string, string> = {
-    easy: 'bg-green-500/10 text-green-400 border-green-500/20',
-    medium: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    hard: 'bg-red-500/10 text-red-400 border-red-500/20',
-  }
+    easy: "bg-green-500/10 text-green-400 border-green-500/20",
+    medium: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+    hard: "bg-red-500/10 text-red-400 border-red-500/20",
+  };
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-background">
@@ -1238,7 +1380,7 @@ function ProjectDetailPage() {
         <div className="mb-8">
           <Button
             variant="ghost"
-            onClick={() => navigate({ to: '/creator' })}
+            onClick={() => navigate({ to: "/creator" })}
             className="mb-4 text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -1252,7 +1394,7 @@ function ProjectDetailPage() {
                   <InlineText
                     value={project.name}
                     onSave={async (val) => {
-                      await saveProjectField({ title: val })
+                      await saveProjectField({ title: val });
                     }}
                     editable={isEditable}
                     className="text-3xl font-bold text-foreground"
@@ -1267,20 +1409,12 @@ function ProjectDetailPage() {
                   {statusLabels[status]}
                 </Badge>
               </div>
-              <p className="text-muted-foreground">
-                Project Details
-                {isEditable && (
-                  <span className="text-xs text-amber-500 ml-2">
-                    (editable while scheduled)
-                  </span>
-                )}
-              </p>
             </div>
-            {status === 'opened' && (
+            {status === "opened" && (
               <Button
                 onClick={() =>
                   navigate({
-                    to: '/creator/project/$projectId/monitor',
+                    to: "/creator/project/$projectId/monitor",
                     params: { projectId: project.id },
                   })
                 }
@@ -1314,7 +1448,7 @@ function ProjectDetailPage() {
                 <InlineText
                   value={project.description}
                   onSave={async (val) => {
-                    await saveProjectField({ description: val })
+                    await saveProjectField({ description: val });
                   }}
                   editable
                   multiline
@@ -1324,7 +1458,9 @@ function ProjectDetailPage() {
               ) : (
                 <p className="text-foreground whitespace-pre-wrap">
                   {project.description || (
-                    <span className="text-muted-foreground italic">No description</span>
+                    <span className="text-muted-foreground italic">
+                      No description
+                    </span>
                   )}
                 </p>
               )}
@@ -1339,7 +1475,7 @@ function ProjectDetailPage() {
                 <InlineText
                   value={project.drivingQuestion}
                   onSave={async (val) => {
-                    await saveProjectField({ drivingQuestion: val })
+                    await saveProjectField({ drivingQuestion: val });
                   }}
                   editable
                   multiline
@@ -1349,7 +1485,9 @@ function ProjectDetailPage() {
               ) : (
                 <p className="text-foreground">
                   {project.drivingQuestion || (
-                    <span className="text-muted-foreground">No driving question</span>
+                    <span className="text-muted-foreground">
+                      No driving question
+                    </span>
                   )}
                 </p>
               )}
@@ -1372,9 +1510,17 @@ function ProjectDetailPage() {
                 <div className="flex items-center gap-3 px-3 py-2 bg-muted/30 rounded-lg border border-border text-sm">
                   <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
                   <span className="text-foreground">
-                    {safeFormatDate(project.startDate, 'MMM d, yyyy HH:mm', 'TBD')}
-                    {' - '}
-                    {safeFormatDate(project.endDate, 'MMM d, yyyy HH:mm', 'TBD')}
+                    {safeFormatDate(
+                      project.startDate,
+                      "MMM d, yyyy HH:mm",
+                      "TBD",
+                    )}
+                    {" - "}
+                    {safeFormatDate(
+                      project.endDate,
+                      "MMM d, yyyy HH:mm",
+                      "TBD",
+                    )}
                   </span>
                 </div>
               )}
@@ -1392,28 +1538,30 @@ function ProjectDetailPage() {
                     variant="ghost"
                     onClick={async () => {
                       try {
-                        const lastSession = project.sessions[project.sessions.length - 1]
-                        const newStart = lastSession?.endDate || project.startDate
-                        const newEnd = project.endDate
+                        const lastSession =
+                          project.sessions[project.sessions.length - 1];
+                        const newStart =
+                          lastSession?.endDate || project.startDate;
+                        const newEnd = project.endDate;
                         const result = await createSession({
                           data: {
                             projectId: project.id,
                             title: `Session ${project.sessions.length + 1}`,
-                            difficulty: 'medium',
-                            deliverableType: 'none',
+                            difficulty: "medium",
+                            deliverableType: "none",
                             weight: 100,
                             startDate: newStart,
                             endDate: newEnd,
                           },
-                        })
+                        });
                         if (result.success) {
-                          toast.success('Session added')
-                          await fetchProjects(currentUser!.id)
+                          toast.success("Session added");
+                          await fetchProjects(currentUser!.id);
                         } else {
-                          toast.error('Failed to add session')
+                          toast.error("Failed to add session");
                         }
                       } catch {
-                        toast.error('Failed to add session')
+                        toast.error("Failed to add session");
                       }
                     }}
                     className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
@@ -1433,45 +1581,49 @@ function ProjectDetailPage() {
                     <Collapsible key={session.id}>
                       <div
                         className={cn(
-                          'rounded-lg bg-muted/30 border border-border transition-colors',
-                          dragOverIdx === idx && dragIdx !== idx && 'border-cyan-500 bg-cyan-500/5',
-                          dragIdx === idx && 'opacity-50',
+                          "rounded-lg bg-muted/30 border border-border transition-colors",
+                          dragOverIdx === idx &&
+                            dragIdx !== idx &&
+                            "border-cyan-500 bg-cyan-500/5",
+                          dragIdx === idx && "opacity-50",
                         )}
                         onDragOver={(e) => {
-                          e.preventDefault()
-                          e.dataTransfer.dropEffect = 'move'
-                          setDragOverIdx(idx)
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = "move";
+                          setDragOverIdx(idx);
                         }}
                         onDragLeave={() => {
-                          setDragOverIdx(null)
+                          setDragOverIdx(null);
                         }}
                         onDrop={async (e) => {
-                          e.preventDefault()
-                          const fromIdx = dragIdx
+                          e.preventDefault();
+                          const fromIdx = dragIdx;
                           if (fromIdx === null || fromIdx === idx) {
-                            setDragIdx(null)
-                            setDragOverIdx(null)
-                            return
+                            setDragIdx(null);
+                            setDragOverIdx(null);
+                            return;
                           }
-                          const ids = project.sessions.map(s => s.id)
-                          const [moved] = ids.splice(fromIdx, 1)
-                          ids.splice(idx, 0, moved)
-                          setDragIdx(null)
-                          setDragOverIdx(null)
+                          const ids = project.sessions.map((s) => s.id);
+                          const [moved] = ids.splice(fromIdx, 1);
+                          ids.splice(idx, 0, moved);
+                          setDragIdx(null);
+                          setDragOverIdx(null);
                           try {
-                            const result = await reorderSessions({ data: { sessionIds: ids } })
+                            const result = await reorderSessions({
+                              data: { sessionIds: ids },
+                            });
                             if (result.success) {
-                              await fetchProjects(currentUser!.id)
+                              await fetchProjects(currentUser!.id);
                             } else {
-                              toast.error('Failed to reorder')
+                              toast.error("Failed to reorder");
                             }
                           } catch {
-                            toast.error('Failed to reorder')
+                            toast.error("Failed to reorder");
                           }
                         }}
                         onDragEnd={() => {
-                          setDragIdx(null)
-                          setDragOverIdx(null)
+                          setDragIdx(null);
+                          setDragOverIdx(null);
                         }}
                       >
                         {/* Trigger row: always visible */}
@@ -1479,9 +1631,12 @@ function ProjectDetailPage() {
                           className="flex items-center gap-3 p-3"
                           draggable={isEditable}
                           onDragStart={(e) => {
-                            e.dataTransfer.effectAllowed = 'move'
-                            e.dataTransfer.setData('text/plain', idx.toString())
-                            setDragIdx(idx)
+                            e.dataTransfer.effectAllowed = "move";
+                            e.dataTransfer.setData(
+                              "text/plain",
+                              idx.toString(),
+                            );
+                            setDragIdx(idx);
                           }}
                         >
                           {isEditable && (
@@ -1496,19 +1651,32 @@ function ProjectDetailPage() {
                           </div>
                           <CollapsibleTrigger className="flex-1 min-w-0 flex items-center gap-2 cursor-pointer [&[data-state=open]_.chevron-icon]:rotate-180">
                             <span className="font-medium text-foreground text-sm truncate">
-                              {session.title?.replace(/^Session\s+\d+:\s*/, '') || 'Untitled'}
+                              {session.title?.replace(
+                                /^Session\s+\d+:\s*/,
+                                "",
+                              ) || "Untitled"}
                             </span>
                             <Badge
                               variant="outline"
-                              className={`text-[10px] shrink-0 ${difficultyColors[session.difficulty] || ''}`}
+                              className={`text-[10px] shrink-0 ${difficultyColors[session.difficulty] || ""}`}
                             >
                               {session.difficulty}
                             </Badge>
-                            {session.deliverableType !== 'none' && (
+                            {session.deliverableType !== "none" && (
                               <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
                             )}
                             <span className="text-[10px] text-muted-foreground shrink-0 ml-auto mr-1">
-                              {safeFormatDate(session.startDate, 'MMM d HH:mm', 'TBD')} - {safeFormatDate(session.endDate, 'MMM d HH:mm', 'TBD')}
+                              {safeFormatDate(
+                                session.startDate,
+                                "MMM d HH:mm",
+                                "TBD",
+                              )}{" "}
+                              -{" "}
+                              {safeFormatDate(
+                                session.endDate,
+                                "MMM d HH:mm",
+                                "TBD",
+                              )}
                             </span>
                             <ChevronDown className="chevron-icon w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200" />
                           </CollapsibleTrigger>
@@ -1531,7 +1699,9 @@ function ProjectDetailPage() {
                               <InlineText
                                 value={session.title}
                                 onSave={async (val) => {
-                                  await saveSessionField(session.id, { title: val })
+                                  await saveSessionField(session.id, {
+                                    title: val,
+                                  });
                                 }}
                                 editable={isEditable}
                                 className="font-medium text-foreground text-sm"
@@ -1544,18 +1714,23 @@ function ProjectDetailPage() {
                                     try {
                                       await saveSessionField(session.id, {
                                         difficulty: val as SessionDifficulty,
-                                      })
+                                      });
                                     } catch {
-                                      toast.error('Failed to save difficulty')
+                                      toast.error("Failed to save difficulty");
                                     }
                                   }}
                                 >
-                                  <SelectTrigger size="sm" className="h-5 text-[10px] w-auto px-2 py-0 border-border">
+                                  <SelectTrigger
+                                    size="sm"
+                                    className="h-5 text-[10px] w-auto px-2 py-0 border-border"
+                                  >
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="easy">easy</SelectItem>
-                                    <SelectItem value="medium">medium</SelectItem>
+                                    <SelectItem value="medium">
+                                      medium
+                                    </SelectItem>
                                     <SelectItem value="hard">hard</SelectItem>
                                   </SelectContent>
                                 </Select>
@@ -1567,18 +1742,27 @@ function ProjectDetailPage() {
                                     try {
                                       await saveSessionField(session.id, {
                                         deliverableType: val as DeliverableType,
-                                      })
+                                      });
                                     } catch {
-                                      toast.error('Failed to save deliverable type')
+                                      toast.error(
+                                        "Failed to save deliverable type",
+                                      );
                                     }
                                   }}
                                 >
-                                  <SelectTrigger size="sm" className="h-5 text-[10px] w-auto px-2 py-0 border-border">
+                                  <SelectTrigger
+                                    size="sm"
+                                    className="h-5 text-[10px] w-auto px-2 py-0 border-border"
+                                  >
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="none">No deliverable</SelectItem>
-                                    <SelectItem value="document">Document</SelectItem>
+                                    <SelectItem value="none">
+                                      No deliverable
+                                    </SelectItem>
+                                    <SelectItem value="document">
+                                      Document
+                                    </SelectItem>
                                   </SelectContent>
                                 </Select>
                               ) : null}
@@ -1589,7 +1773,9 @@ function ProjectDetailPage() {
                                 <InlineText
                                   value={session.topic}
                                   onSave={async (val) => {
-                                    await saveSessionField(session.id, { topic: val })
+                                    await saveSessionField(session.id, {
+                                      topic: val,
+                                    });
                                   }}
                                   editable={isEditable}
                                   className="text-xs text-muted-foreground"
@@ -1601,13 +1787,21 @@ function ProjectDetailPage() {
                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
                               <span className="flex items-center gap-1">
                                 <Clock className="w-3 h-3 shrink-0" />
-                                {safeFormatDate(session.startDate, 'MMM d HH:mm', 'TBD')}
-                                {' - '}
-                                {safeFormatDate(session.endDate, 'MMM d HH:mm', 'TBD')}
+                                {safeFormatDate(
+                                  session.startDate,
+                                  "MMM d HH:mm",
+                                  "TBD",
+                                )}
+                                {" - "}
+                                {safeFormatDate(
+                                  session.endDate,
+                                  "MMM d HH:mm",
+                                  "TBD",
+                                )}
                               </span>
                             </div>
                             {/* Rubric */}
-                            {session.deliverableType !== 'none' && (
+                            {session.deliverableType !== "none" && (
                               <RubricEditor
                                 sessionId={session.id}
                                 rubric={session.rubric}
@@ -1659,12 +1853,14 @@ function ProjectDetailPage() {
                   </span>
                   {isEditable ? (
                     <Select
-                      value={project.teamSize === 1 ? 'individual' : 'group'}
+                      value={project.teamSize === 1 ? "individual" : "group"}
                       onValueChange={async (val) => {
                         try {
-                          await saveProjectField({ teamSize: val === 'individual' ? 1 : 2 })
+                          await saveProjectField({
+                            teamSize: val === "individual" ? 1 : 2,
+                          });
                         } catch {
-                          toast.error('Failed to save type')
+                          toast.error("Failed to save type");
                         }
                       }}
                     >
@@ -1678,7 +1874,7 @@ function ProjectDetailPage() {
                     </Select>
                   ) : (
                     <span className="text-foreground">
-                      {project.teamSize === 1 ? 'Individual' : 'Group'}
+                      {project.teamSize === 1 ? "Individual" : "Group"}
                     </span>
                   )}
                 </div>
@@ -1693,7 +1889,7 @@ function ProjectDetailPage() {
                       <TeamSizeEditor
                         value={project.teamSize}
                         onSave={async (val) => {
-                          await saveProjectField({ teamSize: val })
+                          await saveProjectField({ teamSize: val });
                         }}
                       />
                     ) : (
@@ -1719,7 +1915,11 @@ function ProjectDetailPage() {
                     Start
                   </span>
                   <span className="text-foreground">
-                    {safeFormatDate(project.startDate, 'MMM d, yyyy HH:mm', 'TBD')}
+                    {safeFormatDate(
+                      project.startDate,
+                      "MMM d, yyyy HH:mm",
+                      "TBD",
+                    )}
                   </span>
                 </div>
                 {/* End Date */}
@@ -1729,16 +1929,11 @@ function ProjectDetailPage() {
                     End
                   </span>
                   <span className="text-foreground">
-                    {safeFormatDate(project.endDate, 'MMM d, yyyy HH:mm', 'TBD')}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-muted-foreground">
-                    <Users className="w-4 h-4" />
-                    Teams
-                  </span>
-                  <span className="text-foreground">
-                    {project.teams.length}
+                    {safeFormatDate(
+                      project.endDate,
+                      "MMM d, yyyy HH:mm",
+                      "TBD",
+                    )}
                   </span>
                 </div>
               </div>
@@ -1752,8 +1947,8 @@ function ProjectDetailPage() {
               <p className="text-sm text-foreground">
                 {safeFormatDate(
                   project.createdAt,
-                  'MMM d, yyyy HH:mm',
-                  'Unknown',
+                  "MMM d, yyyy HH:mm",
+                  "Unknown",
                 )}
               </p>
             </div>
@@ -1762,12 +1957,18 @@ function ProjectDetailPage() {
       </div>
 
       {/* Delete Session Confirmation */}
-      <AlertDialog open={!!deleteSessionId} onOpenChange={(open) => !open && setDeleteSessionId(null)}>
+      <AlertDialog
+        open={!!deleteSessionId}
+        onOpenChange={(open) => !open && setDeleteSessionId(null)}
+      >
         <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-foreground">Delete Session</AlertDialogTitle>
+            <AlertDialogTitle className="text-foreground">
+              Delete Session
+            </AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground">
-              Are you sure you want to delete this session? This action cannot be undone.
+              Are you sure you want to delete this session? This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1778,23 +1979,23 @@ function ProjectDetailPage() {
               className="bg-destructive text-white hover:bg-destructive/90 dark:bg-destructive/60"
               disabled={deleteLoading}
               onClick={async () => {
-                if (!deleteSessionId) return
-                setDeleteLoading(true)
+                if (!deleteSessionId) return;
+                setDeleteLoading(true);
                 try {
                   const result = await deleteSession({
                     data: { sessionId: deleteSessionId },
-                  })
+                  });
                   if (result.success) {
-                    toast.success('Session deleted')
-                    await fetchProjects(currentUser!.id)
+                    toast.success("Session deleted");
+                    await fetchProjects(currentUser!.id);
                   } else {
-                    toast.error('Failed to delete session')
+                    toast.error("Failed to delete session");
                   }
                 } catch {
-                  toast.error('Failed to delete session')
+                  toast.error("Failed to delete session");
                 } finally {
-                  setDeleteLoading(false)
-                  setDeleteSessionId(null)
+                  setDeleteLoading(false);
+                  setDeleteSessionId(null);
                 }
               }}
             >
@@ -1804,12 +2005,12 @@ function ProjectDetailPage() {
                   Deleting...
                 </>
               ) : (
-                'Delete'
+                "Delete"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

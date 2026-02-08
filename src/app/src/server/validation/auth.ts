@@ -17,7 +17,7 @@ export const registerSchema = z.object({
     .string()
     .min(2, 'Name must be at least 2 characters')
     .max(100, 'Name must be less than 100 characters'),
-  role: z.enum(['explorer', 'creator']).default('explorer'),
+  role: z.array(z.enum(['explorer', 'creator', 'admin'])).min(1).default(['explorer']),
 })
 
 export type RegisterInput = z.infer<typeof registerSchema>

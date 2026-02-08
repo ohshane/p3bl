@@ -33,7 +33,6 @@ import {
   Shield,
   Compass,
   PenTool,
-  Rocket,
   ChevronLeft,
   ChevronRight,
   Users
@@ -83,7 +82,7 @@ function UsersPage() {
           page,
           limit,
           search: search || undefined,
-          role: roleFilter === 'all' ? undefined : roleFilter as 'explorer' | 'creator' | 'pioneer' | 'admin',
+          role: roleFilter === 'all' ? undefined : roleFilter as 'explorer' | 'creator' | 'admin',
           sortBy,
           sortOrder,
         }
@@ -137,8 +136,6 @@ function UsersPage() {
         return 'bg-amber-500/10 text-amber-400 border-amber-500/20'
       case 'creator':
         return 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-      case 'pioneer':
-        return 'bg-green-500/10 text-green-400 border-green-500/20'
       default:
         return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
     }
@@ -150,8 +147,6 @@ function UsersPage() {
         return <Shield className="w-3 h-3" />
       case 'creator':
         return <PenTool className="w-3 h-3" />
-      case 'pioneer':
-        return <Rocket className="w-3 h-3" />
       default:
         return <Compass className="w-3 h-3" />
     }
@@ -201,7 +196,6 @@ function UsersPage() {
             <SelectItem value="all">All Roles</SelectItem>
             <SelectItem value="explorer">Explorer</SelectItem>
             <SelectItem value="creator">Creator</SelectItem>
-            <SelectItem value="pioneer">Pioneer</SelectItem>
             <SelectItem value="admin">Admin</SelectItem>
           </SelectContent>
         </Select>
@@ -286,10 +280,14 @@ function UsersPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <Badge className={`${getRoleBadgeColor(user.role)} gap-1`}>
-                      {getRoleIcon(user.role)}
-                      {user.role}
-                    </Badge>
+                    <div className="flex flex-wrap gap-1">
+                      {user.role.map((r) => (
+                        <Badge key={r} className={`${getRoleBadgeColor(r)} gap-1`}>
+                          {getRoleIcon(r)}
+                          {r}
+                        </Badge>
+                      ))}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">

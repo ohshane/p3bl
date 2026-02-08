@@ -57,7 +57,7 @@ describe('Auth API', () => {
       const tokenData = await generateTokenPair({
         userId: 'test-user-id',
         email: 'test@example.com',
-        role: 'explorer',
+        role: ['explorer'],
       })
 
       expect(tokenData.accessToken).toBeDefined()
@@ -68,14 +68,14 @@ describe('Auth API', () => {
       expect(payload).toBeDefined()
       expect(payload?.sub).toBe('test-user-id')
       expect(payload?.email).toBe('test@example.com')
-      expect(payload?.role).toBe('explorer')
+      expect(payload?.role).toEqual(['explorer'])
     })
 
     it('should generate and verify refresh token', async () => {
       const tokenData = await generateTokenPair({
         userId: 'test-user-id',
         email: 'test@example.com',
-        role: 'explorer',
+        role: ['explorer'],
       })
 
       const payload = await verifyRefreshToken(tokenData.refreshToken)
@@ -97,7 +97,7 @@ describe('Auth API', () => {
         email: 'newuser@example.com',
         password: 'MySecurePass123!',
         name: 'New User',
-        role: 'explorer',
+        role: '["explorer"]',
       })
 
       const dbUser = await db.query.users.findFirst({
@@ -134,7 +134,7 @@ describe('Auth API', () => {
       const tokenData = await generateTokenPair({
         userId: user.id,
         email: user.email,
-        role: user.role,
+        role: JSON.parse(user.role),
       })
 
       // Store session
@@ -163,7 +163,7 @@ describe('Auth API', () => {
       const tokenData = await generateTokenPair({
         userId: user.id,
         email: user.email,
-        role: user.role,
+        role: JSON.parse(user.role),
       })
 
       await db.insert(schema.authSessions).values({
@@ -194,7 +194,7 @@ describe('Auth API', () => {
         const tokenData = await generateTokenPair({
           userId: user.id,
           email: user.email,
-          role: user.role,
+          role: JSON.parse(user.role),
         })
 
         await db.insert(schema.authSessions).values({

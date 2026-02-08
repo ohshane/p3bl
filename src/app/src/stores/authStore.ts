@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { login as apiLogin, register as apiRegister, logout as apiLogout, refreshToken as apiRefreshToken } from '@/server/api/auth'
-import type { CompetencyScores, Notification, SessionDifficulty } from '@/types'
+import type { CompetencyScores, Notification, SessionDifficulty, UserRole } from '@/types'
 
 // Default competencies for new users
 const DEFAULT_COMPETENCIES: CompetencyScores = {
@@ -17,7 +17,7 @@ export interface AuthUser {
   id: string
   email: string
   name: string
-  role: 'explorer' | 'creator' | 'admin' | 'pioneer'
+  role: UserRole[]
   avatarUrl: string | null
   xp: number
   level: number
@@ -101,7 +101,7 @@ export const useAuthStore = create<AuthState>()(
         
         try {
           // Support short usernames - treat them as username@p3bl.local
-          const shortUsernames = ['admin', 'creator1', 'creator2', 'creator3', 'explorer1', 'explorer2', 'explorer3']
+          const shortUsernames = ['admin', 'creator1', 'creator2', 'creator3', 'explorer1', 'explorer2', 'explorer3', 'pioneer1']
           const email = shortUsernames.includes(emailOrUsername.toLowerCase())
             ? `${emailOrUsername.toLowerCase()}@p3bl.local`
             : emailOrUsername.toLowerCase()
@@ -160,7 +160,7 @@ export const useAuthStore = create<AuthState>()(
               email: data.email.toLowerCase(),
               password: data.password,
               name: data.name,
-              role: 'explorer', // Self-registration is always as explorer
+              role: ['explorer'], // Self-registration is always as explorer
             }
           })
           
@@ -425,7 +425,7 @@ export const useAuthStore = create<AuthState>()(
 // Selector hooks for convenience
 export const useCurrentUser = () => useAuthStore((state) => state.currentUser)
 export const useIsAuthenticated = () => useAuthStore((state) => state.isAuthenticated)
-export const useIsAdmin = () => useAuthStore((state) => state.currentUser?.role === 'admin')
-export const useIsCreator = () => useAuthStore((state) => state.currentUser?.role === 'creator' || state.currentUser?.role === 'admin')
-export const useIsPioneer = () => useAuthStore((state) => state.currentUser?.role === 'pioneer')
-export const useUserRole = () => useAuthStore((state) => state.currentUser?.role)
+export const useIsAdmin = () => useAuthStore((state) => state.currentUser?.role?.includes('admin') ?? false)
+export const useIsCreator = () => useAuthStore((state) => state.currentUser?.role?.includes('creator') ?? false)
+export const useUserRoles = () => useAuthStore((state) => state.currentUser?.role ?? [])
+export const useHasRole = (role: UserRole) => useAuthStore((state) => state.currentUser?.role?.includes(role) ?? false)

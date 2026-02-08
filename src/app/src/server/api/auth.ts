@@ -11,6 +11,8 @@ import {
   generateAccessToken,
   generatePasswordResetToken,
 } from '@/server/auth'
+import { parseRoles, serializeRoles } from '@/db/schema/users'
+import type { UserRole } from '@/db/schema/users'
 import {
   registerSchema,
   loginSchema,
@@ -27,7 +29,7 @@ export type AuthResponse = {
     id: string
     email: string
     name: string
-    role: 'explorer' | 'creator' | 'admin' | 'pioneer'
+    role: UserRole[]
     avatarUrl: string | null
     xp: number
     level: number
@@ -87,12 +89,14 @@ export const register = createServerFn({ method: 'POST' })
       const userId = uuidv4()
       const now = new Date()
 
+      const roles: UserRole[] = data.role
+
       await db.insert(users).values({
         id: userId,
         email: data.email.toLowerCase(),
         passwordHash,
         name: data.name,
-        role: data.role,
+        role: serializeRoles(roles),
         xp: 0,
         level: 1,
         anonymizedName: generateAnonymizedName(),
@@ -104,7 +108,7 @@ export const register = createServerFn({ method: 'POST' })
       const tokenData = await generateTokenPair({
         userId,
         email: data.email.toLowerCase(),
-        role: data.role,
+        role: roles,
       })
 
       // Store refresh token session
@@ -122,7 +126,7 @@ export const register = createServerFn({ method: 'POST' })
           id: userId,
           email: data.email.toLowerCase(),
           name: data.name,
-          role: data.role,
+          role: roles,
           avatarUrl: null,
           xp: 0,
           level: 1,
@@ -178,11 +182,14 @@ export const login = createServerFn({ method: 'POST' })
         }
       }
 
+      // Parse roles from JSON
+      const roles = parseRoles(user.role)
+
       // Generate tokens
       const tokenData = await generateTokenPair({
         userId: user.id,
         email: user.email,
-        role: user.role,
+        role: roles,
       })
 
       // Store refresh token session
@@ -200,7 +207,7 @@ export const login = createServerFn({ method: 'POST' })
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role,
+          role: roles,
           avatarUrl: user.avatarUrl,
           xp: user.xp,
           level: user.level,
@@ -263,11 +270,14 @@ export const refreshToken = createServerFn({ method: 'POST' })
         }
       }
 
+      // Parse roles from JSON
+      const roles = parseRoles(user.role)
+
       // Generate new access token
       const { token: accessToken, expiresAt } = await generateAccessToken({
         userId: user.id,
         email: user.email,
-        role: user.role,
+        role: roles,
       })
 
       return {
@@ -276,7 +286,7 @@ export const refreshToken = createServerFn({ method: 'POST' })
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role,
+          role: roles,
           avatarUrl: user.avatarUrl,
           xp: user.xp,
           level: user.level,
@@ -451,7 +461,7 @@ export const getCurrentUser = createServerFn({ method: 'GET' })
           id: user.id,
           email: user.email,
           name: user.name,
-          role: user.role,
+          role: parseRoles(user.role),
           avatarUrl: user.avatarUrl,
           xp: user.xp,
           level: user.level,
@@ -503,7 +513,7 @@ export const updateProfile = createServerFn({ method: 'POST' })
           id: updatedUser.id,
           email: updatedUser.email,
           name: updatedUser.name,
-          role: updatedUser.role,
+          role: parseRoles(updatedUser.role),
           avatarUrl: updatedUser.avatarUrl,
           xp: updatedUser.xp,
           level: updatedUser.level,

@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { eq, and, or, desc, gt, count, like, inArray, ne } from 'drizzle-orm'
+import { eq, and, or, desc, gt, count, like, ne } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
 import { db } from '@/db'
 import {
@@ -15,7 +15,7 @@ import {
   notifications,
   users,
 } from '@/db/schema'
-import type { UserRole } from '@/db/schema/users'
+import { parseRoles } from '@/db/schema/users'
 import { z } from 'zod'
 
 // Validation schemas
@@ -1036,14 +1036,13 @@ export const removeParticipant = createServerFn({ method: 'POST' })
   })
 
 /**
- * Search users eligible for project delegation (admin, pioneer, creator roles)
+ * Search users eligible for project delegation (admin or creator roles)
  */
 export const searchDelegateUsers = createServerFn({ method: 'GET' })
   .inputValidator((data: { search: string; excludeUserId?: string }) => data)
   .handler(async ({ data }) => {
     try {
       const searchPattern = `%${data.search}%`
-      const delegateRoles: UserRole[] = ['admin', 'pioneer', 'creator']
 
       let query = db
         .select({
@@ -1056,7 +1055,11 @@ export const searchDelegateUsers = createServerFn({ method: 'GET' })
         .from(users)
         .where(
           and(
-            inArray(users.role, delegateRoles),
+            // User must have admin or creator role in their role array
+            or(
+              like(users.role, '%"admin"%'),
+              like(users.role, '%"creator"%')
+            ),
             or(
               like(users.name, searchPattern),
               like(users.email, searchPattern)
@@ -1070,7 +1073,7 @@ export const searchDelegateUsers = createServerFn({ method: 'GET' })
 
       return {
         success: true as const,
-        users: results,
+        users: results.map(u => ({ ...u, role: parseRoles(u.role) })),
       }
     } catch (error) {
       console.error('Search delegate users error:', error)
@@ -1109,9 +1112,9 @@ export const delegateProject = createServerFn({ method: 'POST' })
         return { success: false as const, error: 'Target user not found' }
       }
 
-      const eligibleRoles: UserRole[] = ['admin', 'pioneer', 'creator']
-      if (!eligibleRoles.includes(newCreator.role)) {
-        return { success: false as const, error: 'Target user does not have an eligible role' }
+      const newCreatorRoles = parseRoles(newCreator.role)
+      if (!newCreatorRoles.includes('admin') && !newCreatorRoles.includes('creator')) {
+        return { success: false as const, error: 'Target user does not have an eligible role (requires admin or creator)' }
       }
 
       // Transfer ownership
