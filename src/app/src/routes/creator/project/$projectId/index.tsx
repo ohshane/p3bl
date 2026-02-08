@@ -16,6 +16,8 @@ import {
   Plus,
   Trash2,
   Pencil,
+  ChevronDown,
+  GripVertical,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { differenceInMinutes, addMinutes, format } from 'date-fns'
@@ -41,8 +43,19 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { JoinCode } from '@/components/creator/JoinCode'
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { updateProject } from '@/server/api/projects'
-import { updateSession as apiUpdateSession, addRubric, deleteRubric, updateRubric } from '@/server/api/sessions'
+import { createSession, deleteSession, reorderSessions, updateSession as apiUpdateSession, addRubric, deleteRubric, updateRubric } from '@/server/api/sessions'
 import {
   cn,
   safeFormatDate,
@@ -1116,6 +1129,10 @@ function ProjectDetailPage() {
   const { getProject, fetchProjects } = useCreatorStore()
 
   const project = getProject(projectId)
+  const [dragIdx, setDragIdx] = useState<number | null>(null)
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
+  const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null)
+  const [deleteLoading, setDeleteLoading] = useState(false)
 
   // Fetch projects if not loaded yet
   useEffect(() => {
@@ -1378,9 +1395,47 @@ function ProjectDetailPage() {
 
             {/* Sessions */}
             <div className="bg-card border border-border rounded-lg p-5">
-              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">
-                Sessions ({project.sessions.length})
-              </h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+                  Sessions ({project.sessions.length})
+                </h3>
+                {isEditable && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={async () => {
+                      try {
+                        const lastSession = project.sessions[project.sessions.length - 1]
+                        const newStart = lastSession?.endDate || project.startDate
+                        const newEnd = project.endDate
+                        const result = await createSession({
+                          data: {
+                            projectId: project.id,
+                            title: `Session ${project.sessions.length + 1}`,
+                            difficulty: 'medium',
+                            deliverableType: 'none',
+                            weight: 100,
+                            startDate: newStart,
+                            endDate: newEnd,
+                          },
+                        })
+                        if (result.success) {
+                          toast.success('Session added')
+                          await fetchProjects(currentUser!.id)
+                        } else {
+                          toast.error('Failed to add session')
+                        }
+                      } catch {
+                        toast.error('Failed to add session')
+                      }
+                    }}
+                    className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" />
+                    Add
+                  </Button>
+                )}
+              </div>
               {project.sessions.length === 0 ? (
                 <p className="text-muted-foreground text-sm">
                   No sessions configured.
@@ -1388,115 +1443,195 @@ function ProjectDetailPage() {
               ) : (
                 <div className="space-y-3">
                   {project.sessions.map((session, idx) => (
-                    <div
-                      key={session.id}
-                      className="flex items-start gap-4 p-3 rounded-lg bg-muted/30 border border-border"
-                    >
-                      <div className="w-8 h-8 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center shrink-0">
-                        <span className="text-xs font-bold text-cyan-400">
-                          {idx + 1}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        {/* Session Title + Difficulty + Deliverable */}
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <InlineText
-                            value={session.title}
-                            onSave={async (val) => {
-                              await saveSessionField(session.id, { title: val })
-                            }}
-                            editable={isEditable}
-                            className="font-medium text-foreground text-sm"
-                            placeholder="Session title"
-                          />
-                          {isEditable ? (
-                            <Select
-                              value={session.difficulty}
-                              onValueChange={async (val: string) => {
-                                try {
-                                  await saveSessionField(session.id, {
-                                    difficulty: val as SessionDifficulty,
-                                  })
-                                } catch {
-                                  toast.error('Failed to save difficulty')
-                                }
-                              }}
-                            >
-                              <SelectTrigger size="sm" className="h-5 text-[10px] w-auto px-2 py-0 border-border">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="easy">easy</SelectItem>
-                                <SelectItem value="medium">medium</SelectItem>
-                                <SelectItem value="hard">hard</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
+                    <Collapsible key={session.id}>
+                      <div
+                        className={cn(
+                          'rounded-lg bg-muted/30 border border-border transition-colors',
+                          dragOverIdx === idx && dragIdx !== idx && 'border-cyan-500 bg-cyan-500/5',
+                          dragIdx === idx && 'opacity-50',
+                        )}
+                        onDragOver={(e) => {
+                          e.preventDefault()
+                          e.dataTransfer.dropEffect = 'move'
+                          setDragOverIdx(idx)
+                        }}
+                        onDragLeave={() => {
+                          setDragOverIdx(null)
+                        }}
+                        onDrop={async (e) => {
+                          e.preventDefault()
+                          const fromIdx = dragIdx
+                          if (fromIdx === null || fromIdx === idx) {
+                            setDragIdx(null)
+                            setDragOverIdx(null)
+                            return
+                          }
+                          const ids = project.sessions.map(s => s.id)
+                          const [moved] = ids.splice(fromIdx, 1)
+                          ids.splice(idx, 0, moved)
+                          setDragIdx(null)
+                          setDragOverIdx(null)
+                          try {
+                            const result = await reorderSessions({ data: { sessionIds: ids } })
+                            if (result.success) {
+                              await fetchProjects(currentUser!.id)
+                            } else {
+                              toast.error('Failed to reorder')
+                            }
+                          } catch {
+                            toast.error('Failed to reorder')
+                          }
+                        }}
+                        onDragEnd={() => {
+                          setDragIdx(null)
+                          setDragOverIdx(null)
+                        }}
+                      >
+                        {/* Trigger row: always visible */}
+                        <div
+                          className="flex items-center gap-3 p-3"
+                          draggable={isEditable}
+                          onDragStart={(e) => {
+                            e.dataTransfer.effectAllowed = 'move'
+                            e.dataTransfer.setData('text/plain', idx.toString())
+                            setDragIdx(idx)
+                          }}
+                        >
+                          {isEditable && (
+                            <div className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing shrink-0">
+                              <GripVertical className="w-4 h-4" />
+                            </div>
+                          )}
+                          <div className="w-8 h-8 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center shrink-0">
+                            <span className="text-xs font-bold text-cyan-400">
+                              {idx + 1}
+                            </span>
+                          </div>
+                          <CollapsibleTrigger className="flex-1 min-w-0 flex items-center gap-2 cursor-pointer [&[data-state=open]_.chevron-icon]:rotate-180">
+                            <span className="font-medium text-foreground text-sm truncate">
+                              {session.title?.replace(/^Session\s+\d+:\s*/, '') || 'Untitled'}
+                            </span>
                             <Badge
                               variant="outline"
-                              className={`text-[10px] ${difficultyColors[session.difficulty] || ''}`}
+                              className={`text-[10px] shrink-0 ${difficultyColors[session.difficulty] || ''}`}
                             >
                               {session.difficulty}
                             </Badge>
-                          )}
-                          {isEditable ? (
-                            <Select
-                              value={session.deliverableType}
-                              onValueChange={async (val: string) => {
-                                try {
-                                  await saveSessionField(session.id, {
-                                    deliverableType: val as DeliverableType,
-                                  })
-                                } catch {
-                                  toast.error('Failed to save deliverable type')
-                                }
-                              }}
+                            {session.deliverableType !== 'none' && (
+                              <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
+                            )}
+                            <span className="text-[10px] text-muted-foreground shrink-0 ml-auto mr-1">
+                              {safeFormatDate(session.startDate, 'MMM d HH:mm', 'TBD')} - {safeFormatDate(session.endDate, 'MMM d HH:mm', 'TBD')}
+                            </span>
+                            <ChevronDown className="chevron-icon w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200" />
+                          </CollapsibleTrigger>
+                          {isEditable && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              onClick={() => setDeleteSessionId(session.id)}
+                              className="h-6 w-6 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 shrink-0"
                             >
-                              <SelectTrigger size="sm" className="h-5 text-[10px] w-auto px-2 py-0 border-border">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">No deliverable</SelectItem>
-                                <SelectItem value="document">Document</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            session.deliverableType !== 'none' && (
-                              <FileText className="w-3 h-3 text-muted-foreground" />
-                            )
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
                           )}
                         </div>
-                        {/* Session Topic */}
-                        {(session.topic || isEditable) && (
-                          <div className="mb-1">
-                            <InlineText
-                              value={session.topic}
-                              onSave={async (val) => {
-                                await saveSessionField(session.id, { topic: val })
-                              }}
-                              editable={isEditable}
-                              className="text-xs text-muted-foreground"
-                              placeholder="Add session topic..."
-                            />
+                        {/* Collapsible content */}
+                        <CollapsibleContent>
+                          <div className="px-3 pb-3 pt-0 pl-14 space-y-2">
+                            {/* Session Title (editable) */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <InlineText
+                                value={session.title}
+                                onSave={async (val) => {
+                                  await saveSessionField(session.id, { title: val })
+                                }}
+                                editable={isEditable}
+                                className="font-medium text-foreground text-sm"
+                                placeholder="Session title"
+                              />
+                              {isEditable ? (
+                                <Select
+                                  value={session.difficulty}
+                                  onValueChange={async (val: string) => {
+                                    try {
+                                      await saveSessionField(session.id, {
+                                        difficulty: val as SessionDifficulty,
+                                      })
+                                    } catch {
+                                      toast.error('Failed to save difficulty')
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger size="sm" className="h-5 text-[10px] w-auto px-2 py-0 border-border">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="easy">easy</SelectItem>
+                                    <SelectItem value="medium">medium</SelectItem>
+                                    <SelectItem value="hard">hard</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : null}
+                              {isEditable ? (
+                                <Select
+                                  value={session.deliverableType}
+                                  onValueChange={async (val: string) => {
+                                    try {
+                                      await saveSessionField(session.id, {
+                                        deliverableType: val as DeliverableType,
+                                      })
+                                    } catch {
+                                      toast.error('Failed to save deliverable type')
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger size="sm" className="h-5 text-[10px] w-auto px-2 py-0 border-border">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">No deliverable</SelectItem>
+                                    <SelectItem value="document">Document</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : null}
+                            </div>
+                            {/* Session Topic */}
+                            {(session.topic || isEditable) && (
+                              <div>
+                                <InlineText
+                                  value={session.topic}
+                                  onSave={async (val) => {
+                                    await saveSessionField(session.id, { topic: val })
+                                  }}
+                                  editable={isEditable}
+                                  className="text-xs text-muted-foreground"
+                                  placeholder="Add session topic..."
+                                />
+                              </div>
+                            )}
+                            {/* Session Dates */}
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3 shrink-0" />
+                                {safeFormatDate(session.startDate, 'MMM d HH:mm', 'TBD')}
+                                {' - '}
+                                {safeFormatDate(session.endDate, 'MMM d HH:mm', 'TBD')}
+                              </span>
+                            </div>
+                            {/* Rubric */}
+                            {session.deliverableType !== 'none' && (
+                              <RubricEditor
+                                sessionId={session.id}
+                                rubric={session.rubric}
+                                editable={isEditable}
+                                onChanged={handleTimelineSaved}
+                              />
+                            )}
                           </div>
-                        )}
-                        {/* Session Dates (read-only, managed by timeline) */}
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Clock className="w-3 h-3 shrink-0" />
-                            {safeFormatDate(session.startDate, 'MMM d HH:mm', 'TBD')}
-                            {' - '}
-                            {safeFormatDate(session.endDate, 'MMM d HH:mm', 'TBD')}
-                          </span>
-                        </div>
-                        <RubricEditor
-                          sessionId={session.id}
-                          rubric={session.rubric}
-                          editable={isEditable}
-                          onChanged={handleTimelineSaved}
-                        />
+                        </CollapsibleContent>
                       </div>
-                    </div>
+                    </Collapsible>
                   ))}
                 </div>
               )}
@@ -1617,6 +1752,56 @@ function ProjectDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Session Confirmation */}
+      <AlertDialog open={!!deleteSessionId} onOpenChange={(open) => !open && setDeleteSessionId(null)}>
+        <AlertDialogContent className="bg-card border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-foreground">Delete Session</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground">
+              Are you sure you want to delete this session? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-border text-muted-foreground hover:bg-muted">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-white hover:bg-destructive/90 dark:bg-destructive/60"
+              disabled={deleteLoading}
+              onClick={async () => {
+                if (!deleteSessionId) return
+                setDeleteLoading(true)
+                try {
+                  const result = await deleteSession({
+                    data: { sessionId: deleteSessionId },
+                  })
+                  if (result.success) {
+                    toast.success('Session deleted')
+                    await fetchProjects(currentUser!.id)
+                  } else {
+                    toast.error('Failed to delete session')
+                  }
+                } catch {
+                  toast.error('Failed to delete session')
+                } finally {
+                  setDeleteLoading(false)
+                  setDeleteSessionId(null)
+                }
+              }}
+            >
+              {deleteLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

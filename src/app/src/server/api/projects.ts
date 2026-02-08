@@ -75,6 +75,7 @@ export const getCreatorProjects = createServerFn({ method: 'GET' })
         orderBy: desc(projects.updatedAt),
         with: {
           sessions: {
+            orderBy: (sessions, { asc }) => [asc(sessions.order)],
             with: {
               rubrics: true,
             },
