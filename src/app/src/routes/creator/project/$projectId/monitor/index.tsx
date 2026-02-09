@@ -136,18 +136,33 @@ function MonitoringPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="matrix">
-          <TabsList className="bg-muted border border-border mb-6">
-            <TabsTrigger value="matrix" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
-              <Activity className="w-4 h-4 mr-2" />
+          <TabsList className="mb-6">
+            <TabsTrigger value="matrix" className="gap-2">
+              <Activity className="w-4 h-4" />
               Live Matrix
+              {project.teams.length > 0 && (
+                <span className="ml-1 px-2 py-0.5 text-xs bg-cyan-500/20 text-cyan-400 rounded-full">
+                  {project.teams.length}
+                </span>
+              )}
             </TabsTrigger>
-            <TabsTrigger value="risk" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
-              <AlertTriangle className="w-4 h-4 mr-2" />
-              Signal & Risk
-            </TabsTrigger>
-            <TabsTrigger value="assessment" className="data-[state=active]:bg-cyan-600 data-[state=active]:text-white">
-              <ClipboardCheck className="w-4 h-4 mr-2" />
+            <TabsTrigger value="assessment" className="gap-2">
+              <ClipboardCheck className="w-4 h-4" />
               Assessment
+              {project.sessions.length > 0 && (
+                <span className="ml-1 px-2 py-0.5 text-xs bg-slate-500/20 text-slate-400 rounded-full">
+                  {project.sessions.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="risk" className="gap-2">
+              <AlertTriangle className="w-4 h-4" />
+              Signal & Risk
+              {teamsAtRisk.length > 0 && (
+                <span className="ml-1 px-2 py-0.5 text-xs bg-red-500/20 text-red-400 rounded-full">
+                  {teamsAtRisk.length}
+                </span>
+              )}
             </TabsTrigger>
           </TabsList>
 
@@ -155,12 +170,12 @@ function MonitoringPage() {
             <LiveMatrix projectId={project.id} />
           </TabsContent>
 
-          <TabsContent value="risk">
-            <SignalRiskCenter projectId={project.id} />
-          </TabsContent>
-
           <TabsContent value="assessment">
             <AssessmentPanel projectId={project.id} />
+          </TabsContent>
+
+          <TabsContent value="risk">
+            <SignalRiskCenter projectId={project.id} />
           </TabsContent>
         </Tabs>
       </div>

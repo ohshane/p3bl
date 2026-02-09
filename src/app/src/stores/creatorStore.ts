@@ -379,6 +379,7 @@ export const useCreatorStore = create<CreatorState>()(
                 sessionIndex: sp.sessionIndex,
                 status: sp.status,
                 submittedAt: sp.submittedAt,
+                statusUpdatedAt: sp.statusUpdatedAt,
               })),
             }))
             

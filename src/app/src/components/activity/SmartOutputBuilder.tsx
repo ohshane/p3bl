@@ -40,6 +40,7 @@ interface SessionArtifact {
   status: string
   versionCount: number
   latestVersion: string | null
+  lastSubmittedAt?: string | null
 }
 
 export function SmartOutputBuilder({ project: _project, session, teamId, userName }: SmartOutputBuilderProps) {
@@ -50,6 +51,7 @@ export function SmartOutputBuilder({ project: _project, session, teamId, userNam
   const [isSaving, setIsSaving] = useState(false)
   const [showAutoSaved, setShowAutoSaved] = useState(false)
   const [showLateSubmitDialog, setShowLateSubmitDialog] = useState(false)
+  const [lastSubmittedAt, setLastSubmittedAt] = useState<string | null>(null)
   
   const { currentUser, addXP } = useAuthStore()
   const {
@@ -87,18 +89,22 @@ export function SmartOutputBuilder({ project: _project, session, teamId, userNam
             status: a.status,
             versionCount: a.versionCount,
             latestVersion: a.latestVersion,
+            lastSubmittedAt: a.lastSubmittedAt ?? null,
           })
+          setLastSubmittedAt(a.lastSubmittedAt ?? null)
           setEditorContent(a.content || '')
           // Content was just loaded from DB, not a user edit — clear dirty flag
           markSaved()
         } else {
           setArtifact(null)
+          setLastSubmittedAt(null)
           setEditorContent('')
           markSaved()
         }
       } catch (error) {
         console.error('Failed to load artifact:', error)
         setArtifact(null)
+        setLastSubmittedAt(null)
         setEditorContent('')
       } finally {
         setIsLoadingArtifact(false)
@@ -192,6 +198,74 @@ export function SmartOutputBuilder({ project: _project, session, teamId, userNam
     }
   }, [showAutoSaved])
 
+  // Poll for team-level artifact submission state so all teammates see latest submit time without refresh.
+  useEffect(() => {
+    if (!teamId) return
+
+    let isActive = true
+
+    const syncSubmissionState = async () => {
+      try {
+        const result = await getTeamSessionArtifact({
+          data: { teamId, sessionId: session.id },
+        })
+
+        if (!isActive || !result.success) return
+
+        const remote = result.artifact
+        if (!remote) {
+          setArtifact(prev => (prev ? null : prev))
+          setLastSubmittedAt(null)
+          return
+        }
+
+        setLastSubmittedAt(remote.lastSubmittedAt ?? null)
+        setArtifact(prev => {
+          if (!prev) {
+            return {
+              id: remote.id,
+              title: remote.title,
+              content: remote.content ?? null,
+              status: remote.status,
+              versionCount: remote.versionCount,
+              latestVersion: remote.latestVersion,
+              lastSubmittedAt: remote.lastSubmittedAt ?? null,
+            }
+          }
+
+          if (
+            prev.id === remote.id &&
+            prev.status === remote.status &&
+            prev.latestVersion === remote.latestVersion &&
+            prev.versionCount === remote.versionCount &&
+            (prev.lastSubmittedAt ?? null) === (remote.lastSubmittedAt ?? null)
+          ) {
+            return prev
+          }
+
+          return {
+            ...prev,
+            id: remote.id,
+            status: remote.status,
+            latestVersion: remote.latestVersion,
+            versionCount: remote.versionCount,
+            lastSubmittedAt: remote.lastSubmittedAt ?? null,
+          }
+        })
+      } catch {
+        // Keep UI stable on transient polling errors.
+      }
+    }
+
+    const interval = setInterval(syncSubmissionState, 3000)
+    void syncSubmissionState()
+
+    return () => {
+      isActive = false
+      clearInterval(interval)
+    }
+  }, [teamId, session.id])
+
   const handleRunPreCheck = useCallback(async () => {
     // Build rubric context string from session rubric criteria
     const rubricContext = session.rubric.length > 0
@@ -242,7 +316,9 @@ export function SmartOutputBuilder({ project: _project, session, teamId, userNam
           status: 'submitted',
           latestVersion: result.version || null,
           versionCount: (prev.versionCount || 0) + 1,
+          lastSubmittedAt: new Date().toISOString(),
         } : null)
+        setLastSubmittedAt(new Date().toISOString())
       } else {
         toast.error('Failed to submit', { description: result.error })
       }
@@ -252,6 +328,9 @@ export function SmartOutputBuilder({ project: _project, session, teamId, userNam
       setIsSubmitting(false)
     }
   }, [currentUser, artifact, handleSave, addXP])
+
+  const formattedLastSubmittedAt =
+    lastSubmittedAt ? new Date(lastSubmittedAt).toLocaleString() : null
 
   const isDeliverableNone = session.deliverableType === 'none'
   const isLateSubmission =
@@ -329,25 +408,33 @@ export function SmartOutputBuilder({ project: _project, session, teamId, userNam
                 )}
               </div>
 
-              {/* Submit Button */}
-              <button
-                onClick={handleSubmit}
-                disabled={isDeliverableNone || isSubmitting}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out",
-                  "border border-border/50 bg-foreground text-background hover:opacity-90 active:scale-[0.97]",
-                  showSubmitted && "bg-emerald-500 border-emerald-500 text-white",
-                  "disabled:cursor-not-allowed",
-                  !showSubmitted && !isSubmitting && "disabled:opacity-40"
+              <div className="flex items-center gap-3">
+                {formattedLastSubmittedAt && (
+                  <span className="text-xs text-muted-foreground">
+                    Last submitted: {formattedLastSubmittedAt}
+                  </span>
                 )}
-              >
-                {isSubmitting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}
-                <span>{showSubmitted ? 'Submitted' : 'Submit'}</span>
-              </button>
+
+                {/* Submit Button */}
+                <button
+                  onClick={handleSubmit}
+                  disabled={isDeliverableNone || isSubmitting}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out",
+                    "border border-border/50 bg-foreground text-background hover:opacity-90 active:scale-[0.97]",
+                    showSubmitted && "bg-emerald-500 border-emerald-500 text-white",
+                    "disabled:cursor-not-allowed",
+                    !showSubmitted && !isSubmitting && "disabled:opacity-40"
+                  )}
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                  <span>{showSubmitted ? 'Submitted' : 'Submit'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>

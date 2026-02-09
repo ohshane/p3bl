@@ -514,6 +514,7 @@ export interface LiveMatrixEntry {
     sessionIndex: number
     status: 'not_started' | 'in_progress' | 'submitted' | 'approved' | 'needs_revision'
     submittedAt: string | null
+    statusUpdatedAt: string | null
   }>
 }
 
@@ -535,5 +536,4 @@ export interface AssessmentDraft {
   generatedAt: string
   finalizedAt: string | null
 }
-
 

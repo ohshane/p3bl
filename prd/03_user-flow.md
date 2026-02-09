@@ -36,7 +36,6 @@ flowchart TD
 
     %% Explorer – Has Active Project
     EActive -->|Yes| EModeB
-
 ```
 
 ## Creator Flow

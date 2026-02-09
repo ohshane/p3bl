@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { CheckCircle, Clock, AlertCircle, X, Loader2 } from 'lucide-react'
 import { useCreatorStore } from '@/stores/creatorStore'
 import { cn } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface LiveMatrixProps {
   projectId: string
@@ -46,6 +47,20 @@ export function LiveMatrix({ projectId }: LiveMatrixProps) {
     yellow: 'border-yellow-500/50 bg-yellow-500/5',
     red: 'border-red-500/50 bg-red-500/5',
   }
+
+  const canShowTimestamp = (status: string) =>
+    status === 'approved' || status === 'submitted' || status === 'in_progress'
+
+  const formatSessionDuration = (startDate?: string | null, endDate?: string | null) => {
+    if (!startDate || !endDate) return 'Duration not set'
+
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 'Duration not set'
+
+    return `${start.toLocaleString()} - ${end.toLocaleString()}`
+  }
+
 
   // Show loading state
   if (isLoadingMatrix && matrix.length === 0) {
@@ -106,7 +121,17 @@ export function LiveMatrix({ projectId }: LiveMatrixProps) {
                   key={session.id || idx}
                   className="p-3 text-center text-muted-foreground text-sm font-medium border-b border-border min-w-[100px]"
                 >
-                  S{idx + 1}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-help">{idx + 1}</span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <div className="space-y-1">
+                        <p>{session.title || `Session ${idx + 1}`}</p>
+                        <p>{formatSessionDuration(session.startDate, session.endDate)}</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
                 </th>
               ))}
               <th className="p-3 text-center text-muted-foreground text-sm font-medium border-b border-border">
@@ -151,14 +176,32 @@ export function LiveMatrix({ projectId }: LiveMatrixProps) {
                   </td>
                   {entry.sessionProgress.map((progress, idx) => (
                     <td key={idx} className="p-3 text-center">
-                      <div
-                        className={cn(
-                          'inline-flex items-center justify-center w-8 h-8 rounded-lg',
-                          statusColors[progress.status]
-                        )}
-                      >
-                        {statusIcons[progress.status]}
-                      </div>
+                      {canShowTimestamp(progress.status) && progress.statusUpdatedAt ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div
+                              className={cn(
+                                'inline-flex items-center justify-center w-8 h-8 rounded-lg',
+                                statusColors[progress.status]
+                              )}
+                            >
+                              {statusIcons[progress.status]}
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {new Date(progress.statusUpdatedAt).toLocaleString()}
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <div
+                          className={cn(
+                            'inline-flex items-center justify-center w-8 h-8 rounded-lg',
+                            statusColors[progress.status]
+                          )}
+                        >
+                          {statusIcons[progress.status]}
+                        </div>
+                      )}
                     </td>
                   ))}
                   <td className="p-3">

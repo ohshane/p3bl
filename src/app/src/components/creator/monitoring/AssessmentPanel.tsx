@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { ClipboardCheck, Search, Loader2 } from 'lucide-react'
 import { useCreatorStore } from '@/stores/creatorStore'
 import { getProjectSubmissions } from '@/server/api'
+import { getTeamSessionArtifact } from '@/server/api/artifacts'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
 interface AssessmentPanelProps {
@@ -44,6 +46,11 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedSession, setSelectedSession] = useState<string>('all')
   const [selectedTeam, setSelectedTeam] = useState<string>('all')
+  const [isReviewOpen, setIsReviewOpen] = useState(false)
+  const [selectedSubmission, setSelectedSubmission] = useState<Submission | null>(null)
+  const [reviewContent, setReviewContent] = useState('')
+  const [isLoadingReview, setIsLoadingReview] = useState(false)
+  const [reviewError, setReviewError] = useState<string | null>(null)
 
   // Fetch submissions on mount
   useEffect(() => {
@@ -73,6 +80,43 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
     const matchesTeam = selectedTeam === 'all' || sub.teamId === selectedTeam
     return matchesSearch && matchesSession && matchesTeam
   })
+
+  const getSessionNumber = (submission: Submission) => {
+    const sessionIdx = project.sessions.findIndex((s) => s.id === submission.sessionId)
+    if (sessionIdx >= 0) return sessionIdx + 1
+    return submission.sessionIndex + 1
+  }
+
+  const handleReview = async (submission: Submission) => {
+    setSelectedSubmission(submission)
+    setIsReviewOpen(true)
+    setIsLoadingReview(true)
+    setReviewError(null)
+    setReviewContent('')
+
+    try {
+      const result = await getTeamSessionArtifact({
+        data: { teamId: submission.teamId, sessionId: submission.sessionId },
+      })
+
+      if (!result.success) {
+        setReviewError(result.error || 'Failed to load submitted content')
+        return
+      }
+
+      const content = result.artifact?.content || ''
+      if (!content.trim()) {
+        setReviewError('No submitted content found for this team/session.')
+        return
+      }
+
+      setReviewContent(content)
+    } catch (error) {
+      setReviewError('Failed to load submitted content')
+    } finally {
+      setIsLoadingReview(false)
+    }
+  }
 
   // Show loading state
   if (isLoading) {
@@ -174,6 +218,9 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
                   <th className="text-left p-3 text-muted-foreground text-sm font-medium border-b border-border">
                     Team
                   </th>
+                  <th className="text-center p-3 text-muted-foreground text-sm font-medium border-b border-border">
+                    Session #
+                  </th>
                   <th className="text-left p-3 text-muted-foreground text-sm font-medium border-b border-border">
                     Session
                   </th>
@@ -196,6 +243,9 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
                     </td>
                     <td className="p-3">
                       <span className="text-muted-foreground">{submission.teamName}</span>
+                    </td>
+                    <td className="p-3 text-center">
+                      <span className="text-muted-foreground">{getSessionNumber(submission)}</span>
                     </td>
                     <td className="p-3">
                       <span className="text-muted-foreground">{submission.sessionTitle}</span>
@@ -222,7 +272,12 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
                       </Badge>
                     </td>
                     <td className="p-3 text-right">
-                      <Button size="sm" variant="outline" className="border-border">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-border"
+                        onClick={() => handleReview(submission)}
+                      >
                         <ClipboardCheck className="w-3 h-3 mr-1" />
                         Review
                       </Button>
@@ -242,6 +297,41 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
           )}
         </>
       )}
+
+      <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
+        <DialogContent className="sm:max-w-4xl max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle>Submitted Team Content</DialogTitle>
+            <DialogDescription>
+              {selectedSubmission
+                ? `${selectedSubmission.teamName} · Session ${getSessionNumber(selectedSubmission)} (${selectedSubmission.sessionTitle})`
+                : 'Review submitted content'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="min-h-[320px] max-h-[60vh] overflow-auto rounded-lg border border-border bg-muted/20 p-4">
+            {isLoadingReview ? (
+              <div className="flex items-center justify-center py-10 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Loading submitted content...
+              </div>
+            ) : reviewError ? (
+              <div className="py-10 text-center text-sm text-muted-foreground">
+                {reviewError}
+              </div>
+            ) : (
+              <div className="h-full flex flex-col border rounded-lg overflow-hidden bg-background">
+                <div className="flex-1 min-h-0 overflow-auto">
+                  <div
+                    className="tiptap focus:outline-none h-full p-4"
+                    dangerouslySetInnerHTML={{ __html: reviewContent }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

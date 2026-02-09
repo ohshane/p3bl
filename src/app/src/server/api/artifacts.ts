@@ -13,6 +13,173 @@ import {
 } from '@/db/schema'
 import { z } from 'zod'
 
+type GeneratedPrecheckItem = {
+  id: string
+  severity: 'critical' | 'warning' | 'suggestion'
+  message: string
+  suggestion?: string
+  lineNumber?: number
+}
+
+type GeneratedPrecheckResult = {
+  overallScore: 'ready' | 'needs_work' | 'critical_issues'
+  rubricScores: Record<string, number>
+  items: GeneratedPrecheckItem[]
+}
+
+const OPENROUTER_API_KEY = process.env.VITE_OPENROUTER_API_KEY
+const OPENROUTER_API_BASE = process.env.VITE_API_BASE || 'https://openrouter.ai/api/v1'
+const OPENROUTER_API_URL = `${OPENROUTER_API_BASE}/chat/completions`
+const DEFAULT_PRECHECK_MODEL = process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini'
+
+function buildRubricContext(rubrics: Array<{ criteria: string; description: string | null; weight: number }>) {
+  if (rubrics.length === 0) return ''
+  return rubrics
+    .map((r) => `- ${r.criteria} (${r.weight}%): ${r.description || 'No description provided'}`)
+    .join('\n')
+}
+
+function generateFallbackPrecheck(
+  content: string,
+  rubrics: Array<{ id: string; criteria: string; weight: number }>
+): GeneratedPrecheckResult {
+  const wordCount = content.split(/\s+/).filter(Boolean).length
+  const baseScore = Math.max(30, Math.min(95, Math.round(Math.min(wordCount / 8, 100))))
+  const rubricScores = Object.fromEntries(
+    rubrics.map((rubric) => [rubric.criteria, baseScore])
+  )
+
+  const items: GeneratedPrecheckItem[] = []
+  if (wordCount < 100) {
+    items.push({
+      id: 'submission_length_critical',
+      severity: 'critical',
+      message: 'Submission is too short for reliable rubric evaluation.',
+      suggestion: 'Add more evidence, explanation, and examples.',
+    })
+  } else if (wordCount < 250) {
+    items.push({
+      id: 'submission_length_warning',
+      severity: 'warning',
+      message: 'Submission may need more depth against rubric criteria.',
+      suggestion: 'Expand your argument and align it with each rubric criterion.',
+    })
+  }
+
+  const overallScore: 'ready' | 'needs_work' | 'critical_issues' =
+    wordCount < 100 ? 'critical_issues' : wordCount < 250 ? 'needs_work' : 'ready'
+
+  return {
+    overallScore,
+    rubricScores,
+    items,
+  }
+}
+
+async function generateSubmissionPrecheck(
+  content: string,
+  rubrics: Array<{ id: string; criteria: string; description: string | null; weight: number }>
+): Promise<GeneratedPrecheckResult> {
+  if (!OPENROUTER_API_KEY) {
+    return generateFallbackPrecheck(content, rubrics)
+  }
+
+  const rubricContext = buildRubricContext(rubrics)
+  const systemPrompt = `You are an academic evaluator.
+Score the submission against the rubric criteria below and return strict JSON only.
+
+Rubric criteria:
+${rubricContext || '- No rubric criteria provided'}
+
+Output schema:
+{
+  "overallScore": "ready" | "needs_work" | "critical_issues",
+  "rubricScores": { "<criterion name>": <0-100 number> },
+  "items": [
+    {
+      "id": "unique_string",
+      "severity": "critical" | "warning" | "suggestion",
+      "message": "issue summary",
+      "suggestion": "how to improve"
+    }
+  ]
+}`
+
+  try {
+    const response = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: DEFAULT_PRECHECK_MODEL,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Submission:\n\n${content}` },
+        ],
+        max_tokens: 900,
+        temperature: 0.1,
+      }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter submit precheck failed: ${response.status}`)
+    }
+
+    const data = await response.json()
+    const responseText = data.choices?.[0]?.message?.content || '{}'
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('OpenRouter submit precheck returned non-JSON content')
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]) as Partial<GeneratedPrecheckResult>
+    const normalizedOverall: GeneratedPrecheckResult['overallScore'] =
+      parsed.overallScore === 'critical_issues' || parsed.overallScore === 'needs_work' || parsed.overallScore === 'ready'
+        ? parsed.overallScore
+        : 'needs_work'
+
+    const parsedScores = parsed.rubricScores && typeof parsed.rubricScores === 'object'
+      ? parsed.rubricScores
+      : {}
+
+    const rubricScores = Object.fromEntries(
+      rubrics.map((rubric) => {
+        const raw = parsedScores[rubric.criteria]
+        const score = typeof raw === 'number' ? Math.max(0, Math.min(100, Math.round(raw))) : 60
+        return [rubric.criteria, score]
+      })
+    )
+
+    const items = Array.isArray(parsed.items)
+      ? parsed.items
+          .map((item, idx) => {
+            const severity = item?.severity === 'critical' || item?.severity === 'warning' || item?.severity === 'suggestion'
+              ? item.severity
+              : 'suggestion'
+            if (!item?.message || typeof item.message !== 'string') return null
+            return {
+              id: typeof item.id === 'string' && item.id ? item.id : `submit_fb_${idx + 1}`,
+              severity,
+              message: item.message,
+              suggestion: typeof item.suggestion === 'string' ? item.suggestion : undefined,
+            } as GeneratedPrecheckItem
+          })
+          .filter((item): item is GeneratedPrecheckItem => item !== null)
+      : []
+
+    return {
+      overallScore: normalizedOverall,
+      rubricScores,
+      items,
+    }
+  } catch (error) {
+    console.error('Submit-time rubric precheck error:', error)
+    return generateFallbackPrecheck(content, rubrics)
+  }
+}
+
 // Validation schemas
 const createArtifactSchema = z.object({
   userId: z.string(),
@@ -165,6 +332,7 @@ export const getTeamSessionArtifact = createServerFn({ method: 'GET' })
           lastPrecheckAt: artifact.lastPrecheckAt?.toISOString(),
           versionCount: artifact.versions.length,
           latestVersion: artifact.versions[0]?.version || null,
+          lastSubmittedAt: artifact.versions[0]?.submittedAt?.toISOString() || null,
         },
       }
     } catch (error) {
@@ -285,6 +453,13 @@ export const submitArtifact = createServerFn({ method: 'POST' })
           versions: {
             orderBy: desc(artifactVersions.submittedAt),
           },
+          session: {
+            with: {
+              rubrics: {
+                orderBy: (rubrics, { asc }) => [asc(rubrics.order)],
+              },
+            },
+          },
         },
       })
 
@@ -327,6 +502,54 @@ export const submitArtifact = createServerFn({ method: 'POST' })
           updatedAt: now,
         })
         .where(eq(artifacts.id, data.artifactId))
+
+      // Re-run rubric scoring on submission so Assessment AI Score is always fresh.
+      const generatedPrecheck = await generateSubmissionPrecheck(artifact.content, artifact.session.rubrics)
+      const teamSessionArtifacts = await db.query.artifacts.findMany({
+        where: and(
+          eq(artifacts.teamId, artifact.teamId),
+          eq(artifacts.sessionId, artifact.sessionId)
+        ),
+      })
+
+      // Apply same score to all teammates' artifacts in this team/session.
+      for (const targetArtifact of teamSessionArtifacts) {
+        const precheckId = uuidv4()
+        await db.insert(precheckResults).values({
+          id: precheckId,
+          artifactId: targetArtifact.id,
+          overallScore: generatedPrecheck.overallScore,
+          feedback: JSON.stringify(generatedPrecheck.items),
+          rubricScores: JSON.stringify(generatedPrecheck.rubricScores),
+          createdAt: now,
+        })
+
+        if (generatedPrecheck.items.length > 0) {
+          await db.insert(precheckFeedbackItems).values(
+            generatedPrecheck.items.map((item) => ({
+              id: uuidv4(),
+              precheckId,
+              severity: item.severity,
+              message: item.message,
+              suggestion: item.suggestion,
+              lineNumber: item.lineNumber,
+              createdAt: now,
+            }))
+          )
+        }
+      }
+
+      await db.update(artifacts)
+        .set({
+          status: 'submitted',
+          lastPrecheckAt: now,
+          precheckPassed: generatedPrecheck.overallScore !== 'critical_issues',
+          updatedAt: now,
+        })
+        .where(and(
+          eq(artifacts.teamId, artifact.teamId),
+          eq(artifacts.sessionId, artifact.sessionId)
+        ))
 
       return {
         success: true,

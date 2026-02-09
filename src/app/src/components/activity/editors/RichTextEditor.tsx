@@ -13,6 +13,8 @@ import { WebsocketProvider } from 'y-websocket'
 import {
   Bold,
   Italic,
+  Undo2,
+  Redo2,
   Underline as UnderlineIcon,
   Strikethrough,
   Code,
@@ -195,7 +197,11 @@ function SimpleEditor({
       },
     },
     onUpdate: ({ editor }) => {
-      onChangeRef.current?.(editor.getHTML())
+      const html = editor.getHTML()
+      // Avoid cross-component setState warnings during editor render/initialization.
+      queueMicrotask(() => {
+        onChangeRef.current?.(html)
+      })
     },
   })
 
@@ -346,7 +352,11 @@ function CollaborativeEditor({
       },
     },
     onUpdate: ({ editor }) => {
-      onChangeRef.current?.(editor.getHTML())
+      const html = editor.getHTML()
+      // Avoid cross-component setState warnings during editor render/initialization.
+      queueMicrotask(() => {
+        onChangeRef.current?.(html)
+      })
     },
   }, [ydoc, provider])
 
@@ -380,6 +390,28 @@ function EditorShell({ editor }: { editor: ReturnType<typeof useEditor> }) {
     <div className="h-full flex flex-col border rounded-lg overflow-hidden">
       {/* Toolbar */}
       <div className="flex items-center gap-1 p-2 border-b bg-muted/30 overflow-x-auto scrollbar-none">
+        {/* History */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => editor.chain().focus().undo().run()}
+          disabled={!editor.can().chain().focus().undo().run()}
+          className="h-8 w-8 p-0"
+        >
+          <Undo2 className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => editor.chain().focus().redo().run()}
+          disabled={!editor.can().chain().focus().redo().run()}
+          className="h-8 w-8 p-0"
+        >
+          <Redo2 className="h-4 w-4" />
+        </Button>
+
+        <Separator orientation="vertical" className="mx-1 h-6" />
+
         {/* Inline formatting */}
         <Button
           variant="ghost"

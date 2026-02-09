@@ -179,39 +179,37 @@ export const getProjectTeamsWithProgress = createServerFn({ method: 'GET' })
         const teamRisk = riskByTeam.get(team.id)
         const teamArtifactsList = teamArtifacts.filter(a => a.teamId === team.id)
 
-        // Calculate session progress
+        // Calculate session progress from all teammate artifacts in each session.
         const sessionProgress = project.sessions.map(session => {
-          const sessionArtifact = teamArtifactsList.find(a => a.sessionId === session.id)
-          
+          const sessionArtifacts = teamArtifactsList.filter(a => a.sessionId === session.id)
+
           let status: 'not_started' | 'in_progress' | 'submitted' | 'approved' | 'needs_revision' = 'not_started'
-          if (sessionArtifact) {
-            switch (sessionArtifact.status) {
-              case 'draft':
-              case 'precheck_pending':
-              case 'precheck_complete':
-                status = 'in_progress'
-                break
-              case 'submitted':
-              case 'under_review':
-                status = 'submitted'
-                break
-              case 'approved':
-                status = 'approved'
-                break
-              case 'needs_revision':
-                status = 'needs_revision'
-                break
-            }
+          // Team-level rule: if any teammate has submitted/under_review/approved, show submitted+ progress.
+          if (sessionArtifacts.some(a => a.status === 'approved')) {
+            status = 'approved'
+          } else if (sessionArtifacts.some(a => a.status === 'needs_revision')) {
+            status = 'needs_revision'
+          } else if (sessionArtifacts.some(a => a.status === 'submitted' || a.status === 'under_review')) {
+            status = 'submitted'
+          } else if (sessionArtifacts.some(a =>
+            a.status === 'draft' || a.status === 'precheck_pending' || a.status === 'precheck_complete'
+          )) {
+            status = 'in_progress'
           }
+
+          const latestSubmittedArtifact = sessionArtifacts
+            .filter(a => a.status === 'submitted' || a.status === 'under_review' || a.status === 'approved')
+            .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0]
+          const latestStatusArtifact = sessionArtifacts
+            .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())[0]
 
           return {
             sessionId: session.id,
             sessionIndex: session.order,
             status,
             startDate: session.startDate?.toISOString() || null,
-            submittedAt: sessionArtifact?.status === 'submitted' || sessionArtifact?.status === 'approved'
-              ? sessionArtifact.updatedAt.toISOString()
-              : null,
+            submittedAt: latestSubmittedArtifact ? latestSubmittedArtifact.updatedAt.toISOString() : null,
+            statusUpdatedAt: latestStatusArtifact ? latestStatusArtifact.updatedAt.toISOString() : null,
           }
         })
 
@@ -587,8 +585,25 @@ export const getProjectSubmissions = createServerFn({ method: 'GET' })
 
       // Transform to submission format
       const submissions = allArtifacts.map(artifact => {
+        const session = sessions.find(s => s.id === artifact.sessionId)
         const latestPrecheck = artifact.precheckResults[0]
         let aiScore = 0
+
+        const applyOverallScoreFallback = () => {
+          switch (latestPrecheck?.overallScore) {
+            case 'ready':
+              aiScore = 85
+              break
+            case 'needs_work':
+              aiScore = 65
+              break
+            case 'critical_issues':
+              aiScore = 40
+              break
+            default:
+              aiScore = 0
+          }
+        }
         
         // Calculate AI score from precheck rubric scores using weighted average
         if (latestPrecheck?.rubricScores) {
@@ -612,24 +627,15 @@ export const getProjectSubmissions = createServerFn({ method: 'GET' })
               aiScore = totalWeight > 0
                 ? Math.round(weightedSum / totalWeight)
                 : Math.round(entries.reduce((sum, [, s]) => sum + s, 0) / entries.length)
+            } else {
+              applyOverallScoreFallback()
             }
           } catch {
-            // Default to mapping overall score
-            switch (latestPrecheck?.overallScore) {
-              case 'ready':
-                aiScore = 85
-                break
-              case 'needs_work':
-                aiScore = 65
-                break
-              case 'critical_issues':
-                aiScore = 40
-                break
-            }
+            applyOverallScoreFallback()
           }
+        } else {
+          applyOverallScoreFallback()
         }
-
-        const session = sessions.find(s => s.id === artifact.sessionId)
 
         return {
           id: artifact.id,
