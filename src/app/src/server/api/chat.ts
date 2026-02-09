@@ -1,6 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
-import { eq, and, desc, gt, lt } from 'drizzle-orm'
-import { v4 as uuidv4 } from 'uuid'
+import { eq, and, desc, gt, lt, asc } from 'drizzle-orm'
+import { v4 as uuidv4, v5 as uuidv5 } from 'uuid'
 import { db } from '@/db'
 import {
   chatMessages,
@@ -38,6 +38,9 @@ const getOrCreateRoomSchema = z.object({
   roomName: z.string().optional(),
 })
 
+// Stable namespace for deriving a deterministic room ID from project+team.
+const TEAM_CHAT_ROOM_NAMESPACE = '2be24c77-8d1e-4b80-85c4-c45ae914f2f2'
+
 /**
  * Get or create a chat room for a team within a project.
  * Each team gets its own chat room. Adds the user as a member if not already in the room.
@@ -46,47 +49,58 @@ export const getOrCreateRoom = createServerFn({ method: 'POST' })
   .inputValidator((data: unknown) => getOrCreateRoomSchema.parse(data))
   .handler(async ({ data }) => {
     try {
-      // Look for existing room for this team within the project
-      const existingRoom = await db.query.chatRooms.findFirst({
+      // Fetch all candidate rooms in deterministic order.
+      // If legacy duplicates exist, everyone will consistently pick the same room.
+      const existingRooms = await db.query.chatRooms.findMany({
         where: and(
           eq(chatRooms.projectId, data.projectId),
           eq(chatRooms.teamId, data.teamId),
         ),
+        orderBy: asc(chatRooms.createdAt),
       })
 
       let roomId: string
+      let roomName: string
 
-      if (existingRoom) {
-        roomId = existingRoom.id
+      if (existingRooms.length > 0) {
+        const canonical = existingRooms[0]
+        roomId = canonical.id
+        roomName = canonical.name
+        if (existingRooms.length > 1) {
+          console.warn('[chat-room] duplicate rooms detected, using canonical room', {
+            projectId: data.projectId,
+            teamId: data.teamId,
+            canonicalRoomId: roomId,
+            duplicateRoomIds: existingRooms.slice(1).map(r => r.id),
+          })
+        }
       } else {
-        // Create a new room for this team
-        roomId = uuidv4()
+        // Create a deterministic room ID so concurrent first-join requests
+        // cannot create divergent rooms for the same team/project.
+        roomId = uuidv5(`${data.projectId}:${data.teamId}`, TEAM_CHAT_ROOM_NAMESPACE)
+        roomName = data.roomName || 'Group Chat'
         const now = new Date()
-        await db.insert(chatRooms).values({
-          id: roomId,
-          projectId: data.projectId,
-          teamId: data.teamId,
-          name: data.roomName || 'Group Chat',
-          createdAt: now,
-          updatedAt: now,
-        })
+        await db.insert(chatRooms)
+          .values({
+            id: roomId,
+            projectId: data.projectId,
+            teamId: data.teamId,
+            name: roomName,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .onConflictDoNothing()
       }
 
-      // Ensure the user is a member of this room
-      const existingMember = await db.query.chatRoomMembers.findFirst({
-        where: and(
-          eq(chatRoomMembers.roomId, roomId),
-          eq(chatRoomMembers.userId, data.userId),
-        ),
-      })
-
-      if (!existingMember) {
-        await db.insert(chatRoomMembers).values({
+      // Ensure the user is a member of this room.
+      // Use upsert-like semantics to avoid race failures on concurrent joins.
+      await db.insert(chatRoomMembers)
+        .values({
           roomId,
           userId: data.userId,
           joinedAt: new Date(),
         })
-      }
+        .onConflictDoNothing()
 
       return {
         success: true,
@@ -94,7 +108,7 @@ export const getOrCreateRoom = createServerFn({ method: 'POST' })
           id: roomId,
           projectId: data.projectId,
           teamId: data.teamId,
-          name: existingRoom?.name || data.roomName || 'Group Chat',
+          name: roomName,
         },
       }
     } catch (error) {

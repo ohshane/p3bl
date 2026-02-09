@@ -9,6 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
 import { formatDistanceToNow } from 'date-fns'
+import { setWebSocketDebugIdentity } from '@/lib/websocket'
 
 interface GroupChatProps {
   projectId: string
@@ -21,6 +22,7 @@ export function GroupChat({ projectId, teamId, teamName }: GroupChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
   
   const { currentUser } = useAuthStore()
+  const currentUserId = currentUser?.id
   const {
     getOrCreateRoom,
     getRoomForTeam,
@@ -37,14 +39,19 @@ export function GroupChat({ projectId, teamId, teamName }: GroupChatProps) {
 
   // Initialize room, load messages, and subscribe to WebSocket
   useEffect(() => {
-    if (!currentUser || !projectId || !teamId) return
+    if (!currentUserId || !projectId || !teamId) return
+
+    setWebSocketDebugIdentity({
+      userId: currentUserId,
+      userName: currentUser?.name,
+    })
 
     let cancelled = false
     let roomId: string | null = null
     let pollTimer: ReturnType<typeof setInterval> | null = null
 
     async function initRoom() {
-      const resolvedRoom = await getOrCreateRoom(projectId, teamId, currentUser!.id, teamName ? `${teamName} Chat` : undefined)
+      const resolvedRoom = await getOrCreateRoom(projectId, teamId, currentUserId, teamName ? `${teamName} Chat` : undefined)
       if (!resolvedRoom || cancelled) return
 
       roomId = resolvedRoom.id
@@ -81,7 +88,7 @@ export function GroupChat({ projectId, teamId, teamName }: GroupChatProps) {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, teamId, currentUser])
+  }, [projectId, teamId, currentUserId])
 
   // Scroll to bottom on new messages
   useEffect(() => {

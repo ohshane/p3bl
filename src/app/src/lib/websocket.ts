@@ -8,19 +8,39 @@ function getWsUrl(): string {
 }
 
 const WS_URL = getWsUrl()
+const WS_DEBUG = import.meta.env.DEV || import.meta.env.VITE_WS_DEBUG === 'true'
 
 type MessageHandler = (roomId: string, message: ChatMessage) => void
 
 let ws: WebSocket | null = null
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+let connectWatchdogTimer: ReturnType<typeof setTimeout> | null = null
 let messageHandler: MessageHandler | null = null
 const joinedRooms = new Set<string>()
+let isManualDisconnect = false
+let hasAttachedWindowListeners = false
+let reconnectAttempt = 0
+let debugIdentity: { userId?: string; userName?: string } = {}
 
 // Queue for messages that couldn't be sent while disconnected
 const pendingBroadcasts: Array<{ roomId: string; message: ChatMessage }> = []
 
 // Pending waitForConnection resolvers
 let connectionWaiters: Array<{ resolve: () => void; reject: (err: Error) => void }> = []
+
+function logWs(...args: unknown[]) {
+  if (WS_DEBUG) {
+    console.log('[chat-ws]', { ...debugIdentity }, ...args)
+  }
+}
+
+export function setWebSocketDebugIdentity(identity: { userId?: string; userName?: string }) {
+  debugIdentity = {
+    userId: identity.userId,
+    userName: identity.userName,
+  }
+  logWs('debug identity set')
+}
 
 function resolveAllWaiters() {
   const waiters = connectionWaiters
@@ -51,14 +71,60 @@ function flushPendingBroadcasts() {
   }
 }
 
+function clearConnectWatchdog() {
+  if (connectWatchdogTimer) {
+    clearTimeout(connectWatchdogTimer)
+    connectWatchdogTimer = null
+  }
+}
+
+function ensureWindowReconnectHooks() {
+  if (typeof window === 'undefined' || hasAttachedWindowListeners) return
+
+  window.addEventListener('online', () => {
+    if (!isManualDisconnect) {
+      connect()
+    }
+  })
+
+  // If the tab wakes up after sleep/background, force a fresh connect pass.
+  document.addEventListener('visibilitychange', () => {
+    if (!isManualDisconnect && document.visibilityState === 'visible') {
+      connect()
+    }
+  })
+
+  hasAttachedWindowListeners = true
+}
+
 function connect() {
   if (typeof window === 'undefined') return
-  if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return
+  if (isManualDisconnect) {
+    logWs('connect skipped (manual disconnect)')
+    return
+  }
+  if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
+    logWs('connect skipped (socket already active)', { readyState: ws.readyState })
+    return
+  }
 
   try {
+    ensureWindowReconnectHooks()
     ws = new WebSocket(WS_URL)
+    logWs('connecting', { url: WS_URL, reconnectAttempt })
+    clearConnectWatchdog()
+    connectWatchdogTimer = setTimeout(() => {
+      // Some environments can leave sockets in CONNECTING indefinitely.
+      // Force-close so reconnect logic can recover without manual refresh.
+      if (ws?.readyState === WebSocket.CONNECTING) {
+        logWs('watchdog closing stuck CONNECTING socket')
+        ws.close()
+      }
+    }, 8000)
 
     ws.onopen = () => {
+      clearConnectWatchdog()
+      reconnectAttempt = 0
       // Rejoin all rooms on reconnect
       for (const roomId of joinedRooms) {
         ws?.send(JSON.stringify({ type: 'join', roomId }))
@@ -67,12 +133,14 @@ function connect() {
       flushPendingBroadcasts()
       // Resolve any pending waitForConnection calls
       resolveAllWaiters()
+      logWs('open', { joinedRooms: Array.from(joinedRooms), pendingBroadcasts: pendingBroadcasts.length })
     }
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
         if (data.type === 'chat_message' && data.roomId && data.payload && messageHandler) {
+          logWs('message received', { roomId: data.roomId, messageId: (data.payload as ChatMessage)?.id })
           messageHandler(data.roomId, data.payload as ChatMessage)
         }
       } catch {
@@ -80,26 +148,42 @@ function connect() {
       }
     }
 
-    ws.onclose = () => {
+    ws.onclose = (event) => {
+      clearConnectWatchdog()
       ws = null
       // Don't reject waiters on close -- they'll be resolved on next successful connect
+      logWs('closed', { code: event.code, reason: event.reason || '(none)', wasClean: event.wasClean })
       scheduleReconnect()
     }
 
-    ws.onerror = () => {
+    ws.onerror = (event) => {
+      clearConnectWatchdog()
+      logWs('error', event)
       ws?.close()
     }
-  } catch {
+  } catch (error) {
+    clearConnectWatchdog()
+    logWs('connect threw', error)
     scheduleReconnect()
   }
 }
 
 function scheduleReconnect() {
-  if (reconnectTimer) return
+  if (isManualDisconnect) {
+    logWs('reconnect skipped (manual disconnect)')
+    return
+  }
+  if (reconnectTimer) {
+    logWs('reconnect already scheduled')
+    return
+  }
+  const delay = Math.min(1000 * Math.pow(2, reconnectAttempt), 10000)
+  reconnectAttempt += 1
+  logWs('schedule reconnect', { delayMs: delay, reconnectAttempt })
   reconnectTimer = setTimeout(() => {
     reconnectTimer = null
     connect()
-  }, 3000)
+  }, delay)
 }
 
 /**
@@ -110,6 +194,7 @@ function scheduleReconnect() {
  */
 export function waitForConnection(timeout = 5000): Promise<void> {
   if (ws?.readyState === WebSocket.OPEN) {
+    logWs('waitForConnection immediate resolve')
     return Promise.resolve()
   }
 
@@ -117,6 +202,7 @@ export function waitForConnection(timeout = 5000): Promise<void> {
     const timer = setTimeout(() => {
       // Remove this waiter and reject
       connectionWaiters = connectionWaiters.filter(w => w.resolve !== wrappedResolve)
+      logWs('waitForConnection timeout', { timeout })
       reject(new Error('WebSocket connection timeout'))
     }, timeout)
 
@@ -130,6 +216,7 @@ export function waitForConnection(timeout = 5000): Promise<void> {
     }
 
     connectionWaiters.push({ resolve: wrappedResolve, reject: wrappedReject })
+    logWs('waitForConnection queued', { waiters: connectionWaiters.length })
 
     // Kick off connection if not already in progress
     connect()
@@ -137,16 +224,19 @@ export function waitForConnection(timeout = 5000): Promise<void> {
 }
 
 export function initWebSocket(onMessage: MessageHandler) {
+  isManualDisconnect = false
   messageHandler = onMessage
+  logWs('init')
   connect()
 }
 
 /**
  * Join a room, waiting for the WebSocket connection to be ready first.
- * Returns a Promise that resolves once the join message has been sent.
+ * Returns true if join was sent immediately; false if deferred to reconnect.
  */
-export async function joinRoom(roomId: string): Promise<void> {
+export async function joinRoom(roomId: string): Promise<boolean> {
   joinedRooms.add(roomId)
+  logWs('join requested', { roomId, joinedRooms: Array.from(joinedRooms) })
 
   try {
     await waitForConnection()
@@ -155,18 +245,24 @@ export async function joinRoom(roomId: string): Promise<void> {
     // a duplicate join is idempotent on the server side)
     if (ws?.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ type: 'join', roomId }))
+      logWs('join sent', { roomId })
+      return true
     }
   } catch {
     // Connection timed out; the room is still in joinedRooms and will be
     // joined automatically on the next successful connect via onopen.
     console.warn(`WebSocket: timed out waiting to join room ${roomId}, will retry on reconnect`)
   }
+  logWs('join deferred', { roomId })
+  return false
 }
 
 export function leaveRoom(roomId: string) {
   joinedRooms.delete(roomId)
+  logWs('leave requested', { roomId, joinedRooms: Array.from(joinedRooms) })
   if (ws?.readyState === WebSocket.OPEN) {
     ws.send(JSON.stringify({ type: 'leave', roomId }))
+    logWs('leave sent', { roomId })
   }
 }
 
@@ -177,17 +273,22 @@ export function broadcastMessage(roomId: string, message: ChatMessage) {
       roomId,
       payload: message,
     }))
+    logWs('broadcast sent', { roomId, messageId: message.id })
   } else {
     // Queue for delivery when connection reopens
     pendingBroadcasts.push({ roomId, message })
+    logWs('broadcast queued', { roomId, messageId: message.id, pending: pendingBroadcasts.length })
   }
 }
 
 export function disconnectWebSocket() {
+  isManualDisconnect = true
+  logWs('disconnect requested')
   if (reconnectTimer) {
     clearTimeout(reconnectTimer)
     reconnectTimer = null
   }
+  clearConnectWatchdog()
   joinedRooms.clear()
   pendingBroadcasts.length = 0
   rejectAllWaiters(new Error('WebSocket disconnected'))

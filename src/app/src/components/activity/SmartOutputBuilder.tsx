@@ -8,7 +8,7 @@ import type { Project, Session, PreCheckResult } from '@/types'
 import { isPast } from 'date-fns'
 
 import {
-  getUserSessionArtifacts,
+  getTeamSessionArtifact,
   createArtifact as apiCreateArtifact,
   updateArtifact as apiUpdateArtifact,
   submitArtifact as apiSubmitArtifact,
@@ -70,16 +70,16 @@ export function SmartOutputBuilder({ project: _project, session, teamId, userNam
   // Load artifact for this session
   useEffect(() => {
     async function loadArtifact() {
-      if (!currentUser) return
+      if (!currentUser || !teamId) return
       
       setIsLoadingArtifact(true)
       try {
-        const result = await getUserSessionArtifacts({
-          data: { userId: currentUser.id, sessionId: session.id }
+        const result = await getTeamSessionArtifact({
+          data: { teamId, sessionId: session.id }
         })
         
-        if (result.success && result.artifacts && result.artifacts.length > 0) {
-          const a = result.artifacts[0]
+        if (result.success && result.artifact) {
+          const a = result.artifact
           setArtifact({
             id: a.id,
             title: a.title,
@@ -107,7 +107,7 @@ export function SmartOutputBuilder({ project: _project, session, teamId, userNam
     }
     
     loadArtifact()
-  }, [session.id, currentUser, setEditorContent, clearPreCheck, markSaved])
+  }, [session.id, teamId, currentUser, setEditorContent, clearPreCheck, markSaved])
 
   const handleSave = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false

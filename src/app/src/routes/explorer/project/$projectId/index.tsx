@@ -662,30 +662,32 @@ function ExplorerProjectPage() {
         </div>
 
         <Dialog open={isSmartOutputOpen} onOpenChange={setIsSmartOutputOpen}>
-          <DialogContent
-            className="max-w-5xl h-[85vh] flex flex-col"
-            overlayClassName="backdrop-blur-sm"
-            showCloseButton={false}
-          >
-            <DialogHeader className="flex flex-row items-center justify-between">
-              <DialogTitle className="text-sm">Smart Output Builder</DialogTitle>
-              <DialogClose asChild>
-                <Button variant="ghost" size="icon" className="h-7 w-7">
-                  <X className="h-4 w-4" />
-                </Button>
-              </DialogClose>
-            </DialogHeader>
-            <div className="flex-1 min-h-0">
-              {currentSession && (
-                <SmartOutputBuilder
-                  project={project}
-                  session={currentSession}
-                  teamId={userTeam?.id}
-                  userName={currentUser?.name}
-                />
-              )}
-            </div>
-          </DialogContent>
+          {isSmartOutputOpen && (
+            <DialogContent
+              className="max-w-5xl h-[85vh] flex flex-col"
+              overlayClassName="backdrop-blur-sm"
+              showCloseButton={false}
+            >
+              <DialogHeader className="flex flex-row items-center justify-between">
+                <DialogTitle className="text-sm">Smart Output Builder</DialogTitle>
+                <DialogClose asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7">
+                    <X className="h-4 w-4" />
+                  </Button>
+                </DialogClose>
+              </DialogHeader>
+              <div className="flex-1 min-h-0">
+                {currentSession && (
+                  <SmartOutputBuilder
+                    project={project}
+                    session={currentSession}
+                    teamId={userTeam?.id}
+                    userName={currentUser?.name}
+                  />
+                )}
+              </div>
+            </DialogContent>
+          )}
         </Dialog>
       </div>
 

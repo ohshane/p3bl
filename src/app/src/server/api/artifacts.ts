@@ -131,6 +131,49 @@ export const getUserSessionArtifacts = createServerFn({ method: 'GET' })
   })
 
 /**
+ * Get the latest artifact for a team in a session (shared doc)
+ */
+export const getTeamSessionArtifact = createServerFn({ method: 'GET' })
+  .inputValidator((data: { teamId: string; sessionId: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      const teamArtifacts = await db.query.artifacts.findMany({
+        where: and(
+          eq(artifacts.teamId, data.teamId),
+          eq(artifacts.sessionId, data.sessionId)
+        ),
+        orderBy: desc(artifacts.updatedAt),
+        limit: 1,
+        with: {
+          versions: {
+            orderBy: desc(artifactVersions.submittedAt),
+          },
+        },
+      })
+
+      const artifact = teamArtifacts[0]
+      if (!artifact) {
+        return { success: true, artifact: null }
+      }
+
+      return {
+        success: true,
+        artifact: {
+          ...artifact,
+          createdAt: artifact.createdAt.toISOString(),
+          updatedAt: artifact.updatedAt.toISOString(),
+          lastPrecheckAt: artifact.lastPrecheckAt?.toISOString(),
+          versionCount: artifact.versions.length,
+          latestVersion: artifact.versions[0]?.version || null,
+        },
+      }
+    } catch (error) {
+      console.error('Get team session artifact error:', error)
+      return { success: false, error: 'Failed to get team artifact' }
+    }
+  })
+
+/**
  * Get all user's artifacts (for portfolio)
  */
 export const getUserArtifacts = createServerFn({ method: 'GET' })

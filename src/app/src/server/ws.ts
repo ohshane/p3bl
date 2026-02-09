@@ -7,6 +7,13 @@ import * as awarenessProtocol from 'y-protocols/awareness'
 import * as encoding from 'lib0/encoding'
 import * as decoding from 'lib0/decoding'
 
+const WS_DEBUG = process.env.WS_DEBUG === '1' || process.env.NODE_ENV !== 'production'
+function logServerWs(...args: unknown[]) {
+  if (WS_DEBUG) {
+    console.log('[server-ws]', ...args)
+  }
+}
+
 // ─── Path constants for WebSocket routing ─────────────────────────────
 export const WS_CHAT_PATH = '/ws/chat'
 export const WS_YJS_PATH = '/ws/yjs/' // e.g. /ws/yjs/<roomName>
@@ -44,12 +51,14 @@ function handleMessage(ws: WebSocket, raw: string) {
       clientRooms.set(ws, new Set())
     }
     clientRooms.get(ws)!.add(msg.roomId)
+    logServerWs('chat join', { roomId: msg.roomId, roomSize: rooms.get(msg.roomId)?.size ?? 0 })
     return
   }
 
   if (msg.type === 'leave' && msg.roomId) {
     rooms.get(msg.roomId)?.delete(ws)
     clientRooms.get(ws)?.delete(msg.roomId)
+    logServerWs('chat leave', { roomId: msg.roomId, roomSize: rooms.get(msg.roomId)?.size ?? 0 })
     return
   }
 
@@ -69,6 +78,7 @@ function handleMessage(ws: WebSocket, raw: string) {
         client.send(broadcast)
       }
     }
+    logServerWs('chat broadcast', { roomId: msg.roomId, recipients: Math.max(0, roomClients.size - 1) })
   }
 }
 
@@ -87,15 +97,18 @@ function handleClose(ws: WebSocket) {
 }
 
 function handleChatConnection(ws: WebSocket) {
+  logServerWs('chat connection open')
   ws.on('message', (data) => {
     handleMessage(ws, data.toString())
   })
 
   ws.on('close', () => {
+    logServerWs('chat connection close')
     handleClose(ws)
   })
 
   ws.on('error', () => {
+    logServerWs('chat connection error')
     handleClose(ws)
   })
 }
@@ -132,6 +145,7 @@ function getOrCreateYDoc(docName: string): { doc: Y.Doc; awareness: awarenessPro
     yjsDocs.set(docName, doc)
     awareness = new awarenessProtocol.Awareness(doc)
     yjsAwareness.set(docName, awareness)
+    logServerWs('yjs doc created', { roomName: docName })
 
     // Broadcast awareness changes to all clients in the room (excluding sender)
     awareness.on('update', (
@@ -164,9 +178,20 @@ function getOrCreateYDoc(docName: string): { doc: Y.Doc; awareness: awarenessPro
 
 function handleYjsConnection(ws: WebSocket, req: IncomingMessage) {
   // Room name comes from the URL path after /ws/yjs/
-  const url = req.url || ''
-  // Strip the /ws/yjs/ prefix to get the room name
-  const roomName = url.replace(/^\/ws\/yjs\//, '').replace(/^\//, '') || 'default'
+  const rawUrl = req.url || '/'
+  let pathname = rawUrl
+  try {
+    pathname = new URL(rawUrl, 'http://localhost').pathname
+  } catch {
+    pathname = rawUrl.split('?')[0] || '/'
+  }
+
+  // Strip the /ws/yjs/ prefix to get the room name.
+  // Normalize trailing slashes and decode URI components so all peers
+  // resolve to the same room key.
+  const normalized = pathname.replace(/^\/ws\/yjs\//, '').replace(/^\//, '').replace(/\/+$/, '')
+  const roomName = (normalized ? decodeURIComponent(normalized) : 'default')
+  logServerWs('yjs connection open', { roomName, rawUrl })
 
   const { doc, awareness } = getOrCreateYDoc(roomName)
 
@@ -174,6 +199,7 @@ function handleYjsConnection(ws: WebSocket, req: IncomingMessage) {
     yjsRooms.set(roomName, new Set())
   }
   yjsRooms.get(roomName)!.add(ws)
+  logServerWs('yjs room size', { roomName, size: yjsRooms.get(roomName)!.size })
 
   // Send initial sync step 1 to the new client
   const syncEncoder = encoding.createEncoder()
@@ -209,6 +235,7 @@ function handleYjsConnection(ws: WebSocket, req: IncomingMessage) {
       if (response.byteLength > 1) {
         ws.send(response)
       }
+      logServerWs('yjs sync message', { roomName, responseBytes: response.byteLength })
       // Doc updates are broadcast via doc.on('update') — no manual broadcast here
     } else if (messageType === messageYjsAwareness) {
       const update = decoding.readVarUint8Array(decoder)
@@ -227,6 +254,7 @@ function handleYjsConnection(ws: WebSocket, req: IncomingMessage) {
         decoding.readVarString(updateDecoder)
       }
       awarenessProtocol.applyAwarenessUpdate(awareness, update, ws)
+      logServerWs('yjs awareness message', { roomName, updateBytes: update.byteLength })
       // Awareness broadcast is handled by awareness.on('update')
     } else if (messageType === messageYjsQueryAwareness) {
       // Client is requesting full awareness state
@@ -237,16 +265,19 @@ function handleYjsConnection(ws: WebSocket, req: IncomingMessage) {
         awarenessProtocol.encodeAwarenessUpdate(awareness, Array.from(awareness.getStates().keys()))
       )
       ws.send(encoding.toUint8Array(encoder))
+      logServerWs('yjs awareness query', { roomName, states: awareness.getStates().size })
     }
   })
 
   const handleYjsClose = () => {
+    logServerWs('yjs connection close', { roomName })
     const clients = yjsRooms.get(roomName)
     if (clients) {
       clients.delete(ws)
       if (clients.size === 0) {
         yjsRooms.delete(roomName)
         // Keep doc in memory for reconnections; could add TTL cleanup later
+        logServerWs('yjs room emptied', { roomName })
       }
     }
     // Remove awareness states for all Yjs clientIDs owned by this WebSocket
@@ -287,16 +318,26 @@ yjsWss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
  *   httpServer.on('upgrade', handleUpgrade)
  */
 export function handleUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer) {
-  const pathname = req.url || ''
+  const rawUrl = req.url || '/'
+  let pathname = rawUrl
+  try {
+    pathname = new URL(rawUrl, 'http://localhost').pathname
+  } catch {
+    pathname = rawUrl.split('?')[0] || '/'
+  }
 
   if (pathname === WS_CHAT_PATH) {
+    logServerWs('upgrade -> chat', { pathname })
     chatWss.handleUpgrade(req, socket, head, (ws) => {
       chatWss.emit('connection', ws, req)
     })
   } else if (pathname.startsWith(WS_YJS_PATH)) {
+    logServerWs('upgrade -> yjs', { pathname })
     yjsWss.handleUpgrade(req, socket, head, (ws) => {
       yjsWss.emit('connection', ws, req)
     })
+  } else {
+    logServerWs('upgrade ignored', { pathname })
   }
   // If the path doesn't match, do nothing -- let other handlers (e.g.
   // Vite's HMR WebSocket) process the upgrade request.

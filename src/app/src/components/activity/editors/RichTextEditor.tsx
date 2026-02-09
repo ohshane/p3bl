@@ -2,9 +2,7 @@ import { useEffect, useCallback, useMemo, useRef } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
-import Underline from '@tiptap/extension-underline'
 import Highlight from '@tiptap/extension-highlight'
-import Link from '@tiptap/extension-link'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import Collaboration from '@tiptap/extension-collaboration'
@@ -33,6 +31,73 @@ import {
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
+
+const YJS_DEBUG = import.meta.env.DEV || import.meta.env.VITE_YJS_DEBUG === 'true'
+
+function logYjs(...args: unknown[]) {
+  if (YJS_DEBUG) {
+    console.log('[yjs-ws]', ...args)
+  }
+}
+
+type RoomProviderEntry = {
+  ydoc: Y.Doc
+  provider: WebsocketProvider
+  refCount: number
+  destroyTimer: ReturnType<typeof setTimeout> | null
+}
+
+const roomProviders = new Map<string, RoomProviderEntry>()
+
+function resolveYjsUrl() {
+  if (import.meta.env.VITE_YJS_WS_URL) return import.meta.env.VITE_YJS_WS_URL
+  if (typeof window !== 'undefined') {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    return `${proto}//${window.location.host}/ws/yjs`
+  }
+  return 'ws://localhost:3000/ws/yjs'
+}
+
+function acquireRoomProvider(roomName: string) {
+  const existing = roomProviders.get(roomName)
+  if (existing) {
+    if (existing.destroyTimer) {
+      clearTimeout(existing.destroyTimer)
+      existing.destroyTimer = null
+    }
+    existing.refCount += 1
+    return { ydoc: existing.ydoc, provider: existing.provider }
+  }
+
+  const ydoc = new Y.Doc()
+  const provider = new WebsocketProvider(resolveYjsUrl(), roomName, ydoc, { connect: false })
+  roomProviders.set(roomName, {
+    ydoc,
+    provider,
+    refCount: 1,
+    destroyTimer: null,
+  })
+  return { ydoc, provider }
+}
+
+function releaseRoomProvider(roomName: string) {
+  const entry = roomProviders.get(roomName)
+  if (!entry) return
+
+  entry.refCount -= 1
+  if (entry.refCount > 0) return
+
+  // Grace period prevents StrictMode mount/unmount from tearing down sockets.
+  entry.destroyTimer = window.setTimeout(() => {
+    const latest = roomProviders.get(roomName)
+    if (!latest || latest.refCount > 0) return
+    latest.provider.disconnect()
+    latest.provider.destroy()
+    latest.ydoc.destroy()
+    roomProviders.delete(roomName)
+    logYjs('room provider destroyed', { roomName })
+  }, 1500)
+}
 
 // Cursor colors for collaborative users
 const CURSOR_COLORS = [
@@ -75,17 +140,16 @@ function getBaseExtensions(isCollaborative: boolean) {
   return [
     StarterKit.configure({
       heading: { levels: [1, 2, 3] },
+      link: {
+        openOnClick: false,
+        HTMLAttributes: {
+          class: 'text-cyan-500 underline cursor-pointer',
+        },
+      },
       // Disable built-in undo/redo when collaborative — Yjs handles it
       ...(isCollaborative ? { undoRedo: false } : {}),
     }),
-    Underline,
     Highlight,
-    Link.configure({
-      openOnClick: false,
-      HTMLAttributes: {
-        class: 'text-cyan-500 underline cursor-pointer',
-      },
-    }),
     TaskList,
     TaskItem.configure({ nested: true }),
     Placeholder.configure({
@@ -165,39 +229,31 @@ function CollaborativeEditor({
   const initialContentRef = useRef(initialContent)
   initialContentRef.current = initialContent
   const hasSeededInitialContentRef = useRef(false)
+  const debugUserName = user?.name || 'Anonymous'
 
-  // Create a stable Yjs doc and WebSocket provider per roomName.
-  // Disable auto-connect so the connection is paired with the cleanup
-  // effect below -- this prevents "WebSocket is closed before the
-  // connection is established" errors during rapid mount/unmount cycles.
+  // Acquire a shared provider per room. This mirrors chat's stable-room
+  // strategy and prevents racey create/destroy churn across remounts.
   const { ydoc, provider } = useMemo(() => {
-    const doc = new Y.Doc()
-
-    // Build the WebSocket URL for the Yjs collaboration server.
-    // In production this shares the same host/port as the app via /ws/yjs/.
-    // VITE_YJS_WS_URL can override the full base URL if needed.
-    let wsUrl: string
-    if (import.meta.env.VITE_YJS_WS_URL) {
-      wsUrl = import.meta.env.VITE_YJS_WS_URL
-    } else if (typeof window !== 'undefined') {
-      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      wsUrl = `${proto}//${window.location.host}/ws/yjs`
-    } else {
-      wsUrl = 'ws://localhost:3000/ws/yjs'
-    }
-
-    // y-websocket appends roomName as a path: ws://host/ws/yjs/<roomName>
-    const prov = new WebsocketProvider(wsUrl, roomName, doc, { connect: false })
-
-    return { ydoc: doc, provider: prov }
+    return acquireRoomProvider(roomName)
   }, [roomName])
 
   // Connect on mount, disconnect + destroy on unmount.
   // This pairs connect/disconnect in the same effect so React's cleanup
   // always runs before a stale connection lingers.
   useEffect(() => {
+    let cancelled = false
     hasSeededInitialContentRef.current = false
-    provider.connect()
+    logYjs('mount', { roomName, userName: debugUserName })
+
+    // Defer connect by one macrotask so React StrictMode's throwaway
+    // mount/unmount cycle doesn't open-and-immediately-close a connecting
+    // socket (which logs a noisy browser warning).
+    const connectTimer = window.setTimeout(() => {
+      if (!cancelled) {
+        logYjs('connect()', { roomName, userName: debugUserName })
+        provider.connect()
+      }
+    }, 0)
 
     // Seed initial content into the Yjs doc if it's empty after sync
     const handleSync = (isSynced: boolean) => {
@@ -205,10 +261,12 @@ function CollaborativeEditor({
       const fragment = ydoc.getXmlFragment('default')
       const contentToSeed = initialContentRef.current
       if (!hasSeededInitialContentRef.current && fragment.length === 0 && contentToSeed) {
+        logYjs('seeding initial content', { roomName, userName: debugUserName, length: contentToSeed.length })
         seedYDocFromHTML(ydoc, contentToSeed)
         hasSeededInitialContentRef.current = true
       }
       provider.off('sync', handleSync)
+      logYjs('sync event', { roomName, userName: debugUserName, isSynced, fragmentLength: fragment.length })
     }
 
     if (provider.synced) {
@@ -217,13 +275,21 @@ function CollaborativeEditor({
       provider.on('sync', handleSync)
     }
 
-    return () => {
-      provider.off('sync', handleSync)
-      provider.disconnect()
-      provider.destroy()
-      ydoc.destroy()
+    const handleStatus = ({ status }: { status: 'connected' | 'disconnected' | 'connecting' }) => {
+      logYjs('status', { roomName, userName: debugUserName, status })
     }
-  }, [ydoc, provider])
+    provider.on('status', handleStatus)
+
+    return () => {
+      cancelled = true
+      logYjs('cleanup', { roomName, userName: debugUserName })
+      window.clearTimeout(connectTimer)
+      provider.off('sync', handleSync)
+      provider.off('status', handleStatus)
+      provider.disconnect()
+      releaseRoomProvider(roomName)
+    }
+  }, [ydoc, provider, roomName, debugUserName])
 
   const cursorUser = useMemo(() => ({
     name: user?.name || 'Anonymous',

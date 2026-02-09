@@ -290,7 +290,14 @@ export const useChatStore = create<ChatState>((set, get) => {
   },
   
   subscribeToRoom: async (roomId: string) => {
-    await joinRoom(roomId)
+    const joinedImmediately = await joinRoom(roomId)
+    if (!joinedImmediately) {
+      // First-time team formation can race with socket establishment.
+      // Retry once shortly after timeout to avoid requiring a hard refresh.
+      setTimeout(() => {
+        joinRoom(roomId)
+      }, 2000)
+    }
   },
   
   unsubscribeFromRoom: (roomId: string) => {

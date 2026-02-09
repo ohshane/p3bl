@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
+import { setWebSocketDebugIdentity } from '@/lib/websocket'
 
 interface GroupChatPanelProps {
   projectId: string
@@ -29,6 +30,7 @@ export function GroupChatPanel({ projectId, teamId, teamName }: GroupChatPanelPr
   const expandedScrollRef = useRef<HTMLDivElement>(null)
   
   const { currentUser } = useAuthStore()
+  const currentUserId = currentUser?.id
   const {
     getOrCreateRoom,
     getRoomForTeam,
@@ -47,14 +49,19 @@ export function GroupChatPanel({ projectId, teamId, teamName }: GroupChatPanelPr
 
   // Initialize room, load messages, and subscribe to WebSocket
   useEffect(() => {
-    if (!currentUser || !projectId || !teamId) return
+    if (!currentUserId || !projectId || !teamId) return
+
+    setWebSocketDebugIdentity({
+      userId: currentUserId,
+      userName: currentUser?.name,
+    })
 
     let cancelled = false
     let roomId: string | null = null
     let pollTimer: ReturnType<typeof setInterval> | null = null
 
     async function initRoom() {
-      const resolvedRoom = await getOrCreateRoom(projectId, teamId, currentUser!.id, teamName ? `${teamName} Chat` : undefined)
+      const resolvedRoom = await getOrCreateRoom(projectId, teamId, currentUserId, teamName ? `${teamName} Chat` : undefined)
       if (!resolvedRoom || cancelled) return
 
       roomId = resolvedRoom.id
@@ -91,7 +98,7 @@ export function GroupChatPanel({ projectId, teamId, teamName }: GroupChatPanelPr
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, teamId, currentUser])
+  }, [projectId, teamId, currentUserId])
 
   // Scroll to bottom when new messages arrive
   const scrollToBottom = useCallback(() => {
