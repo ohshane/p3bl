@@ -6,6 +6,7 @@ import viteTsConfigPaths from 'vite-tsconfig-paths'
 import { fileURLToPath, URL } from 'url'
 
 import tailwindcss from '@tailwindcss/vite'
+import { webSocketPlugin } from './src/server/vite-ws-plugin'
 
 const config = defineConfig({
   resolve: {
@@ -22,6 +23,7 @@ const config = defineConfig({
     tailwindcss(),
     tanstackStart(),
     viteReact(),
+    webSocketPlugin(),
   ],
 })
 

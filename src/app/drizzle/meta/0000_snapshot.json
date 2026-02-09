@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "34a575fb-a922-424d-8a78-4f2eaff88fdc",
+  "id": "7c34682d-0848-4431-8542-91f7ae7300c9",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "intervention_logs": {
@@ -2311,6 +2311,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "team_id": {
+          "name": "team_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "name": {
           "name": "name",
           "type": "text",
@@ -2341,6 +2348,19 @@
           "tableTo": "projects",
           "columnsFrom": [
             "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "chat_rooms_team_id_teams_id_fk": {
+          "name": "chat_rooms_team_id_teams_id_fk",
+          "tableFrom": "chat_rooms",
+          "tableTo": "teams",
+          "columnsFrom": [
+            "team_id"
           ],
           "columnsTo": [
             "id"

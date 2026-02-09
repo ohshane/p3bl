@@ -138,6 +138,8 @@ Guidelines:
 - Difficulty should progress: typically start with easy/medium, build to hard, then consolidate
 - Time allocation based on difficulty: easy (shorter), medium (standard), hard (longer)
 - Rubric criteria should be specific, measurable, and aligned with session objectives
+- IMPORTANT: Do NOT prefix or number session titles with labels like "Session 1:", "Session 2:", etc. Use descriptive, content-based titles only.
+- IMPORTANT: Do NOT use the word "student" or "students" anywhere in the output — not in titles, topics, guides, rubric criteria, or rubric descriptions. Use "learner", "participant", "team", or rephrase to avoid addressing anyone directly.
 - Thinking Style (Divergence Level): ${divergenceLevel}/100 (0 = Highly Convergent/Structured, 100 = Highly Divergent/Creative).
   - Low divergence: Detailed guides, specific document deliverables, strict rubrics.
   - High divergence: Open-ended guides, creative deliverables, flexible rubrics.
@@ -148,9 +150,9 @@ Guidelines:
 
 For each session, provide:
 - title: Concise session title (3-7 words)
-- topic: What students will learn/do in this session (1-2 sentences)
+- topic: What will be learned/done in this session (1-2 sentences)
 - difficulty: "easy", "medium", or "hard"
-- guide: Detailed instructions for students (2-3 paragraphs)
+- guide: Detailed instructions for the session (2-3 paragraphs)
 - deliverableType: "none" or "document" based on the project nature and divergence level
  - rubric: Array of 3-4 criteria, each with criterion name, description, and weight (integer percentage 0-100, no decimals, weights must sum to exactly 100)`;
 
@@ -248,7 +250,7 @@ Background: ${background}
 Driving Question: ${drivingQuestion}
 Total Duration: ${durationText}
 
-Create a well-structured learning journey that helps students answer the driving question.`,
+Create a well-structured learning journey that helps answer the driving question.`,
         },
       ],
       max_tokens: 3000,

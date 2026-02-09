@@ -5,8 +5,6 @@ import { ThemeProvider } from 'next-themes'
 import { Toaster } from '@/components/ui/sonner'
 import { useEffect } from 'react'
 
-import { useViewportGuard } from '@/hooks/useViewportGuard'
-import { MobileBlocker } from '@/components/layout/MobileBlocker'
 import { AppHeader } from '@/components/layout/AppHeader'
 import { useAuthStore } from '@/stores/authStore'
 import { storeRedirectPath } from '@/lib/authRedirect'
@@ -39,7 +37,6 @@ export const Route = createRootRoute({
 })
 
 function RootComponent() {
-  const { isDesktop, minWidth } = useViewportGuard()
   const { isAuthenticated } = useAuthStore()
   const location = useLocation()
 
@@ -67,17 +64,11 @@ function RootComponent() {
       </head>
       <body className="min-h-screen bg-background antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {!isDesktop ? (
-            <MobileBlocker minWidth={minWidth} />
-          ) : (
-            <>
-              {isAuthenticated && <AppHeader />}
-              <main>
-                <Outlet />
-              </main>
-              <Toaster position="top-right" />
-            </>
-          )}
+          {isAuthenticated && <AppHeader />}
+          <main>
+            <Outlet />
+          </main>
+          <Toaster position="top-right" />
           <TanStackDevtools
             config={{
               position: 'bottom-right',

@@ -120,6 +120,7 @@ export function ManualCodeInput() {
               value={code}
               onChange={handleCodeChange}
               disabled={isDisabled}
+              inputMode="text"
               pattern="^[A-Za-z0-9]+$"
             >
               <InputOTPGroup>

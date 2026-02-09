@@ -1,16 +1,17 @@
 import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core'
 import { relations } from 'drizzle-orm'
 import { users } from './users'
-import { aiPersonas } from './teams'
+import { aiPersonas, teams } from './teams'
 import { projects } from './projects'
 
 // Message types
 export type MessageType = 'text' | 'artifact_share' | 'system' | 'ai_intervention'
 
-// Chat rooms - independent entity, one per project
+// Chat rooms - one per team within a project
 export const chatRooms = sqliteTable('chat_rooms', {
   id: text('id').primaryKey(),
   projectId: text('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  teamId: text('team_id').references(() => teams.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
@@ -63,6 +64,10 @@ export const chatRoomsRelations = relations(chatRooms, ({ one, many }) => ({
   project: one(projects, {
     fields: [chatRooms.projectId],
     references: [projects.id],
+  }),
+  team: one(teams, {
+    fields: [chatRooms.teamId],
+    references: [teams.id],
   }),
   members: many(chatRoomMembers),
   messages: many(chatMessages),

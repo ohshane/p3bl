@@ -12,39 +12,76 @@ import { formatDistanceToNow } from 'date-fns'
 
 interface GroupChatProps {
   projectId: string
+  teamId: string
   teamName?: string
 }
 
-export function GroupChat({ projectId, teamName }: GroupChatProps) {
+export function GroupChat({ projectId, teamId, teamName }: GroupChatProps) {
   const [message, setMessage] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
   
   const { currentUser } = useAuthStore()
   const {
     getOrCreateRoom,
-    getRoomForProject,
+    getRoomForTeam,
     getRoomMessages,
     fetchRoomMessages,
     sendMessage: sendChatMessage,
+    subscribeToRoom,
+    unsubscribeFromRoom,
     isLoadingRoom,
   } = useChatStore()
 
-  const room = getRoomForProject(projectId)
+  const room = getRoomForTeam(teamId)
   const messages = room ? getRoomMessages(room.id) : []
 
-  // Initialize room and load messages on mount
+  // Initialize room, load messages, and subscribe to WebSocket
   useEffect(() => {
-    if (!currentUser || !projectId) return
+    if (!currentUser || !projectId || !teamId) return
+
+    let cancelled = false
+    let roomId: string | null = null
+    let pollTimer: ReturnType<typeof setInterval> | null = null
 
     async function initRoom() {
-      const resolvedRoom = await getOrCreateRoom(projectId, currentUser!.id, teamName ? `${teamName} Chat` : undefined)
-      if (resolvedRoom) {
-        await fetchRoomMessages(resolvedRoom.id)
+      const resolvedRoom = await getOrCreateRoom(projectId, teamId, currentUser!.id, teamName ? `${teamName} Chat` : undefined)
+      if (!resolvedRoom || cancelled) return
+
+      roomId = resolvedRoom.id
+
+      // Subscribe to WebSocket FIRST to avoid missing messages
+      // between fetch and subscribe
+      await subscribeToRoom(resolvedRoom.id)
+      if (cancelled) return
+
+      // Then fetch existing messages
+      await fetchRoomMessages(resolvedRoom.id)
+
+      // Start periodic polling to catch any messages missed during
+      // brief WebSocket disconnections
+      if (!cancelled) {
+        pollTimer = setInterval(() => {
+          if (roomId) {
+            fetchRoomMessages(roomId)
+          }
+        }, 15_000)
       }
     }
 
     initRoom()
-  }, [projectId, currentUser])
+
+    return () => {
+      cancelled = true
+      if (pollTimer) {
+        clearInterval(pollTimer)
+      }
+      // Properly unsubscribe from the room's WebSocket channel
+      if (roomId) {
+        unsubscribeFromRoom(roomId)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, teamId, currentUser])
 
   // Scroll to bottom on new messages
   useEffect(() => {

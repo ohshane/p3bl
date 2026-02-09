@@ -18,8 +18,9 @@ Your task is to generate a compelling project title, background context, and dri
 
 Guidelines:
 - Title: Create an engaging, concise project title (5-10 words) that captures the essence of the learning experience
-- Background: Write 2-3 sentences providing context about why this objective matters and what students will explore
-- Driving Question: Craft an open-ended, thought-provoking question that will guide student inquiry throughout the project`
+- Background: Write 2-3 sentences providing context about why this objective matters and what will be explored
+- Driving Question: Craft an open-ended, thought-provoking question that will guide inquiry throughout the project
+- IMPORTANT: Do NOT use the word "student" or "students" anywhere in the output. Use "learner", "participant", "team", or rephrase to avoid addressing anyone directly.`
 
 // JSON schema for structured output
 const PROJECT_RESPONSE_SCHEMA = {

@@ -5,4 +5,4 @@ pnpm run db:generate
 pnpm run db:migrate
 pnpm run db:seed
 
-pnpm run dev
+pnpm run dev --host 0.0.0.0

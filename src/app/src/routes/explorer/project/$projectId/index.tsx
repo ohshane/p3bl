@@ -304,6 +304,31 @@ function ExplorerProjectPage() {
   const hasLoadedOnce = useRef(false);
   const hadTeamRef = useRef(false);
 
+  // Reset local state when projectId changes (SPA navigation between projects).
+  // This ensures stale team/project data from a previous project doesn't leak
+  // into the new project's render, which would cause GroupChatPanel to
+  // initialize with the wrong teamId.
+  // We detect the change synchronously during render so the very first render
+  // after a navigation already uses clean state.
+  const prevProjectIdRef = useRef(projectId);
+  if (prevProjectIdRef.current !== projectId) {
+    prevProjectIdRef.current = projectId;
+    // These calls are safe during render (React "setState during render" pattern)
+    // because React will immediately re-render with the reset values.
+    setProject(null);
+    setUserTeam(null);
+    setIsLoading(true);
+    setError(null);
+    setRefreshKey(0);
+    setIsAllocating(false);
+    setShowNextSessionModal(false);
+    setShowProjectEndedModal(false);
+    setShowRemovedModal(false);
+    setIsSmartOutputOpen(false);
+    hasLoadedOnce.current = false;
+    hadTeamRef.current = false;
+  }
+
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
@@ -604,6 +629,7 @@ function ExplorerProjectPage() {
                 project={project}
                 session={currentSession}
                 teamId={userTeam?.id}
+                userName={currentUser?.name}
               />
             )}
           </div>
@@ -624,10 +650,14 @@ function ExplorerProjectPage() {
                 }}
               />
             )}
-            <GroupChatPanel
-              projectId={projectId}
-              teamName={userTeam?.name}
-            />
+            {userTeam && (
+              <GroupChatPanel
+                key={`${projectId}-${userTeam.id}`}
+                projectId={projectId}
+                teamId={userTeam.id}
+                teamName={userTeam.name}
+              />
+            )}
           </div>
         </div>
 
@@ -651,6 +681,7 @@ function ExplorerProjectPage() {
                   project={project}
                   session={currentSession}
                   teamId={userTeam?.id}
+                  userName={currentUser?.name}
                 />
               )}
             </div>

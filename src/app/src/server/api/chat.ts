@@ -33,21 +33,25 @@ const getMessagesSchema = z.object({
 
 const getOrCreateRoomSchema = z.object({
   projectId: z.string(),
+  teamId: z.string(),
   userId: z.string(),
   roomName: z.string().optional(),
 })
 
 /**
- * Get or create a chat room for a project.
- * Adds the user as a member if not already in the room.
+ * Get or create a chat room for a team within a project.
+ * Each team gets its own chat room. Adds the user as a member if not already in the room.
  */
 export const getOrCreateRoom = createServerFn({ method: 'POST' })
   .inputValidator((data: unknown) => getOrCreateRoomSchema.parse(data))
   .handler(async ({ data }) => {
     try {
-      // Look for existing room for this project
+      // Look for existing room for this team within the project
       const existingRoom = await db.query.chatRooms.findFirst({
-        where: eq(chatRooms.projectId, data.projectId),
+        where: and(
+          eq(chatRooms.projectId, data.projectId),
+          eq(chatRooms.teamId, data.teamId),
+        ),
       })
 
       let roomId: string
@@ -55,12 +59,13 @@ export const getOrCreateRoom = createServerFn({ method: 'POST' })
       if (existingRoom) {
         roomId = existingRoom.id
       } else {
-        // Create a new room
+        // Create a new room for this team
         roomId = uuidv4()
         const now = new Date()
         await db.insert(chatRooms).values({
           id: roomId,
           projectId: data.projectId,
+          teamId: data.teamId,
           name: data.roomName || 'Group Chat',
           createdAt: now,
           updatedAt: now,
@@ -88,6 +93,7 @@ export const getOrCreateRoom = createServerFn({ method: 'POST' })
         room: {
           id: roomId,
           projectId: data.projectId,
+          teamId: data.teamId,
           name: existingRoom?.name || data.roomName || 'Group Chat',
         },
       }

@@ -46,7 +46,7 @@ export function ResourcdHub({ session }: ResourcdHubProps) {
 
   return (
     <>
-      <Card className="max-h-[360px] overflow-hidden">
+      <Card className="max-h-[390px] overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-sm">Guide</CardTitle>
           <Button
@@ -71,7 +71,7 @@ export function ResourcdHub({ session }: ResourcdHubProps) {
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Guide</p>
-            <p className="text-sm text-foreground mt-1">{renderGuide()}</p>
+            <div className="text-sm text-foreground mt-1">{renderGuide()}</div>
           </div>
         </CardContent>
       </Card>

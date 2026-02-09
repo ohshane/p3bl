@@ -81,7 +81,7 @@ export function VoyageNavigator({ project }: VoyageNavigatorProps) {
   }
 
   const renderSessionList = (inModal = false) => (
-    <ScrollArea className={inModal ? "h-[60vh]" : "h-[280px]"}>
+    <ScrollArea className={inModal ? "h-[60vh]" : "h-[200px]"}>
       <div className="space-y-1">
         {sessions.map((session, index) => {
           const status = getSessionStatus(session, index)

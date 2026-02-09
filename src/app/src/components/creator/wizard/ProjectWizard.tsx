@@ -105,7 +105,9 @@ const QUICK_START_PROMPT = `You are an expert educational project designer.
 Generate a complete PBL project structure based on a keyword and duration.
 Generate exactly the number of sessions specified in the user prompt.
 Each session must have a difficulty of "easy", "medium", or "hard" — vary difficulties to create a natural learning progression.
-Rubric weights must be integer percentages between 0 and 100 (no decimals) and must sum to exactly 100.`;
+Rubric weights must be integer percentages between 0 and 100 (no decimals) and must sum to exactly 100.
+IMPORTANT: Do NOT prefix or number session titles with labels like "Session 1:", "Session 2:", etc. Use descriptive, content-based titles only.
+IMPORTANT: Do NOT use the word "student" or "students" anywhere in the output — not in titles, topics, guides, background, driving question, rubric criteria, or rubric descriptions. Use "learner", "participant", "team", or rephrase to avoid addressing anyone directly.`;
 
 // JSON schema for quick start structured output
 const QUICK_START_SCHEMA = {

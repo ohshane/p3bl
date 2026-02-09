@@ -7,7 +7,7 @@ import { act, renderHook } from '@testing-library/react'
 
 // Mock the server API functions
 vi.mock('@/server/api', () => ({
-  getOrCreateRoom: vi.fn().mockResolvedValue({ success: true, room: { id: 'room_001', projectId: 'project_001', name: 'Test Room' } }),
+  getOrCreateRoom: vi.fn().mockResolvedValue({ success: true, room: { id: 'room_001', projectId: 'project_001', teamId: 'team_001', name: 'Test Room' } }),
   sendMessage: vi.fn().mockResolvedValue({ success: true, message: { id: 'msg_real_001' } }),
   getMessages: vi.fn().mockResolvedValue({ success: true, messages: [] }),
   sendFloatingBotMessage: vi.fn().mockResolvedValue({ success: true }),
@@ -38,7 +38,7 @@ describe('Chat Store', () => {
     vi.useFakeTimers()
     // Reset the store before each test
     useChatStore.setState({
-      roomsByProject: {},
+      roomsByTeam: {},
       messagesByRoom: {
         room_001: [
           {

@@ -18,10 +18,11 @@ import { cn } from '@/lib/utils'
 
 interface GroupChatPanelProps {
   projectId: string
+  teamId: string
   teamName?: string
 }
 
-export function GroupChatPanel({ projectId, teamName }: GroupChatPanelProps) {
+export function GroupChatPanel({ projectId, teamId, teamName }: GroupChatPanelProps) {
   const [message, setMessage] = useState('')
   const [isExpanded, setIsExpanded] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -30,43 +31,67 @@ export function GroupChatPanel({ projectId, teamName }: GroupChatPanelProps) {
   const { currentUser } = useAuthStore()
   const {
     getOrCreateRoom,
-    getRoomForProject,
+    getRoomForTeam,
     getRoomMessages,
     fetchRoomMessages,
     sendMessage: sendChatMessage,
+    subscribeToRoom,
+    unsubscribeFromRoom,
     isLoadingRoom,
-    isLoadingMessages,
   } = useChatStore()
 
-  const room = getRoomForProject(projectId)
+  const room = getRoomForTeam(teamId)
   const messages = room ? getRoomMessages(room.id) : []
 
   const prevMessageCountRef = useRef(0)
 
-  // Initialize room and load messages on mount
+  // Initialize room, load messages, and subscribe to WebSocket
   useEffect(() => {
-    if (!currentUser || !projectId) return
+    if (!currentUser || !projectId || !teamId) return
+
+    let cancelled = false
+    let roomId: string | null = null
+    let pollTimer: ReturnType<typeof setInterval> | null = null
 
     async function initRoom() {
-      const resolvedRoom = await getOrCreateRoom(projectId, currentUser!.id, teamName ? `${teamName} Chat` : undefined)
-      if (resolvedRoom) {
-        await fetchRoomMessages(resolvedRoom.id)
+      const resolvedRoom = await getOrCreateRoom(projectId, teamId, currentUser!.id, teamName ? `${teamName} Chat` : undefined)
+      if (!resolvedRoom || cancelled) return
+
+      roomId = resolvedRoom.id
+
+      // Subscribe to WebSocket FIRST to avoid missing messages
+      // between fetch and subscribe
+      await subscribeToRoom(resolvedRoom.id)
+      if (cancelled) return
+
+      // Then fetch existing messages
+      await fetchRoomMessages(resolvedRoom.id)
+
+      // Start periodic polling to catch any messages missed during
+      // brief WebSocket disconnections
+      if (!cancelled) {
+        pollTimer = setInterval(() => {
+          if (roomId) {
+            fetchRoomMessages(roomId)
+          }
+        }, 15_000)
       }
     }
 
     initRoom()
-  }, [projectId, currentUser])
 
-  // Poll for new messages every 3 seconds
-  useEffect(() => {
-    if (!room) return
-
-    const interval = setInterval(() => {
-      fetchRoomMessages(room.id)
-    }, 3000)
-
-    return () => clearInterval(interval)
-  }, [room, fetchRoomMessages])
+    return () => {
+      cancelled = true
+      if (pollTimer) {
+        clearInterval(pollTimer)
+      }
+      // Properly unsubscribe from the room's WebSocket channel
+      if (roomId) {
+        unsubscribeFromRoom(roomId)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, teamId, currentUser])
 
   // Scroll to bottom when new messages arrive
   const scrollToBottom = useCallback(() => {
@@ -121,11 +146,7 @@ export function GroupChatPanel({ projectId, teamName }: GroupChatPanelProps) {
   const renderMessages = (scrollAreaRef: React.RefObject<HTMLDivElement | null>, inModal = false) => (
     <ScrollArea className={cn("flex-1 min-h-0", inModal && "h-[50vh]")} viewportRef={scrollAreaRef}>
       <div className="space-y-4 p-4">
-        {isLoadingMessages && messages.length === 0 ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : messages.length === 0 ? (
+        {messages.length === 0 ? (
           <div className="text-center py-8 text-sm text-muted-foreground">
             No messages yet. Start the conversation!
           </div>
@@ -211,7 +232,7 @@ export function GroupChatPanel({ projectId, teamName }: GroupChatPanelProps) {
 
   if (isLoadingRoom && !room) {
     return (
-      <Card className="h-[500px] flex items-center justify-center">
+      <Card className="h-[550px] flex items-center justify-center">
         <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
       </Card>
     )
@@ -221,7 +242,7 @@ export function GroupChatPanel({ projectId, teamName }: GroupChatPanelProps) {
 
   return (
     <>
-      <Card className="h-[500px] flex flex-col pb-0">
+      <Card className="h-[550px] flex flex-col pb-0">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-sm">
             {chatTitle}

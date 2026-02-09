@@ -30,6 +30,7 @@ interface SmartOutputBuilderProps {
   project: Project
   session: Session
   teamId?: string
+  userName?: string
 }
 
 interface SessionArtifact {
@@ -41,7 +42,7 @@ interface SessionArtifact {
   latestVersion: string | null
 }
 
-export function SmartOutputBuilder({ project: _project, session, teamId }: SmartOutputBuilderProps) {
+export function SmartOutputBuilder({ project: _project, session, teamId, userName }: SmartOutputBuilderProps) {
   const [artifact, setArtifact] = useState<SessionArtifact | null>(null)
   const [, setIsLoadingArtifact] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -311,13 +312,12 @@ export function SmartOutputBuilder({ project: _project, session, teamId }: Smart
                   onClick={() => handleSave()}
                   disabled={isDeliverableNone || isSaving}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                    "flex items-center gap-2 px-2 py-2 rounded-lg text-sm font-medium transition-all duration-200",
                     "border border-border/50 hover:bg-accent",
                     "disabled:opacity-40 disabled:cursor-not-allowed"
                   )}
                 >
                   <Save className="w-4 h-4" />
-                  <span>Save</span>
                 </button>
 
                 {/* Auto saved indicator */}
@@ -359,14 +359,16 @@ export function SmartOutputBuilder({ project: _project, session, teamId }: Smart
           </div>
         )}
 
-        <div className="flex-1 rounded-xl pb-6">
+        <div className="flex-1 min-h-0 rounded-xl">
           {session.deliverableType === 'none' ? (
             <div className="flex items-center justify-center h-full text-muted-foreground">
               <p>No deliverable required for this session.</p>
             </div>
           ) : (
             <RichTextEditor
-              value={editorContent}
+              roomName={teamId ? `team_${teamId}_session_${session.id}` : undefined}
+              user={userName ? { name: userName } : undefined}
+              initialContent={editorContent}
               onChange={setEditorContent}
             />
           )}

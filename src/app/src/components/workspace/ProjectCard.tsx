@@ -80,10 +80,10 @@ function ProjectDetailModal({ project, open, onOpenChange }: { project: UserProj
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-lg max-h-[85vh] flex flex-col"
+        className="!flex !flex-col max-w-lg max-h-[85vh] overflow-hidden"
         overlayClassName="backdrop-blur-sm"
       >
-        <DialogHeader>
+        <DialogHeader className="shrink-0">
           <div className="flex items-center gap-2">
             <StatusBadge status={status} />
           </div>
@@ -91,7 +91,7 @@ function ProjectDetailModal({ project, open, onOpenChange }: { project: UserProj
           <p className="text-sm text-muted-foreground">By {project.creatorName}</p>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 -mx-6 px-6">
+        <div className="flex-1 min-h-0 overflow-y-auto -mx-6 px-6">
           <div className="space-y-5 pb-2">
             {/* Description */}
             {project.description && (
@@ -198,7 +198,7 @@ function ProjectDetailModal({ project, open, onOpenChange }: { project: UserProj
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   )

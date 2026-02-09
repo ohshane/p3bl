@@ -10,6 +10,7 @@ import {
   getFloatingBotMessages,
   getTeamPersonas,
 } from '@/server/api'
+import { initWebSocket, joinRoom, leaveRoom, broadcastMessage } from '@/lib/websocket'
 
 // OpenRouter API configuration
 const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY
@@ -79,12 +80,13 @@ async function callOpenRouter(messages: { role: string; content: string }[]): Pr
 interface ChatRoom {
   id: string
   projectId: string
+  teamId: string
   name: string
 }
 
 interface ChatState {
   // Room management
-  roomsByProject: Record<string, ChatRoom> // projectId -> ChatRoom
+  roomsByTeam: Record<string, ChatRoom> // teamId -> ChatRoom
   isLoadingRoom: boolean
   
   // Messages by room ID
@@ -98,8 +100,8 @@ interface ChatState {
   isBotTyping: boolean
   
   // Room actions
-  getOrCreateRoom: (projectId: string, userId: string, roomName?: string) => Promise<ChatRoom | null>
-  getRoomForProject: (projectId: string) => ChatRoom | null
+  getOrCreateRoom: (projectId: string, teamId: string, userId: string, roomName?: string) => Promise<ChatRoom | null>
+  getRoomForTeam: (teamId: string) => ChatRoom | null
   
   // Message actions
   getRoomMessages: (roomId: string) => ChatMessage[]
@@ -114,13 +116,26 @@ interface ChatState {
   markInitialGreetingShown: () => void
   loadFloatingBotHistory: (userId: string) => Promise<void>
   
+  // WebSocket
+  subscribeToRoom: (roomId: string) => Promise<void>
+  unsubscribeFromRoom: (roomId: string) => void
+  receiveMessage: (roomId: string, message: ChatMessage) => void
+  
   // AI response generation
   generateAIResponse: (roomId: string, teamId?: string, context?: string) => void
   generateBotResponse: (userMessage: string, userId?: string) => void
 }
 
-export const useChatStore = create<ChatState>((set, get) => ({
-  roomsByProject: {},
+export const useChatStore = create<ChatState>((set, get) => {
+  // Initialize WebSocket and wire incoming messages to the store
+  if (typeof window !== 'undefined') {
+    initWebSocket((roomId: string, message: ChatMessage) => {
+      get().receiveMessage(roomId, message)
+    })
+  }
+
+  return {
+  roomsByTeam: {},
   isLoadingRoom: false,
   
   messagesByRoom: {},
@@ -131,28 +146,33 @@ export const useChatStore = create<ChatState>((set, get) => ({
   hasShownInitialGreeting: false,
   isBotTyping: false,
   
-  getOrCreateRoom: async (projectId: string, userId: string, roomName?: string) => {
-    // Return cached room if available
-    const cached = get().roomsByProject[projectId]
-    if (cached) return cached
+  getOrCreateRoom: async (projectId: string, teamId: string, userId: string, roomName?: string) => {
+    // Return cached room if available (and for the same project)
+    const cached = get().roomsByTeam[teamId]
+    if (cached && cached.projectId === projectId) {
+      // Ensure loading state is cleared for cached rooms
+      if (get().isLoadingRoom) set({ isLoadingRoom: false })
+      return cached
+    }
     
     set({ isLoadingRoom: true })
     try {
       const result = await getOrCreateRoomApi({
-        data: { projectId, userId, roomName },
+        data: { projectId, teamId, userId, roomName },
       })
       
       if (result.success && result.room) {
         const room: ChatRoom = {
           id: result.room.id,
           projectId: result.room.projectId,
+          teamId: result.room.teamId,
           name: result.room.name,
         }
         
         set(state => ({
-          roomsByProject: {
-            ...state.roomsByProject,
-            [projectId]: room,
+          roomsByTeam: {
+            ...state.roomsByTeam,
+            [teamId]: room,
           },
           isLoadingRoom: false,
         }))
@@ -169,8 +189,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
     }
   },
   
-  getRoomForProject: (projectId: string) => {
-    return get().roomsByProject[projectId] || null
+  getRoomForTeam: (teamId: string) => {
+    return get().roomsByTeam[teamId] || null
   },
   
   getRoomMessages: (roomId: string) => {
@@ -252,18 +272,43 @@ export const useChatStore = create<ChatState>((set, get) => ({
       
       if (result.success && result.message) {
         // Update with real message ID
+        const confirmedMessage = { ...newMessage, id: result.message!.id }
         set(state => ({
           messagesByRoom: {
             ...state.messagesByRoom,
             [roomId]: state.messagesByRoom[roomId]?.map(m =>
-              m.id === tempId ? { ...m, id: result.message!.id } : m
+              m.id === tempId ? confirmedMessage : m
             ) || [],
           },
         }))
+        // Broadcast to other clients via WebSocket
+        broadcastMessage(roomId, confirmedMessage)
       }
     } catch (error) {
       console.error('Failed to send message:', error)
     }
+  },
+  
+  subscribeToRoom: async (roomId: string) => {
+    await joinRoom(roomId)
+  },
+  
+  unsubscribeFromRoom: (roomId: string) => {
+    leaveRoom(roomId)
+  },
+  
+  receiveMessage: (roomId: string, message: ChatMessage) => {
+    set(state => {
+      const existing = state.messagesByRoom[roomId] || []
+      // Avoid duplicates
+      if (existing.some(m => m.id === message.id)) return state
+      return {
+        messagesByRoom: {
+          ...state.messagesByRoom,
+          [roomId]: [...existing, message],
+        },
+      }
+    })
   },
   
   toggleFloatingBot: () => {
@@ -468,4 +513,4 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }))
     }
   },
-}))
+}})
