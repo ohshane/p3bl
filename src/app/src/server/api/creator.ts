@@ -586,8 +586,15 @@ export const getProjectSubmissions = createServerFn({ method: 'GET' })
       // Transform to submission format
       const submissions = allArtifacts.map(artifact => {
         const session = sessions.find(s => s.id === artifact.sessionId)
+        const sessionRubrics = session?.rubrics || []
         const latestPrecheck = artifact.precheckResults[0]
         let aiScore = 0
+        let rubricBreakdown: Array<{ criterion: string; weight: number; score: number | null }> =
+          sessionRubrics.map((r) => ({
+            criterion: r.criteria,
+            weight: r.weight,
+            score: null,
+          }))
 
         const applyOverallScoreFallback = () => {
           switch (latestPrecheck?.overallScore) {
@@ -612,9 +619,19 @@ export const getProjectSubmissions = createServerFn({ method: 'GET' })
             const entries = Object.entries(scores)
             if (entries.length > 0) {
               // Build weight lookup from session rubrics (by ID and criterion name)
-              const rubrics = session?.rubrics || []
+              const rubrics = sessionRubrics
               const weightById = new Map(rubrics.map(r => [r.id, r.weight]))
               const weightByCriterion = new Map(rubrics.map(r => [r.criteria, r.weight]))
+              const scoreById = new Map(Object.entries(scores))
+
+              rubricBreakdown = rubrics.map((rubric) => {
+                const rawScore = scoreById.get(rubric.id) ?? scoreById.get(rubric.criteria)
+                return {
+                  criterion: rubric.criteria,
+                  weight: rubric.weight,
+                  score: typeof rawScore === 'number' ? Math.round(rawScore) : null,
+                }
+              })
 
               let weightedSum = 0
               let totalWeight = 0
@@ -650,6 +667,7 @@ export const getProjectSubmissions = createServerFn({ method: 'GET' })
           status: artifact.status === 'approved' ? 'graded' as const : 'pending' as const,
           submittedAt: artifact.updatedAt.toISOString(),
           precheckPassed: artifact.precheckPassed,
+          rubricBreakdown,
         }
       })
 

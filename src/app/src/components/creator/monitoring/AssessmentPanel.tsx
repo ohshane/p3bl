@@ -27,6 +27,11 @@ interface Submission {
   status: 'pending' | 'graded'
   submittedAt: string
   precheckPassed: boolean | null
+  rubricBreakdown: Array<{
+    criterion: string
+    weight: number
+    score: number | null
+  }>
 }
 
 interface SubmissionStats {
@@ -310,6 +315,24 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
           </DialogHeader>
 
           <div className="min-h-[320px] max-h-[60vh] overflow-auto rounded-lg border border-border bg-muted/20 p-4">
+            {selectedSubmission && selectedSubmission.rubricBreakdown.length > 0 && (
+              <div className="mb-4 rounded-lg border border-border bg-background p-3">
+                <h4 className="text-sm font-medium text-foreground mb-2">Rubric Criteria Scores</h4>
+                <div className="space-y-2">
+                  {selectedSubmission.rubricBreakdown.map((item, idx) => (
+                    <div key={`${item.criterion}-${idx}`} className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        {item.criterion} <span className="text-xs">({item.weight}%)</span>
+                      </span>
+                      <span className="font-medium text-foreground">
+                        {item.score !== null ? `${item.score}` : '-'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {isLoadingReview ? (
               <div className="flex items-center justify-center py-10 text-muted-foreground">
                 <Loader2 className="w-5 h-5 animate-spin mr-2" />
