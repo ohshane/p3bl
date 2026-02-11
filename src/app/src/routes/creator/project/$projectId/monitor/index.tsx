@@ -113,7 +113,14 @@ function MonitoringPage() {
           </div>
           <div className="bg-card border border-border rounded-lg p-4">
             <div className="text-2xl font-bold text-foreground">
-              {project.sessions.findIndex(s => !s.endDate || new Date(s.endDate) > new Date()) + 1} / {project.sessions.length}
+              {(() => {
+                const idx = project.sessions.findIndex(s => {
+                  if (!s.endDate) return true
+                  const end = new Date(s.endDate)
+                  return isNaN(end.getTime()) || end > new Date()
+                })
+                return idx === -1 ? project.sessions.length : idx + 1
+              })()} / {project.sessions.length}
             </div>
             <div className="text-sm text-muted-foreground">Current Session</div>
           </div>

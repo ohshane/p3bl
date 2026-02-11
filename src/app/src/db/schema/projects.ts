@@ -21,6 +21,7 @@ export const projects = sqliteTable('projects', {
   joinCodeExpiresAt: integer('join_code_expires_at', { mode: 'timestamp' }),
   maxParticipants: integer('max_participants'),
   teamSize: integer('team_size').default(2),
+  isTemplate: integer('is_template', { mode: 'boolean' }).notNull().default(false),
   startDate: integer('start_date', { mode: 'timestamp' }),
   endDate: integer('end_date', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
@@ -36,6 +37,7 @@ export const projectSessions = sqliteTable('project_sessions', {
   topic: text('topic'),
   guide: text('guide'), // Rich text guide for the session
   weight: real('weight').notNull().default(1), // For asymmetric timeline
+  durationMinutes: integer('duration_minutes'), // Absolute session duration in minutes
   difficulty: text('difficulty').$type<SessionDifficulty>().notNull().default('medium'),
   deliverableType: text('deliverable_type').$type<DeliverableType>().notNull().default('document'),
   deliverableTitle: text('deliverable_title'),

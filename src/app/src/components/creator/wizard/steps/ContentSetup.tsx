@@ -6,11 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { getConfiguredAIModel } from '@/lib/ai-config'
-
-// OpenRouter API configuration
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://openrouter.ai/api/v1'
-const OPENROUTER_API_URL = `${API_BASE}/chat/completions`
+import { aiChatCompletion } from '@/server/api/ai'
 
 // System prompt for project generation
 const PROJECT_GENERATION_PROMPT = `You are an expert educational project designer for a project-based learning platform.
@@ -41,28 +37,16 @@ interface GeneratedProject {
 }
 
 async function generateProjectFromKeywords(keywords: string): Promise<GeneratedProject> {
-  if (!OPENROUTER_API_KEY) {
-    throw new Error('API key is not configured')
-  }
-
   let aiModel: string
   try {
     aiModel = await getConfiguredAIModel()
-    console.log('Using AI model:', aiModel)
   } catch (error) {
     console.error('Error getting AI model, using default:', error)
     aiModel = 'openrouter/auto'
   }
 
-  const response = await fetch(OPENROUTER_API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': window.location.origin,
-      'X-Title': 'Peabee Project Generator',
-    },
-    body: JSON.stringify({
+  const result = await aiChatCompletion({
+    data: {
       model: aiModel,
       messages: [
         { role: 'system', content: PROJECT_GENERATION_PROMPT },
@@ -78,32 +62,27 @@ async function generateProjectFromKeywords(keywords: string): Promise<GeneratedP
           schema: PROJECT_RESPONSE_SCHEMA
         }
       }
-    }),
+    },
   })
 
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status}`)
+  if (!result.success) {
+    throw new Error(result.error || 'AI API error')
   }
 
-  const data = await response.json()
-  const content = data.choices[0]?.message?.content
-
+  const content = result.content
   if (!content) {
     throw new Error('No content in API response')
   }
 
   // Parse the JSON response - handle various formats
   try {
-    // First, try to extract JSON from markdown code blocks if present
     let jsonContent = content.trim()
     
-    // Remove markdown code blocks (```json ... ``` or ``` ... ```)
     const codeBlockMatch = jsonContent.match(/```(?:json)?\s*([\s\S]*?)```/)
     if (codeBlockMatch) {
       jsonContent = codeBlockMatch[1].trim()
     }
     
-    // Try to find JSON object in the response
     const jsonMatch = jsonContent.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
       jsonContent = jsonMatch[0]
@@ -116,7 +95,6 @@ async function generateProjectFromKeywords(keywords: string): Promise<GeneratedP
       drivingQuestion: parsed.drivingQuestion || '',
     }
   } catch (parseError) {
-    // If JSON parsing fails, log the error for debugging
     console.error('Failed to parse JSON response:', content, parseError)
     throw new Error('Failed to parse AI response. Please try again.')
   }
@@ -141,12 +119,6 @@ export function ContentSetup() {
 
   const handleGenerateFromKeywords = async () => {
     if (!keywords.trim()) return
-    
-    // Check if API key is configured
-    if (!OPENROUTER_API_KEY) {
-      setGenerationError('AI generation is not configured. Please enter project details manually.')
-      return
-    }
     
     setIsGenerating(true)
     setGenerationError(null)

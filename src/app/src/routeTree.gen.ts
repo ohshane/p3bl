@@ -20,6 +20,7 @@ import { Route as CreatorIndexRouteImport } from './routes/creator/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ExplorerPortfolioIndexRouteImport } from './routes/explorer/portfolio/index'
 import { Route as ExplorerCalendarIndexRouteImport } from './routes/explorer/calendar/index'
+import { Route as CreatorLibraryIndexRouteImport } from './routes/creator/library/index'
 import { Route as CreatorCalendarIndexRouteImport } from './routes/creator/calendar/index'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin/users/index'
 import { Route as AdminSettingsIndexRouteImport } from './routes/admin/settings/index'
@@ -31,6 +32,7 @@ import { Route as ExplorerProjectProjectIdIndexRouteImport } from './routes/expl
 import { Route as DemoStartSsrIndexRouteImport } from './routes/demo/start.ssr.index'
 import { Route as CreatorProjectNewIndexRouteImport } from './routes/creator/project/new/index'
 import { Route as CreatorProjectProjectIdIndexRouteImport } from './routes/creator/project/$projectId/index'
+import { Route as CreatorLibraryIdIndexRouteImport } from './routes/creator/library/$id/index'
 import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr.spa-mode'
 import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
 import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ssr.data-only'
@@ -92,6 +94,11 @@ const ExplorerCalendarIndexRoute = ExplorerCalendarIndexRouteImport.update({
   path: '/calendar/',
   getParentRoute: () => ExplorerRouteRoute,
 } as any)
+const CreatorLibraryIndexRoute = CreatorLibraryIndexRouteImport.update({
+  id: '/library/',
+  path: '/library/',
+  getParentRoute: () => CreatorRouteRoute,
+} as any)
 const CreatorCalendarIndexRoute = CreatorCalendarIndexRouteImport.update({
   id: '/calendar/',
   path: '/calendar/',
@@ -150,6 +157,11 @@ const CreatorProjectProjectIdIndexRoute =
     path: '/',
     getParentRoute: () => CreatorProjectProjectIdRouteRoute,
   } as any)
+const CreatorLibraryIdIndexRoute = CreatorLibraryIdIndexRouteImport.update({
+  id: '/library/$id/',
+  path: '/library/$id/',
+  getParentRoute: () => CreatorRouteRoute,
+} as any)
 const DemoStartSsrSpaModeRoute = DemoStartSsrSpaModeRouteImport.update({
   id: '/demo/start/ssr/spa-mode',
   path: '/demo/start/ssr/spa-mode',
@@ -195,11 +207,13 @@ export interface FileRoutesByFullPath {
   '/admin/settings/': typeof AdminSettingsIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
   '/creator/calendar/': typeof CreatorCalendarIndexRoute
+  '/creator/library/': typeof CreatorLibraryIndexRoute
   '/explorer/calendar/': typeof ExplorerCalendarIndexRoute
   '/explorer/portfolio/': typeof ExplorerPortfolioIndexRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
+  '/creator/library/$id/': typeof CreatorLibraryIdIndexRoute
   '/creator/project/$projectId/': typeof CreatorProjectProjectIdIndexRoute
   '/creator/project/new/': typeof CreatorProjectNewIndexRoute
   '/demo/start/ssr/': typeof DemoStartSsrIndexRoute
@@ -220,11 +234,13 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsIndexRoute
   '/admin/users': typeof AdminUsersIndexRoute
   '/creator/calendar': typeof CreatorCalendarIndexRoute
+  '/creator/library': typeof CreatorLibraryIndexRoute
   '/explorer/calendar': typeof ExplorerCalendarIndexRoute
   '/explorer/portfolio': typeof ExplorerPortfolioIndexRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
+  '/creator/library/$id': typeof CreatorLibraryIdIndexRoute
   '/creator/project/$projectId': typeof CreatorProjectProjectIdIndexRoute
   '/creator/project/new': typeof CreatorProjectNewIndexRoute
   '/demo/start/ssr': typeof DemoStartSsrIndexRoute
@@ -250,11 +266,13 @@ export interface FileRoutesById {
   '/admin/settings/': typeof AdminSettingsIndexRoute
   '/admin/users/': typeof AdminUsersIndexRoute
   '/creator/calendar/': typeof CreatorCalendarIndexRoute
+  '/creator/library/': typeof CreatorLibraryIndexRoute
   '/explorer/calendar/': typeof ExplorerCalendarIndexRoute
   '/explorer/portfolio/': typeof ExplorerPortfolioIndexRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
   '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
   '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
+  '/creator/library/$id/': typeof CreatorLibraryIdIndexRoute
   '/creator/project/$projectId/': typeof CreatorProjectProjectIdIndexRoute
   '/creator/project/new/': typeof CreatorProjectNewIndexRoute
   '/demo/start/ssr/': typeof DemoStartSsrIndexRoute
@@ -281,11 +299,13 @@ export interface FileRouteTypes {
     | '/admin/settings/'
     | '/admin/users/'
     | '/creator/calendar/'
+    | '/creator/library/'
     | '/explorer/calendar/'
     | '/explorer/portfolio/'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
+    | '/creator/library/$id/'
     | '/creator/project/$projectId/'
     | '/creator/project/new/'
     | '/demo/start/ssr/'
@@ -306,11 +326,13 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/creator/calendar'
+    | '/creator/library'
     | '/explorer/calendar'
     | '/explorer/portfolio'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
+    | '/creator/library/$id'
     | '/creator/project/$projectId'
     | '/creator/project/new'
     | '/demo/start/ssr'
@@ -335,11 +357,13 @@ export interface FileRouteTypes {
     | '/admin/settings/'
     | '/admin/users/'
     | '/creator/calendar/'
+    | '/creator/library/'
     | '/explorer/calendar/'
     | '/explorer/portfolio/'
     | '/demo/start/ssr/data-only'
     | '/demo/start/ssr/full-ssr'
     | '/demo/start/ssr/spa-mode'
+    | '/creator/library/$id/'
     | '/creator/project/$projectId/'
     | '/creator/project/new/'
     | '/demo/start/ssr/'
@@ -443,6 +467,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExplorerCalendarIndexRouteImport
       parentRoute: typeof ExplorerRouteRoute
     }
+    '/creator/library/': {
+      id: '/creator/library/'
+      path: '/library'
+      fullPath: '/creator/library/'
+      preLoaderRoute: typeof CreatorLibraryIndexRouteImport
+      parentRoute: typeof CreatorRouteRoute
+    }
     '/creator/calendar/': {
       id: '/creator/calendar/'
       path: '/calendar'
@@ -519,6 +550,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/creator/project/$projectId/'
       preLoaderRoute: typeof CreatorProjectProjectIdIndexRouteImport
       parentRoute: typeof CreatorProjectProjectIdRouteRoute
+    }
+    '/creator/library/$id/': {
+      id: '/creator/library/$id/'
+      path: '/library/$id'
+      fullPath: '/creator/library/$id/'
+      preLoaderRoute: typeof CreatorLibraryIdIndexRouteImport
+      parentRoute: typeof CreatorRouteRoute
     }
     '/demo/start/ssr/spa-mode': {
       id: '/demo/start/ssr/spa-mode'
@@ -598,6 +636,8 @@ interface CreatorRouteRouteChildren {
   CreatorIndexRoute: typeof CreatorIndexRoute
   CreatorProjectProjectIdRouteRoute: typeof CreatorProjectProjectIdRouteRouteWithChildren
   CreatorCalendarIndexRoute: typeof CreatorCalendarIndexRoute
+  CreatorLibraryIndexRoute: typeof CreatorLibraryIndexRoute
+  CreatorLibraryIdIndexRoute: typeof CreatorLibraryIdIndexRoute
   CreatorProjectNewIndexRoute: typeof CreatorProjectNewIndexRoute
 }
 
@@ -606,6 +646,8 @@ const CreatorRouteRouteChildren: CreatorRouteRouteChildren = {
   CreatorProjectProjectIdRouteRoute:
     CreatorProjectProjectIdRouteRouteWithChildren,
   CreatorCalendarIndexRoute: CreatorCalendarIndexRoute,
+  CreatorLibraryIndexRoute: CreatorLibraryIndexRoute,
+  CreatorLibraryIdIndexRoute: CreatorLibraryIdIndexRoute,
   CreatorProjectNewIndexRoute: CreatorProjectNewIndexRoute,
 }
 

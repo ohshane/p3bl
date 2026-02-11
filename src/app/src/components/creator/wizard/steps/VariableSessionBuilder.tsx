@@ -34,11 +34,7 @@ import type {
   CreatorSession,
 } from "@/types";
 
-// OpenRouter API configuration
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
-const API_BASE =
-  import.meta.env.VITE_API_BASE || "https://openrouter.ai/api/v1";
-const OPENROUTER_API_URL = `${API_BASE}/chat/completions`;
+import { aiChatCompletion } from "@/server/api/ai";
 
 const DELIVERABLE_TYPES = [
   { value: "none", label: "None", icon: Ban },
@@ -211,30 +207,18 @@ async function generateSessions(
   divergenceLevel: number,
   toneLevel: number,
 ): Promise<GeneratedSession[]> {
-  if (!OPENROUTER_API_KEY) {
-    throw new Error("API key is not configured");
-  }
-
   const durationText = formatDuration(durationMinutes);
   
   let aiModel: string;
   try {
     aiModel = await getConfiguredAIModel();
-    console.log("Using AI model:", aiModel);
   } catch (error) {
     console.error("Error getting AI model, using default:", error);
     aiModel = "openrouter/auto";
   }
 
-  const response = await fetch(OPENROUTER_API_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": window.location.origin,
-      "X-Title": "Peabee Session Generator",
-    },
-    body: JSON.stringify({
+  const result = await aiChatCompletion({
+    data: {
       model: aiModel,
       messages: [
         {
@@ -263,15 +247,14 @@ Create a well-structured learning journey that helps answer the driving question
           schema: SESSION_RESPONSE_SCHEMA
         }
       }
-    }),
+    },
   });
 
-  if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
+  if (!result.success) {
+    throw new Error(result.error || "AI API error");
   }
 
-  const data = await response.json();
-  const content = data.choices[0]?.message?.content;
+  const content = result.content;
 
   if (!content) {
     throw new Error("No content in API response");
@@ -575,7 +558,8 @@ export function VariableSessionBuilder() {
       const currentSession = sessions[index];
       return (
         currentSession.startDate !== calculated.isoStartDate ||
-        currentSession.endDate !== calculated.isoEndDate
+        currentSession.endDate !== calculated.isoEndDate ||
+        currentSession.durationMinutes !== calculated.sessionMinutes
       );
     });
 
@@ -584,6 +568,7 @@ export function VariableSessionBuilder() {
         const calculated = sessionsWithDates[index];
         return {
           ...session,
+          durationMinutes: calculated.sessionMinutes,
           startDate: calculated.isoStartDate,
           endDate: calculated.isoEndDate,
         };
@@ -603,13 +588,6 @@ export function VariableSessionBuilder() {
     if (!basicInfo.title || !basicInfo.drivingQuestion) {
       setGenerationError(
         "Please fill in project title and driving question first (Step 2: Content)",
-      );
-      return;
-    }
-
-    if (!OPENROUTER_API_KEY) {
-      setGenerationError(
-        "AI generation is not configured. Please add sessions manually.",
       );
       return;
     }
@@ -636,6 +614,7 @@ export function VariableSessionBuilder() {
           guide: g.guide,
           difficulty: g.difficulty,
           weight: DIFFICULTY_WEIGHTS[g.difficulty],
+          durationMinutes: DIFFICULTY_WEIGHTS[g.difficulty],
           startDate: "",
           endDate: "",
           deliverableType: g.deliverableType,

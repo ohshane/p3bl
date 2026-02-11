@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import {
   ArrowLeft,
@@ -18,6 +18,7 @@ import {
   Pencil,
   ChevronDown,
   GripVertical,
+  Library,
 } from "lucide-react";
 import { toast } from "sonner";
 import { differenceInMinutes, addMinutes, format } from "date-fns";
@@ -91,6 +92,12 @@ export const Route = createFileRoute("/creator/project/$projectId/")({
 // ─── Constants ─────────────────────────────────────────────────────────────
 
 const DIFFICULTY_WEIGHTS: Record<SessionDifficulty, number> = {
+  easy: 60,
+  medium: 100,
+  hard: 140,
+};
+
+const DIFFICULTY_DURATIONS: Record<SessionDifficulty, number> = {
   easy: 60,
   medium: 100,
   hard: 140,
@@ -680,6 +687,7 @@ interface TimelineEditorProps {
   startDate: string;
   endDate: string;
   sessions: CreatorSession[];
+  isTemplateView?: boolean;
   onSaved: () => Promise<void>;
 }
 
@@ -688,6 +696,7 @@ function TimelineEditor({
   startDate,
   endDate,
   sessions,
+  isTemplateView: isTemplate = false,
   onSaved,
 }: TimelineEditorProps) {
   // Local draft state for the timeline
@@ -887,32 +896,39 @@ function TimelineEditor({
   const handleSaveTimeline = async () => {
     setSaving(true);
     try {
-      // 1. Save project start/end dates
-      const projResult = await updateProject({
-        data: {
-          projectId,
-          updates: {
-            startDate: draftStartDate,
-            endDate: draftEndDate,
+      // 1. Save project start/end dates (skip for templates - they have no dates)
+      if (!isTemplate) {
+        const projResult = await updateProject({
+          data: {
+            projectId,
+            updates: {
+              startDate: draftStartDate,
+              endDate: draftEndDate,
+            },
           },
-        },
-      });
-      if (!projResult.success) {
-        toast.error("Failed to save project dates");
-        setSaving(false);
-        return;
+        });
+        if (!projResult.success) {
+          toast.error("Failed to save project dates");
+          setSaving(false);
+          return;
+        }
       }
 
-      // 2. Save all session dates and weights
+      // 2. Save all session dates, weights, and durationMinutes
       const sessionPromises = sessionsWithDates.map(async (s) => {
+        const updates: Record<string, unknown> = {
+          weight: s.weight,
+          durationMinutes: s.sessionMinutes,
+        };
+        // Only set concrete dates for deployed projects
+        if (!isTemplate) {
+          updates.startDate = s.isoStartDate;
+          updates.endDate = s.isoEndDate;
+        }
         return apiUpdateSession({
           data: {
             sessionId: s.session.id,
-            updates: {
-              startDate: s.isoStartDate,
-              endDate: s.isoEndDate,
-              weight: s.weight,
-            },
+            updates,
           },
         });
       });
@@ -973,8 +989,8 @@ function TimelineEditor({
             {formatDuration(durationMinutes)}
           </span>
           <span className="text-xs text-muted-foreground">
-            {safeFormatDate(draftStartDate, "MMM d HH:mm", "?")} -{" "}
-            {safeFormatDate(draftEndDate, "MMM d HH:mm", "?")}
+            {safeFormatDate(draftStartDate, "MMM d HH:mm", "-")} -{" "}
+            {safeFormatDate(draftEndDate, "MMM d HH:mm", "-")}
           </span>
         </div>
       )}
@@ -1251,15 +1267,137 @@ function TeamSizeEditor({ value, onSave }: TeamSizeEditorProps) {
   );
 }
 
+// ─── Duration Editor ────────────────────────────────────────────────────────
+
+interface DurationEditorProps {
+  value: number;
+  onSave: (minutes: number) => Promise<void>;
+}
+
+function DurationEditor({ value, onSave }: DurationEditorProps) {
+  // Determine best unit for display
+  const getUnitAndAmount = (
+    minutes: number,
+  ): { amount: number; unit: "min" | "hr" | "day" } => {
+    if (minutes >= 1440 && minutes % 1440 === 0)
+      return { amount: minutes / 1440, unit: "day" };
+    if (minutes >= 60 && minutes % 60 === 0)
+      return { amount: minutes / 60, unit: "hr" };
+    return { amount: minutes, unit: "min" };
+  };
+
+  const initial = getUnitAndAmount(value);
+  const [amount, setAmount] = useState(String(initial.amount));
+  const [unit, setUnit] = useState<"min" | "hr" | "day">(initial.unit);
+  const [saving, setSaving] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (document.activeElement !== inputRef.current) {
+      const u = getUnitAndAmount(value);
+      setAmount(String(u.amount));
+      setUnit(u.unit);
+    }
+  }, [value]);
+
+  const toMinutes = (amt: number, u: "min" | "hr" | "day"): number => {
+    if (u === "hr") return amt * 60;
+    if (u === "day") return amt * 1440;
+    return amt;
+  };
+
+  const commitValue = async () => {
+    const num = parseFloat(amount);
+    if (isNaN(num) || num <= 0) {
+      const u = getUnitAndAmount(value);
+      setAmount(String(u.amount));
+      return;
+    }
+    const newMinutes = Math.round(toMinutes(num, unit));
+    if (newMinutes === value) return;
+    setSaving(true);
+    try {
+      await onSave(newMinutes);
+    } catch {
+      const u = getUnitAndAmount(value);
+      setAmount(String(u.amount));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUnitChange = (newUnit: "min" | "hr" | "day") => {
+    // Derive display from the saved value (not from display state) to avoid rounding drift
+    setUnit(newUnit);
+    if (newUnit === "hr") setAmount(String(Math.round((value / 60) * 100) / 100));
+    else if (newUnit === "day")
+      setAmount(String(Math.round((value / 1440) * 100) / 100));
+    else setAmount(String(value));
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <div className="flex items-center h-6 rounded border border-border bg-muted/30">
+        <input
+          ref={inputRef}
+          type="number"
+          min={1}
+          step="any"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          onBlur={commitValue}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commitValue();
+            }
+            if (e.key === "Escape") {
+              const u = getUnitAndAmount(value);
+              setAmount(String(u.amount));
+              inputRef.current?.blur();
+            }
+          }}
+          disabled={saving}
+          className={cn(
+            "w-12 text-center text-xs font-medium tabular-nums bg-transparent border-none outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]",
+            saving && "opacity-50",
+          )}
+        />
+      </div>
+      <div className="flex items-center h-6 rounded border border-border bg-muted/30 overflow-hidden">
+        {(["min", "hr", "day"] as const).map((u) => (
+          <button
+            key={u}
+            type="button"
+            onClick={() => handleUnitChange(u)}
+            disabled={saving}
+            className={cn(
+              "px-1.5 h-full text-[10px] font-medium transition-colors",
+              unit === u
+                ? "bg-cyan-500/20 text-cyan-400"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted",
+            )}
+          >
+            {u}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ─────────────────────────────────────────────────────────────
 
-function ProjectDetailPage() {
+export function ProjectDetailPage() {
   const navigate = useNavigate();
-  const { projectId } = Route.useParams();
+  const { projectId, id } = useParams({ strict: false });
+  const resolvedProjectId = projectId ?? id;
+  const isTemplateView = Boolean(id && !projectId);
+  const includeTemplates = isTemplateView;
   const { isAuthenticated, currentUser } = useAuthStore();
   const { getProject, fetchProjects } = useCreatorStore();
 
-  const project = getProject(projectId);
+  const project = resolvedProjectId ? getProject(resolvedProjectId) : undefined;
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [deleteSessionId, setDeleteSessionId] = useState<string | null>(null);
@@ -1275,9 +1413,9 @@ function ProjectDetailPage() {
   // Fetch projects if not loaded yet
   useEffect(() => {
     if (currentUser?.id && !project) {
-      fetchProjects(currentUser.id);
+      fetchProjects(currentUser.id, { includeTemplates });
     }
-  }, [currentUser?.id, project, fetchProjects]);
+  }, [currentUser?.id, project, fetchProjects, includeTemplates]);
 
   // Redirect to landing if not authenticated
   useEffect(() => {
@@ -1302,12 +1440,12 @@ function ProjectDetailPage() {
       });
       if (result.success) {
         toast.success("Saved");
-        await fetchProjects(currentUser.id);
+        await fetchProjects(currentUser.id, { includeTemplates });
       } else {
         throw new Error("Failed to save");
       }
     },
-    [project, currentUser?.id, fetchProjects],
+    [project, currentUser?.id, fetchProjects, includeTemplates],
   );
 
   // Helper to save session-level fields
@@ -1319,20 +1457,20 @@ function ProjectDetailPage() {
       });
       if (result.success) {
         toast.success("Saved");
-        await fetchProjects(currentUser.id);
+        await fetchProjects(currentUser.id, { includeTemplates });
       } else {
         throw new Error("Failed to save");
       }
     },
-    [currentUser?.id, fetchProjects],
+    [currentUser?.id, fetchProjects, includeTemplates],
   );
 
   // Callback for timeline editor to refresh data
   const handleTimelineSaved = useCallback(async () => {
     if (currentUser?.id) {
-      await fetchProjects(currentUser.id);
+      await fetchProjects(currentUser.id, { includeTemplates });
     }
-  }, [currentUser?.id, fetchProjects]);
+  }, [currentUser?.id, fetchProjects, includeTemplates]);
 
   if (!currentUser || !currentUser.role.includes("creator")) {
     return null;
@@ -1343,13 +1481,15 @@ function ProjectDetailPage() {
       <div className="container max-w-6xl mx-auto py-8 px-4">
         <div className="text-center py-12">
           <h2 className="text-2xl font-bold text-foreground mb-2">
-            Project Not Found
+            {isTemplateView ? "Template Not Found" : "Project Not Found"}
           </h2>
           <p className="text-muted-foreground mb-4">
-            The project you're looking for doesn't exist.
+            {isTemplateView
+              ? "The template you're looking for doesn't exist."
+              : "The project you're looking for doesn't exist."}
           </p>
-          <Button onClick={() => navigate({ to: "/creator" })}>
-            Back to Dashboard
+          <Button onClick={() => navigate({ to: isTemplateView ? "/creator/library" : "/creator" })}>
+            {isTemplateView ? "Back to Library" : "Back to Dashboard"}
           </Button>
         </div>
       </div>
@@ -1362,7 +1502,8 @@ function ProjectDetailPage() {
   );
   const progress = getProjectProgress(project.startDate, project.endDate);
   const timeInfo = getProjectTimeInfo(project.startDate, project.endDate);
-  const isEditable = status === "scheduled";
+  // Templates are always editable since they haven't been deployed yet
+  const isEditable = isTemplateView || status === "scheduled";
 
   const statusColors: Record<CreatorProjectStatus, string> = {
     scheduled: "bg-amber-500/10 text-amber-500 border-amber-500/30",
@@ -1389,16 +1530,20 @@ function ProjectDetailPage() {
         <div className="mb-8">
           <Button
             variant="ghost"
-            onClick={() => navigate({ to: "/creator" })}
+            onClick={() => navigate({ to: isTemplateView ? "/creator/library" : "/creator" })}
             className="mb-4 text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
+            {isTemplateView ? "Back to Library" : "Back to Dashboard"}
           </Button>
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-2">
-                <Settings className="w-8 h-8 text-cyan-500 shrink-0" />
+                {isTemplateView ? (
+                  <Library className="w-8 h-8 text-cyan-500 shrink-0" />
+                ) : (
+                  <Settings className="w-8 h-8 text-cyan-500 shrink-0" />
+                )}
                 <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
                   <InlineText
                     value={project.name}
@@ -1411,25 +1556,36 @@ function ProjectDetailPage() {
                     placeholder="Project name"
                   />
                 </h1>
-                <Badge
-                  variant="outline"
-                  className={`text-xs uppercase font-bold shrink-0 ${statusColors[status]}`}
-                >
-                  {statusLabels[status]}
-                </Badge>
+                {isTemplateView ? (
+                  <Badge
+                    variant="outline"
+                    className="text-xs uppercase font-bold shrink-0 bg-cyan-500/10 text-cyan-500 border-cyan-500/30"
+                  >
+                    Template
+                  </Badge>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    className={`text-xs uppercase font-bold shrink-0 ${statusColors[status]}`}
+                  >
+                    {statusLabels[status]}
+                  </Badge>
+                )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="bg-card border border-border rounded-lg p-4 mb-6">
-          <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
-            <span>{timeInfo.elapsed} elapsed</span>
-            <span>{timeInfo.remaining} left</span>
+        {/* Progress Bar - hidden for templates */}
+        {!isTemplateView && (
+          <div className="bg-card border border-border rounded-lg p-4 mb-6">
+            <div className="flex items-center justify-between text-sm text-muted-foreground mb-2">
+              <span>{timeInfo.elapsed} elapsed</span>
+              <span>{timeInfo.remaining} left</span>
+            </div>
+            <Progress value={progress} className="h-2" />
           </div>
-          <Progress value={progress} className="h-2" />
-        </div>
+        )}
 
         {/* Project Info Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
@@ -1500,6 +1656,7 @@ function ProjectDetailPage() {
                   startDate={project.startDate}
                   endDate={project.endDate}
                   sessions={project.sessions}
+                  isTemplateView={isTemplateView}
                   onSaved={handleTimelineSaved}
                 />
               ) : (
@@ -1509,13 +1666,13 @@ function ProjectDetailPage() {
                     {safeFormatDate(
                       project.startDate,
                       "MMM d, yyyy HH:mm",
-                      "TBD",
+                      "-",
                     )}
                     {" - "}
                     {safeFormatDate(
                       project.endDate,
                       "MMM d, yyyy HH:mm",
-                      "TBD",
+                      "-",
                     )}
                   </span>
                 </div>
@@ -1534,11 +1691,17 @@ function ProjectDetailPage() {
                     variant="ghost"
                     onClick={async () => {
                       try {
+                        const defaultDuration = DIFFICULTY_DURATIONS.medium;
                         const lastSession =
                           project.sessions[project.sessions.length - 1];
-                        const newStart =
-                          lastSession?.endDate || project.startDate;
-                        const newEnd = project.endDate;
+                        const newStart = isTemplateView
+                          ? undefined
+                          : lastSession?.endDate || project.startDate;
+                        const newEnd = isTemplateView
+                          ? undefined
+                          : newStart
+                            ? addMinutes(new Date(newStart), defaultDuration).toISOString()
+                            : project.endDate;
                         const result = await createSession({
                           data: {
                             projectId: project.id,
@@ -1546,13 +1709,16 @@ function ProjectDetailPage() {
                             difficulty: "medium",
                             deliverableType: "none",
                             weight: 100,
+                            durationMinutes: defaultDuration,
                             startDate: newStart,
                             endDate: newEnd,
                           },
                         });
                         if (result.success) {
                           toast.success("Session added");
-                          await fetchProjects(currentUser!.id);
+                          await fetchProjects(currentUser!.id, {
+                            includeTemplates,
+                          });
                         } else {
                           toast.error("Failed to add session");
                         }
@@ -1609,7 +1775,9 @@ function ProjectDetailPage() {
                               data: { sessionIds: ids },
                             });
                             if (result.success) {
-                              await fetchProjects(currentUser!.id);
+                              await fetchProjects(currentUser!.id, {
+                                includeTemplates,
+                              });
                             } else {
                               toast.error("Failed to reorder");
                             }
@@ -1662,16 +1830,20 @@ function ProjectDetailPage() {
                               <FileText className="w-3 h-3 text-muted-foreground shrink-0" />
                             )}
                             <span className="text-[10px] text-muted-foreground shrink-0 ml-auto mr-1">
+                              {session.durationMinutes > 0
+                                ? formatDuration(session.durationMinutes)
+                                : "-"}
+                              {" | "}
                               {safeFormatDate(
                                 session.startDate,
                                 "MMM d HH:mm",
-                                "TBD",
-                              )}{" "}
-                              -{" "}
+                                "-",
+                              )}
+                              {" - "}
                               {safeFormatDate(
                                 session.endDate,
                                 "MMM d HH:mm",
-                                "TBD",
+                                "-",
                               )}
                             </span>
                             <ChevronDown className="chevron-icon w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200" />
@@ -1779,20 +1951,42 @@ function ProjectDetailPage() {
                                 />
                               </div>
                             )}
-                            {/* Session Dates */}
+                            {/* Session Duration / Dates */}
                             <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <Clock className="w-3 h-3 shrink-0" />
+                              {isEditable ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">Duration:</span>
+                                  <DurationEditor
+                                    value={session.durationMinutes || 0}
+                                    onSave={async (minutes) => {
+                                      await saveSessionField(session.id, {
+                                        durationMinutes: minutes,
+                                      });
+                                    }}
+                                  />
+                                </div>
+                              ) : (
+                                <span>
+                                  {session.durationMinutes > 0
+                                    ? formatDuration(session.durationMinutes)
+                                    : "-"}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <Calendar className="w-3 h-3 shrink-0" />
                               <span className="flex items-center gap-1">
-                                <Clock className="w-3 h-3 shrink-0" />
                                 {safeFormatDate(
                                   session.startDate,
                                   "MMM d HH:mm",
-                                  "TBD",
+                                  "-",
                                 )}
                                 {" - "}
                                 {safeFormatDate(
                                   session.endDate,
                                   "MMM d HH:mm",
-                                  "TBD",
+                                  "-",
                                 )}
                               </span>
                             </div>
@@ -1817,59 +2011,63 @@ function ProjectDetailPage() {
 
           {/* Right Column: Sidebar */}
           <div className="space-y-6">
-            {/* Join Code */}
-            <div className="bg-card border border-border rounded-lg p-5">
-              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
-                Join Code
-              </h3>
-              <JoinCode
-                joinCode={project.joinCode}
-                projectId={project.id}
-                creatorId={project.creatorId}
-                projectName={project.name}
-                size="lg"
-              />
-            </div>
-
-            {/* Participants */}
-            <div className="bg-card border border-border rounded-lg p-5">
-              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
-                Participants
-              </h3>
-              <div className="space-y-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-muted-foreground">
-                    <Users className="w-4 h-4" />
-                    Joined
-                  </span>
-                  <span className="text-foreground">
-                    {project.totalParticipants}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-muted-foreground">
-                    <Users className="w-4 h-4" />
-                    Teams
-                  </span>
-                  <span className="text-foreground">
-                    {project.teams.length}
-                  </span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full mt-1 border-border text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  onClick={() =>
-                    navigate({
-                      to: "/creator/project/$projectId/participant",
-                      params: { projectId: project.id },
-                    })
-                  }
-                >
-                  View All
-                </Button>
+            {/* Join Code - hidden for templates */}
+            {!isTemplateView && (
+              <div className="bg-card border border-border rounded-lg p-5">
+                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
+                  Join Code
+                </h3>
+                <JoinCode
+                  joinCode={project.joinCode}
+                  projectId={project.id}
+                  creatorId={project.creatorId}
+                  projectName={project.name}
+                  size="lg"
+                />
               </div>
-            </div>
+            )}
+
+            {/* Participants - hidden for templates */}
+            {!isTemplateView && (
+              <div className="bg-card border border-border rounded-lg p-5">
+                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
+                  Participants
+                </h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Users className="w-4 h-4" />
+                      Joined
+                    </span>
+                    <span className="text-foreground">
+                      {project.totalParticipants}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-muted-foreground">
+                      <Users className="w-4 h-4" />
+                      Teams
+                    </span>
+                    <span className="text-foreground">
+                      {project.teams.length}
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-1 border-border text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    onClick={() =>
+                      navigate({
+                        to: "/creator/project/$projectId/participant",
+                        params: { projectId: project.id },
+                      })
+                    }
+                  >
+                    View All
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Quick Info */}
             <div className="bg-card border border-border rounded-lg p-5">
@@ -1944,7 +2142,23 @@ function ProjectDetailPage() {
                     {project.sessions.length}
                   </span>
                 </div>
-                {/* Start Date (read-only in sidebar, edited via timeline) */}
+                {/* Total Duration */}
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-muted-foreground shrink-0">
+                    <Clock className="w-4 h-4" />
+                    Total Duration
+                  </span>
+                  <span className="text-foreground">
+                    {(() => {
+                      const total = project.sessions.reduce(
+                        (sum, s) => sum + (s.durationMinutes || 0),
+                        0,
+                      );
+                      return total > 0 ? formatDuration(total) : "-";
+                    })()}
+                  </span>
+                </div>
+                {/* Start Date */}
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-muted-foreground shrink-0">
                     <Clock className="w-4 h-4" />
@@ -1954,7 +2168,7 @@ function ProjectDetailPage() {
                     {safeFormatDate(
                       project.startDate,
                       "MMM d, yyyy HH:mm",
-                      "TBD",
+                      "-",
                     )}
                   </span>
                 </div>
@@ -1968,7 +2182,7 @@ function ProjectDetailPage() {
                     {safeFormatDate(
                       project.endDate,
                       "MMM d, yyyy HH:mm",
-                      "TBD",
+                      "-",
                     )}
                   </span>
                 </div>
@@ -2023,7 +2237,9 @@ function ProjectDetailPage() {
                   });
                   if (result.success) {
                     toast.success("Session deleted");
-                    await fetchProjects(currentUser!.id);
+                    await fetchProjects(currentUser!.id, {
+                      includeTemplates,
+                    });
                   } else {
                     toast.error("Failed to delete session");
                   }

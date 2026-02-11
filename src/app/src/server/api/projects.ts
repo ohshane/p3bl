@@ -14,6 +14,7 @@ import {
   joinCodeAttempts,
   notifications,
   users,
+  sessionTemplates,
 } from '@/db/schema'
 import { parseRoles } from '@/db/schema/users'
 import { z } from 'zod'
@@ -67,11 +68,18 @@ async function generateUniqueJoinCode(maxAttempts = 10): Promise<string> {
  * Get all projects for a creator
  */
 export const getCreatorProjects = createServerFn({ method: 'GET' })
-  .inputValidator((data: { creatorId: string }) => data)
+  .inputValidator((data: { creatorId: string; includeTemplates?: boolean }) => data)
   .handler(async ({ data }) => {
     try {
+      const whereClause = data.includeTemplates
+        ? eq(projects.creatorId, data.creatorId)
+        : and(
+            eq(projects.creatorId, data.creatorId),
+            eq(projects.isTemplate, false)
+          )
+
       const projectList = await db.query.projects.findMany({
-        where: eq(projects.creatorId, data.creatorId),
+        where: whereClause,
         orderBy: desc(projects.updatedAt),
         with: {
           sessions: {
@@ -104,6 +112,7 @@ export const getCreatorProjects = createServerFn({ method: 'GET' })
             sessionCount: project.sessions.length,
             sessions: project.sessions.map(s => ({
               ...s,
+              durationMinutes: s.durationMinutes ?? null,
               startDate: s.startDate?.toISOString(),
               endDate: s.endDate?.toISOString(),
             })),
@@ -163,6 +172,7 @@ export const getUserProjects = createServerFn({ method: 'GET' })
           sessions: project.sessions.map(s => ({
             id: s.id,
             title: s.title,
+            durationMinutes: s.durationMinutes ?? null,
             startDate: s.startDate?.toISOString(),
             endDate: s.endDate?.toISOString(),
           })),
@@ -208,6 +218,7 @@ export const getUserProjects = createServerFn({ method: 'GET' })
             sessions: project.sessions.map(s => ({
               id: s.id,
               title: s.title,
+              durationMinutes: s.durationMinutes ?? null,
               startDate: s.startDate?.toISOString(),
               endDate: s.endDate?.toISOString(),
             })),
@@ -419,6 +430,7 @@ export const getProject = createServerFn({ method: 'GET' })
           endDate: project.endDate?.toISOString(),
           sessions: project.sessions.map(s => ({
             ...s,
+            durationMinutes: s.durationMinutes ?? null,
             createdAt: s.createdAt.toISOString(),
             updatedAt: s.updatedAt.toISOString(),
             startDate: s.startDate?.toISOString(),
@@ -1333,5 +1345,298 @@ export const delegateProject = createServerFn({ method: 'POST' })
     } catch (error) {
       console.error('Delegate project error:', error)
       return { success: false as const, error: 'Failed to delegate project' }
+    }
+  })
+
+/**
+ * Clone a project as a template in the creator's library
+ */
+export const cloneProjectAsTemplate = createServerFn({ method: 'POST' })
+  .inputValidator((data: { projectId: string; creatorId: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      // 1. Get the source project with all details
+      const sourceProject = await db.query.projects.findFirst({
+        where: eq(projects.id, data.projectId),
+        with: {
+          sessions: {
+            with: {
+              resources: true,
+              rubrics: true,
+              templates: true,
+            },
+          },
+        },
+      })
+
+      if (!sourceProject) {
+        return { success: false, error: 'Source project not found' }
+      }
+
+      // 2. Create the new template project
+      const templateId = uuidv4()
+      const now = new Date()
+
+      await db.insert(projects).values({
+        id: templateId,
+        creatorId: data.creatorId,
+        orgId: sourceProject.orgId,
+        title: sourceProject.title,
+        description: sourceProject.description,
+        background: sourceProject.background,
+        drivingQuestion: sourceProject.drivingQuestion,
+        teamSize: sourceProject.teamSize,
+        maxParticipants: sourceProject.maxParticipants,
+        isTemplate: true,
+        createdAt: now,
+        updatedAt: now,
+      })
+
+      // 3. Clone sessions and their children
+      for (const session of sourceProject.sessions) {
+        const newSessionId = uuidv4()
+        
+        // Compute durationMinutes from source session dates if not already set
+        let durationMinutes = session.durationMinutes
+        if (!durationMinutes && session.startDate && session.endDate) {
+          durationMinutes = Math.round(
+            (session.endDate.getTime() - session.startDate.getTime()) / 60000
+          )
+        }
+
+        await db.insert(projectSessions).values({
+          id: newSessionId,
+          projectId: templateId,
+          order: session.order,
+          title: session.title,
+          topic: session.topic,
+          guide: session.guide,
+          weight: session.weight,
+          durationMinutes: durationMinutes || null,
+          difficulty: session.difficulty,
+          deliverableType: session.deliverableType,
+          deliverableTitle: session.deliverableTitle,
+          deliverableDescription: session.deliverableDescription,
+          llmModel: session.llmModel,
+          createdAt: now,
+          updatedAt: now,
+        })
+
+        // Clone resources
+        if (session.resources.length > 0) {
+          for (const resource of session.resources) {
+            await db.insert(sessionResources).values({
+              id: uuidv4(),
+              sessionId: newSessionId,
+              type: resource.type,
+              title: resource.title,
+              url: resource.url,
+              filePath: resource.filePath,
+              order: resource.order,
+              createdAt: now,
+            })
+          }
+        }
+
+        // Clone rubrics
+        if (session.rubrics.length > 0) {
+          for (const rubric of session.rubrics) {
+            await db.insert(sessionRubrics).values({
+              id: uuidv4(),
+              sessionId: newSessionId,
+              criteria: rubric.criteria,
+              description: rubric.description,
+              weight: rubric.weight,
+              order: rubric.order,
+              createdAt: now,
+            })
+          }
+        }
+
+        // Clone templates
+        if (session.templates.length > 0) {
+          for (const template of session.templates) {
+            await db.insert(sessionTemplates).values({
+              id: uuidv4(),
+              sessionId: newSessionId,
+              name: template.name,
+              content: template.content,
+              type: template.type,
+              order: template.order,
+              createdAt: now,
+            })
+          }
+        }
+      }
+
+      return { success: true, templateId }
+    } catch (error) {
+      console.error('Clone project as template error:', error)
+      return { success: false, error: 'Failed to clone project as template' }
+    }
+  })
+
+/**
+ * Get all project templates for a creator
+ */
+export const getLibraryTemplates = createServerFn({ method: 'GET' })
+  .inputValidator((data: { creatorId: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      const templateList = await db.query.projects.findMany({
+        where: and(
+          eq(projects.creatorId, data.creatorId),
+          eq(projects.isTemplate, true)
+        ),
+        orderBy: desc(projects.updatedAt),
+        with: {
+          sessions: {
+            orderBy: (sessions, { asc }) => [asc(sessions.order)],
+          },
+        },
+      })
+
+      return {
+        success: true,
+        templates: templateList.map(t => ({
+          ...t,
+          sessionCount: t.sessions.length,
+          createdAt: t.createdAt.toISOString(),
+          updatedAt: t.updatedAt.toISOString(),
+        }))
+      }
+    } catch (error) {
+      console.error('Get library templates error:', error)
+      return { success: false, error: 'Failed to get templates' }
+    }
+  })
+
+/**
+ * Deploy a template as a new live project with concrete dates
+ */
+export const deployTemplate = createServerFn({ method: 'POST' })
+  .inputValidator((data: { templateId: string; creatorId: string; startDate: string; endDate: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      // 1. Get the source template with all details
+      const sourceTemplate = await db.query.projects.findFirst({
+        where: eq(projects.id, data.templateId),
+        with: {
+          sessions: {
+            orderBy: (sessions, { asc }) => [asc(sessions.order)],
+            with: {
+              resources: true,
+              rubrics: true,
+              templates: true,
+            },
+          },
+        },
+      })
+
+      if (!sourceTemplate) {
+        return { success: false, error: 'Template not found' }
+      }
+
+      // 2. Create the new live project
+      const projectId = uuidv4()
+      const joinCode = await generateUniqueJoinCode()
+      const now = new Date()
+      const projectStartDate = new Date(data.startDate)
+      const projectEndDate = new Date(data.endDate)
+
+      await db.insert(projects).values({
+        id: projectId,
+        creatorId: data.creatorId,
+        orgId: sourceTemplate.orgId,
+        title: sourceTemplate.title,
+        description: sourceTemplate.description,
+        background: sourceTemplate.background,
+        drivingQuestion: sourceTemplate.drivingQuestion,
+        teamSize: sourceTemplate.teamSize,
+        maxParticipants: sourceTemplate.maxParticipants,
+        isTemplate: false,
+        joinCode,
+        startDate: projectStartDate,
+        endDate: projectEndDate,
+        createdAt: now,
+        updatedAt: now,
+      })
+
+      // 3. Clone sessions with computed concrete dates from durationMinutes
+      let cursor = projectStartDate.getTime()
+
+      for (const session of sourceTemplate.sessions) {
+        const newSessionId = uuidv4()
+        // Default to 60 minutes if durationMinutes is null/0 to avoid zero-length sessions
+        const durationMs = (session.durationMinutes || 60) * 60 * 1000
+        const sessionStart = new Date(cursor)
+        const sessionEnd = new Date(cursor + durationMs)
+        cursor = sessionEnd.getTime()
+
+        await db.insert(projectSessions).values({
+          id: newSessionId,
+          projectId,
+          order: session.order,
+          title: session.title,
+          topic: session.topic,
+          guide: session.guide,
+          weight: session.weight,
+          durationMinutes: session.durationMinutes,
+          difficulty: session.difficulty,
+          deliverableType: session.deliverableType,
+          deliverableTitle: session.deliverableTitle,
+          deliverableDescription: session.deliverableDescription,
+          llmModel: session.llmModel,
+          startDate: sessionStart,
+          endDate: sessionEnd,
+          createdAt: now,
+          updatedAt: now,
+        })
+
+        // Clone resources
+        for (const resource of session.resources) {
+          await db.insert(sessionResources).values({
+            id: uuidv4(),
+            sessionId: newSessionId,
+            type: resource.type,
+            title: resource.title,
+            url: resource.url,
+            filePath: resource.filePath,
+            order: resource.order,
+            createdAt: now,
+          })
+        }
+
+        // Clone rubrics
+        for (const rubric of session.rubrics) {
+          await db.insert(sessionRubrics).values({
+            id: uuidv4(),
+            sessionId: newSessionId,
+            criteria: rubric.criteria,
+            description: rubric.description,
+            weight: rubric.weight,
+            order: rubric.order,
+            createdAt: now,
+          })
+        }
+
+        // Clone templates
+        for (const template of session.templates) {
+          await db.insert(sessionTemplates).values({
+            id: uuidv4(),
+            sessionId: newSessionId,
+            name: template.name,
+            content: template.content,
+            type: template.type,
+            order: template.order,
+            createdAt: now,
+          })
+        }
+      }
+
+      return { success: true, projectId, joinCode }
+    } catch (error) {
+      console.error('Deploy template error:', error)
+      return { success: false, error: 'Failed to deploy template' }
     }
   })

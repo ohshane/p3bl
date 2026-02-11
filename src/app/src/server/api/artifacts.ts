@@ -27,8 +27,8 @@ type GeneratedPrecheckResult = {
   items: GeneratedPrecheckItem[]
 }
 
-const OPENROUTER_API_KEY = process.env.VITE_OPENROUTER_API_KEY
-const OPENROUTER_API_BASE = process.env.VITE_API_BASE || 'https://openrouter.ai/api/v1'
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY
+const OPENROUTER_API_BASE = process.env.OPENROUTER_API_BASE || 'https://openrouter.ai/api/v1'
 const OPENROUTER_API_URL = `${OPENROUTER_API_BASE}/chat/completions`
 const DEFAULT_PRECHECK_MODEL = process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini'
 

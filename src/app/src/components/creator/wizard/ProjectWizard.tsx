@@ -73,11 +73,7 @@ const QUICK_START_DURATIONS = [
   { label: "1 week", value: 10080 },
 ];
 
-// OpenRouter API configuration
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
-const API_BASE =
-  import.meta.env.VITE_API_BASE || "https://openrouter.ai/api/v1";
-const OPENROUTER_API_URL = `${API_BASE}/chat/completions`;
+import { aiChatCompletion } from "@/server/api/ai";
 
 // Difficulty to weight mapping (must match creatorStore and VariableSessionBuilder)
 const DIFFICULTY_WEIGHTS: Record<string, number> = {
@@ -288,11 +284,6 @@ export function ProjectWizard() {
       return;
     }
 
-    if (!OPENROUTER_API_KEY) {
-      toast.error("AI API Key not configured");
-      return;
-    }
-
     setIsGeneratingQuickStart(true);
 
     try {
@@ -302,21 +293,13 @@ export function ProjectWizard() {
       let aiModel: string;
       try {
         aiModel = await getConfiguredAIModel();
-        console.log("Using AI model:", aiModel);
       } catch (error) {
         console.error("Error getting AI model, using default:", error);
         aiModel = "openrouter/auto";
       }
 
-      const response = await fetch(OPENROUTER_API_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": window.location.origin,
-          "X-Title": "Peabee Quick Start",
-        },
-        body: JSON.stringify({
+      const result = await aiChatCompletion({
+        data: {
           model: aiModel,
           messages: [
             { role: "system", content: QUICK_START_PROMPT },
@@ -335,13 +318,12 @@ export function ProjectWizard() {
               schema: QUICK_START_SCHEMA,
             },
           },
-        }),
+        },
       });
 
-      if (!response.ok) throw new Error("API request failed");
+      if (!result.success) throw new Error(result.error || "API request failed");
 
-      const data = await response.json();
-      const content = data.choices[0]?.message?.content;
+      const content = result.content;
 
       let jsonContent = content.trim();
       const codeBlockMatch = jsonContent.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -367,6 +349,7 @@ export function ProjectWizard() {
           index: idx,
           difficulty,
           weight: DIFFICULTY_WEIGHTS[difficulty] || 100,
+          durationMinutes: DIFFICULTY_WEIGHTS[difficulty] || 100,
           startDate: "",
           endDate: "",
           rubric: s.rubric.map((r: any, rIdx: number) => ({
@@ -387,6 +370,7 @@ export function ProjectWizard() {
       for (const session of mappedSessions) {
         const proportion = totalWeight > 0 ? session.weight / totalWeight : 1 / mappedSessions.length;
         const sessionMinutes = Math.max(1, Math.round(totalMinutes * proportion));
+        session.durationMinutes = sessionMinutes;
         session.startDate = currentDate.toISOString();
         currentDate = new Date(currentDate.getTime() + sessionMinutes * 60 * 1000);
         session.endDate = currentDate.toISOString();

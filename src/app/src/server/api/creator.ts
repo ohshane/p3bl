@@ -28,9 +28,12 @@ export const getCreatorDashboardStats = createServerFn({ method: 'GET' })
   .inputValidator((data: { creatorId: string }) => data)
   .handler(async ({ data }) => {
     try {
-      // Get all creator's projects
+      // Get all creator's projects (excluding templates)
       const creatorProjects = await db.query.projects.findMany({
-        where: eq(projects.creatorId, data.creatorId),
+        where: and(
+          eq(projects.creatorId, data.creatorId),
+          eq(projects.isTemplate, false)
+        ),
       })
 
       const projectIds = creatorProjects.map(p => p.id)
@@ -758,11 +761,14 @@ export const calculateTeamRisks = createServerFn({ method: 'POST' })
         let riskLevel: 'green' | 'yellow' | 'red' = 'green'
 
         // 1. Check session progress
-        const expectedSessions = Math.floor(
-          (now.getTime() - (project.startDate?.getTime() || now.getTime())) /
-          ((project.endDate?.getTime() || now.getTime()) - (project.startDate?.getTime() || now.getTime())) *
-          project.sessions.length
-        )
+        const projectStart = project.startDate?.getTime() ?? 0
+        const projectEnd = project.endDate?.getTime() ?? 0
+        const projectDuration = projectEnd - projectStart
+        const expectedSessions = projectDuration > 0 && projectStart > 0
+          ? Math.floor(
+              (now.getTime() - projectStart) / projectDuration * project.sessions.length
+            )
+          : 0
         const completedSessions = teamArtifacts.filter(a => 
           a.status === 'approved' || a.status === 'submitted'
         ).length

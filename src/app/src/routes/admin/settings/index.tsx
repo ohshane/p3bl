@@ -25,9 +25,7 @@ export const Route = createFileRoute('/admin/settings/')({
   component: AdminSettings,
 })
 
-// OpenRouter API configuration
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://openrouter.ai/api/v1'
+import { aiListModels } from '@/server/api/ai'
 
 interface OpenRouterModel {
   id: string
@@ -58,24 +56,17 @@ function AdminSettings() {
   const [loadingModels, setLoadingModels] = useState(true)
   const [modelSearch, setModelSearch] = useState('')
 
-  // Fetch models from OpenRouter API
+  // Fetch models via server-side proxy
   const fetchModels = async () => {
     setLoadingModels(true)
     try {
-      const response = await fetch(`${API_BASE}/models`, {
-        headers: {
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        },
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        // Sort by name and filter to show popular/useful models
-        const sortedModels = (data.data || [])
+      const result = await aiListModels()
+      if (result.success) {
+        const sortedModels = (result.models || [])
           .sort((a: OpenRouterModel, b: OpenRouterModel) => a.name.localeCompare(b.name))
         setModels(sortedModels)
       } else {
-        console.error('Failed to fetch models:', response.status)
+        console.error('Failed to fetch models:', result.error)
       }
     } catch (err) {
       console.error('Error fetching models:', err)

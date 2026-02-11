@@ -177,6 +177,11 @@ export function ReviewAndDeploy() {
                     className="border-border text-xs"
                   >
                     {s.title}
+                    {s.durationMinutes > 0 && (
+                      <span className="ml-1 text-muted-foreground">
+                        ({formatDuration(s.durationMinutes)})
+                      </span>
+                    )}
                   </Badge>
                 ))}
               </div>

@@ -48,6 +48,9 @@ export {
   unremoveParticipant,
   searchDelegateUsers,
   delegateProject,
+  cloneProjectAsTemplate,
+  getLibraryTemplates,
+  deployTemplate,
 } from './projects'
 
 // Session functions
@@ -123,6 +126,12 @@ export {
   calculateTeamRisks,
   getAiPersonas,
 } from './creator'
+
+// AI proxy functions
+export {
+  aiChatCompletion,
+  aiListModels,
+} from './ai'
 
 // Admin functions
 export {

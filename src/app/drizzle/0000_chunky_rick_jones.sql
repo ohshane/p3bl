@@ -115,6 +115,7 @@ CREATE TABLE `projects` (
 	`join_code_expires_at` integer,
 	`max_participants` integer,
 	`team_size` integer DEFAULT 2,
+	`is_template` integer DEFAULT false NOT NULL,
 	`start_date` integer,
 	`end_date` integer,
 	`created_at` integer NOT NULL,

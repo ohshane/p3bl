@@ -51,14 +51,29 @@ export function LiveMatrix({ projectId }: LiveMatrixProps) {
   const canShowTimestamp = (status: string) =>
     status === 'approved' || status === 'submitted' || status === 'in_progress'
 
-  const formatSessionDuration = (startDate?: string | null, endDate?: string | null) => {
-    if (!startDate || !endDate) return 'Duration not set'
+  const formatSessionDuration = (startDate?: string | null, endDate?: string | null, durationMinutes?: number | null) => {
+    if (startDate && endDate) {
+      const start = new Date(startDate)
+      const end = new Date(endDate)
+      if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+        return `${start.toLocaleString()} - ${end.toLocaleString()}`
+      }
+    }
 
-    const start = new Date(startDate)
-    const end = new Date(endDate)
-    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 'Duration not set'
+    // Fallback to durationMinutes when dates are not available
+    if (durationMinutes && durationMinutes > 0) {
+      if (durationMinutes < 60) return `${durationMinutes} min`
+      if (durationMinutes < 1440) {
+        const h = Math.floor(durationMinutes / 60)
+        const m = durationMinutes % 60
+        return m > 0 ? `${h}h ${m}m` : `${h} hour${h > 1 ? 's' : ''}`
+      }
+      const d = Math.floor(durationMinutes / 1440)
+      const h = Math.floor((durationMinutes % 1440) / 60)
+      return h > 0 ? `${d}d ${h}h` : `${d} day${d > 1 ? 's' : ''}`
+    }
 
-    return `${start.toLocaleString()} - ${end.toLocaleString()}`
+    return 'Duration not set'
   }
 
 
@@ -128,7 +143,7 @@ export function LiveMatrix({ projectId }: LiveMatrixProps) {
                     <TooltipContent>
                       <div className="space-y-1">
                         <p>{session.title || `Session ${idx + 1}`}</p>
-                        <p>{formatSessionDuration(session.startDate, session.endDate)}</p>
+                        <p>{formatSessionDuration(session.startDate, session.endDate, session.durationMinutes)}</p>
                       </div>
                     </TooltipContent>
                   </Tooltip>

@@ -18,6 +18,7 @@ const createSessionSchema = z.object({
   topic: z.string().optional(),
   guide: z.string().optional(),
   weight: z.number().min(1).max(200).default(1),
+  durationMinutes: z.number().min(1).optional(),
   difficulty: z.enum(['easy', 'medium', 'hard']).default('medium'),
   deliverableType: z.enum(['none', 'document']).default('document'),
   deliverableTitle: z.string().optional(),
@@ -72,6 +73,7 @@ export const getSession = createServerFn({ method: 'GET' })
         success: true,
         session: {
           ...session,
+          durationMinutes: session.durationMinutes ?? null,
           createdAt: session.createdAt.toISOString(),
           updatedAt: session.updatedAt.toISOString(),
           startDate: session.startDate?.toISOString(),
@@ -104,6 +106,7 @@ export const getProjectSessions = createServerFn({ method: 'GET' })
         success: true,
         sessions: sessions.map(s => ({
           ...s,
+          durationMinutes: s.durationMinutes ?? null,
           createdAt: s.createdAt.toISOString(),
           updatedAt: s.updatedAt.toISOString(),
           startDate: s.startDate?.toISOString(),
@@ -141,6 +144,7 @@ export const createSession = createServerFn({ method: 'POST' })
         topic: data.topic,
         guide: data.guide,
         weight: data.weight,
+        durationMinutes: data.durationMinutes ?? null,
         difficulty: data.difficulty,
         deliverableType: data.deliverableType,
         deliverableTitle: data.deliverableTitle,
@@ -174,6 +178,11 @@ export const updateSession = createServerFn({ method: 'POST' })
       
       if (data.updates.endDate) {
         updates.endDate = new Date(data.updates.endDate)
+      }
+
+      // durationMinutes is passed through directly (integer)
+      if (data.updates.durationMinutes !== undefined) {
+        updates.durationMinutes = data.updates.durationMinutes
       }
 
       await db.update(projectSessions)

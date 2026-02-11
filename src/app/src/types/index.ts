@@ -91,6 +91,7 @@ export interface Session {
   index: number
   title: string
   topic: string
+  durationMinutes?: number
   startDate: string
   endDate: string
   deliverableType: DeliverableType
@@ -379,6 +380,7 @@ export interface CreatorProject {
   qrCode: string | null
   totalParticipants: number
   teamSize: number
+  isTemplate?: boolean
   teamFormationMode: TeamFormationMode
   startDate: string
   endDate: string
@@ -400,6 +402,7 @@ export interface CreatorSession {
   guide: string
   difficulty: SessionDifficulty // Difficulty level affects time allocation
   weight: number // For asymmetric timeline (calculated from difficulty)
+  durationMinutes: number // Absolute session duration in minutes
   startDate: string
   endDate: string
   deliverableType: DeliverableType

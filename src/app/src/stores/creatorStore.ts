@@ -65,6 +65,13 @@ const DIFFICULTY_WEIGHTS: Record<'easy' | 'medium' | 'hard', number> = {
   hard: 140,
 }
 
+// Default session duration in minutes based on difficulty
+const DIFFICULTY_DURATIONS: Record<'easy' | 'medium' | 'hard', number> = {
+  easy: 60,
+  medium: 100,
+  hard: 140,
+}
+
 // Helper to create default session
 function createDefaultSession(
   index: number,
@@ -77,6 +84,7 @@ function createDefaultSession(
     guide: '',
     difficulty,
     weight: DIFFICULTY_WEIGHTS[difficulty],
+    durationMinutes: DIFFICULTY_DURATIONS[difficulty],
     startDate: '',
     endDate: '',
     deliverableType: 'document',
@@ -148,7 +156,7 @@ interface CreatorState {
   getParticipants: (projectId: string) => { total: number; waiting: ProjectParticipant[]; assigned: ProjectParticipant[]; removed: ProjectParticipant[] } | null
   
   // Async data fetching actions
-  fetchProjects: (creatorId: string) => Promise<void>
+  fetchProjects: (creatorId: string, options?: { includeTemplates?: boolean }) => Promise<void>
   fetchDashboardStats: (creatorId: string) => Promise<void>
   fetchLiveMatrix: (projectId: string) => Promise<void>
   fetchDipChartData: (projectId: string) => Promise<void>
@@ -295,10 +303,15 @@ export const useCreatorStore = create<CreatorState>()(
       },
       
       // Async data fetching
-      fetchProjects: async (creatorId: string) => {
+      fetchProjects: async (creatorId: string, options?: { includeTemplates?: boolean }) => {
         set({ isLoading: true, error: null })
         try {
-          const result = await getCreatorProjects({ data: { creatorId } })
+          const result = await getCreatorProjects({
+            data: {
+              creatorId,
+              includeTemplates: options?.includeTemplates,
+            },
+          })
           if (result.success && result.projects) {
             // Transform API response to CreatorProject format
             const transformedProjects: CreatorProject[] = result.projects.map((p: any) => ({
@@ -324,6 +337,7 @@ export const useCreatorStore = create<CreatorState>()(
                   guide: s.guide || '',
                   difficulty,
                   weight: s.weight ?? DIFFICULTY_WEIGHTS[difficulty as SessionDifficulty],
+                  durationMinutes: s.durationMinutes ?? DIFFICULTY_DURATIONS[difficulty as SessionDifficulty],
                   startDate: s.startDate || '',
                   endDate: s.endDate || '',
                   deliverableType: s.deliverableType || 'document',
@@ -652,10 +666,11 @@ export const useCreatorStore = create<CreatorState>()(
             ...state.wizardState,
             sessions: state.wizardState.sessions.map((s, i) => {
               if (i !== index) return s
-              // If difficulty changes, auto-update weight
+              // If difficulty changes, auto-update weight and durationMinutes
               const newUpdates = { ...updates }
               if (updates.difficulty && updates.difficulty !== s.difficulty) {
                 newUpdates.weight = DIFFICULTY_WEIGHTS[updates.difficulty as SessionDifficulty]
+                newUpdates.durationMinutes = DIFFICULTY_DURATIONS[updates.difficulty as SessionDifficulty]
               }
               return { ...s, ...newUpdates }
             }),
@@ -797,6 +812,7 @@ export const useCreatorStore = create<CreatorState>()(
                     topic: session.topic,
                     guide: session.guide,
                     weight: session.weight,
+                    durationMinutes: session.durationMinutes,
                     difficulty: session.difficulty,
                     deliverableType: session.deliverableType,
                     startDate: session.startDate,

@@ -2,13 +2,9 @@ import { create } from 'zustand'
 import type { VoyagePanel, PreCheckResult, PreCheckItem } from '@/types'
 import { storePrecheckResults } from '@/server/api'
 import { getConfiguredAIModel } from '@/lib/ai-config'
+import { aiChatCompletion } from '@/server/api/ai'
 
-// OpenRouter API configuration
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://openrouter.ai/api/v1'
-const OPENROUTER_API_URL = `${API_BASE}/chat/completions`
-
-// Helper function to call OpenRouter API for pre-check
+// Helper function to call AI for pre-check via server proxy
 async function callOpenRouterForPreCheck(content: string, rubricContext?: string): Promise<{
   overallScore: 'ready' | 'needs_work' | 'critical_issues'
   score: number
@@ -37,15 +33,8 @@ Only return valid JSON, no other text.`
 
   try {
     const aiModel = await getConfiguredAIModel()
-    const response = await fetch(OPENROUTER_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
-        'X-Title': 'Peabee Pre-Check',
-      },
-      body: JSON.stringify({
+    const result = await aiChatCompletion({
+      data: {
         model: aiModel,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -53,15 +42,14 @@ Only return valid JSON, no other text.`
         ],
         max_tokens: 1000,
         temperature: 0.1,
-      }),
+      },
     })
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`)
+    if (!result.success) {
+      throw new Error(result.error)
     }
 
-    const data = await response.json()
-    const responseText = data.choices[0]?.message?.content || '{}'
+    const responseText = result.content || '{}'
     
     // Parse JSON from response
     const jsonMatch = responseText.match(/\{[\s\S]*\}/)
@@ -71,7 +59,7 @@ Only return valid JSON, no other text.`
     
     throw new Error('Invalid response format')
   } catch (error) {
-    console.error('OpenRouter pre-check error:', error)
+    console.error('AI pre-check error:', error)
     // Fall back to basic analysis if API fails
     return generateBasicPreCheck(content)
   }
@@ -120,15 +108,8 @@ function generateBasicPreCheck(content: string): {
 async function generateAIGhostSuggestion(content: string, context?: string): Promise<string> {
   try {
     const aiModel = await getConfiguredAIModel()
-    const response = await fetch(OPENROUTER_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
-        'X-Title': 'Peabee Ghost Typing',
-      },
-      body: JSON.stringify({
+    const result = await aiChatCompletion({
+      data: {
         model: aiModel,
         messages: [
           {
@@ -141,15 +122,14 @@ Provide only 1 sentence as a natural continuation. No explanation, just the sent
         ],
         max_tokens: 100,
         temperature: 0.7,
-      }),
+      },
     })
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`)
+    if (!result.success) {
+      throw new Error(result.error)
     }
 
-    const data = await response.json()
-    return data.choices[0]?.message?.content?.trim() || ''
+    return result.content?.trim() || ''
   } catch (error) {
     console.error('Ghost suggestion error:', error)
     return ''

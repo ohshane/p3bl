@@ -10,12 +10,8 @@ import {
   getFloatingBotMessages,
   getTeamPersonas,
 } from '@/server/api'
+import { aiChatCompletion } from '@/server/api/ai'
 import { initWebSocket, joinRoom, leaveRoom, broadcastMessage } from '@/lib/websocket'
-
-// OpenRouter API configuration
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY
-const API_BASE = import.meta.env.VITE_API_BASE || 'https://openrouter.ai/api/v1'
-const OPENROUTER_API_URL = `${API_BASE}/chat/completions`
 
 // System prompt for the learning assistant
 const BASE_SYSTEM_PROMPT = `You are a friendly and supportive Assistant for a project-based learning platform called Peabee. 
@@ -30,29 +26,15 @@ Key responsibilities:
 
 Keep responses friendly, concise (2-4 sentences usually), and encouraging. Use simple language appropriate for students.`
 
-// Helper function to call OpenRouter API with user context
+// Helper function to call AI via server-side proxy
 async function callOpenRouter(messages: { role: string; content: string }[]): Promise<string> {
-  // Check if API key is configured
-  if (!OPENROUTER_API_KEY) {
-    console.error('OpenRouter API key is not configured')
-    return "API key is not configured. Please check your environment settings."
-  }
-
   try {
-    // Build the system prompt with current user context
     const userContext = buildUserContextString()
     const fullSystemPrompt = `${BASE_SYSTEM_PROMPT}\n\n${userContext}`
     const aiModel = await getConfiguredAIModel()
     
-    const response = await fetch(OPENROUTER_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': window.location.origin,
-        'X-Title': 'Peabee Assistant',
-      },
-      body: JSON.stringify({
+    const result = await aiChatCompletion({
+      data: {
         model: aiModel,
         messages: [
           { role: 'system', content: fullSystemPrompt },
@@ -60,19 +42,17 @@ async function callOpenRouter(messages: { role: string; content: string }[]): Pr
         ],
         max_tokens: 500,
         temperature: 0.7,
-      }),
+      },
     })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('OpenRouter API error response:', response.status, errorText)
-      throw new Error(`API error: ${response.status}`)
+    if (!result.success) {
+      console.error('AI API error:', result.error)
+      return "I'm having trouble connecting right now. Please try again in a moment."
     }
 
-    const data = await response.json()
-    return data.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response. Please try again."
+    return result.content || "I'm sorry, I couldn't generate a response. Please try again."
   } catch (error) {
-    console.error('OpenRouter API error:', error)
+    console.error('AI API error:', error)
     return "I'm having trouble connecting right now. Please try again in a moment."
   }
 }

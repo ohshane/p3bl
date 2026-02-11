@@ -15,13 +15,14 @@ import {
   Search,
   Shield,
   PenTool,
+  Library,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
 import type { CreatorProject, CreatorProjectStatus } from '@/types'
 import { useCreatorStore } from '@/stores/creatorStore'
 import { useAuthStore } from '@/stores/authStore'
-import { joinProject, updateProject, searchDelegateUsers, delegateProject } from '@/server/api/projects'
+import { joinProject, updateProject, searchDelegateUsers, delegateProject, cloneProjectAsTemplate } from '@/server/api/projects'
 import { updateSession } from '@/server/api/sessions'
 import { safeFormatDate, getProjectTimeStatus, getProjectProgress, getProjectTimeInfo } from '@/lib/utils'
 import { Progress } from '@/components/ui/progress'
@@ -54,6 +55,7 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
   const [isStarting, setIsStarting] = useState(false)
   const [isJoining, setIsJoining] = useState(false)
   const [isDelegating, setIsDelegating] = useState(false)
+  const [isCloning, setIsCloning] = useState(false)
   const [, setTick] = useState(0)
 
   // Delegate search state
@@ -115,60 +117,63 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
     setIsStarting(true)
     try {
       const now = new Date()
-      const updates: { startDate: string; endDate?: string } = {
-        startDate: now.toISOString(),
-      }
       
-      // Calculate time shift amount
-      let timeShift = 0
-      if (project.startDate) {
-        const originalStart = new Date(project.startDate)
-        timeShift = now.getTime() - originalStart.getTime()
-        
-        // If there's an original endDate, shift it by the same amount
-        if (project.endDate) {
-          const originalEnd = new Date(project.endDate)
-          const newEndDate = new Date(originalEnd.getTime() + timeShift)
-          updates.endDate = newEndDate.toISOString()
-        }
+      // Compute total project duration from session durationMinutes (default 60 min per session)
+      const totalDurationMs = project.sessions.reduce(
+        (sum, s) => sum + (s.durationMinutes || 60) * 60 * 1000,
+        0,
+      )
+      
+      // If we have session durations, compute end date from them
+      // Otherwise fall back to shifting the original dates
+      let projectEndDate: Date
+      if (totalDurationMs > 0) {
+        projectEndDate = new Date(now.getTime() + totalDurationMs)
+      } else if (project.startDate && project.endDate) {
+        const originalDuration = new Date(project.endDate).getTime() - new Date(project.startDate).getTime()
+        projectEndDate = new Date(now.getTime() + originalDuration)
+      } else {
+        projectEndDate = new Date(now.getTime() + 60 * 60 * 1000) // fallback 1 hour
       }
       
       const result = await updateProject({
         data: {
           projectId: project.id,
-          updates,
+          updates: {
+            startDate: now.toISOString(),
+            endDate: projectEndDate.toISOString(),
+          },
         },
       })
       
-      if (result.success) {
-        // Shift all session times by the same amount
-        if (timeShift !== 0 && project.sessions.length > 0) {
-          await Promise.all(
-            project.sessions.map(async (session) => {
-              const sessionUpdates: { startDate?: string; endDate?: string } = {}
-              
-              if (session.startDate) {
-                const newStartDate = new Date(new Date(session.startDate).getTime() + timeShift)
-                sessionUpdates.startDate = newStartDate.toISOString()
-              }
-              
-              if (session.endDate) {
-                const newEndDate = new Date(new Date(session.endDate).getTime() + timeShift)
-                sessionUpdates.endDate = newEndDate.toISOString()
-              }
-              
-              if (Object.keys(sessionUpdates).length > 0) {
-                await updateSession({
-                  data: {
-                    sessionId: session.id,
-                    updates: sessionUpdates,
-                  },
-                })
-              }
-            })
-          )
-        }
+      if (result.success && project.sessions.length > 0) {
+        // Compute session dates from durationMinutes, sequentially from project start
+        let cursor = now.getTime()
+        const sessionDateUpdates = project.sessions.map((session) => {
+          const sessionDurationMs = (session.durationMinutes || 60) * 60 * 1000
+          const sessionStart = new Date(cursor)
+          const sessionEnd = new Date(cursor + sessionDurationMs)
+          cursor = sessionEnd.getTime()
+          return { sessionId: session.id, startDate: sessionStart.toISOString(), endDate: sessionEnd.toISOString() }
+        })
         
+        await Promise.all(
+          sessionDateUpdates.map(async (u) => {
+            await updateSession({
+              data: {
+                sessionId: u.sessionId,
+                updates: {
+                  startDate: u.startDate,
+                  endDate: u.endDate,
+                },
+              },
+            })
+          })
+        )
+        
+        toast.success('Project started!')
+        await fetchProjects(project.creatorId)
+      } else if (result.success) {
         toast.success('Project started!')
         await fetchProjects(project.creatorId)
       } else {
@@ -178,6 +183,29 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
       toast.error('Failed to start project')
     } finally {
       setIsStarting(false)
+    }
+  }
+
+  const handleAddToLibrary = async () => {
+    if (!currentUser?.id) return
+    setIsCloning(true)
+    try {
+      const result = await cloneProjectAsTemplate({
+        data: {
+          projectId: project.id,
+          creatorId: currentUser.id,
+        },
+      })
+      if (result.success) {
+        toast.success('Project added to library as a template!')
+        navigate({ to: '/creator/library' })
+      } else {
+        toast.error(result.error || 'Failed to add to library')
+      }
+    } catch (error) {
+      toast.error('Failed to add to library')
+    } finally {
+      setIsCloning(false)
     }
   }
 
@@ -334,6 +362,20 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
               <Button
                 variant="ghost"
                 size="icon"
+                onClick={handleAddToLibrary}
+                disabled={isCloning}
+                className="h-8 w-8 text-muted-foreground hover:text-cyan-500 hover:bg-cyan-500/10"
+                title="Add to library as template"
+              >
+                {isCloning ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Library className="w-4 h-4" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setShowDelegateDialog(true)}
                 className="h-8 w-8 text-muted-foreground hover:text-orange-400 hover:bg-orange-500/10"
                 title="Delegate project"
@@ -436,15 +478,15 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
               {isStarting ? 'Starting...' : 'Start Now'}
             </Button>
           )}
-          {status === 'opened' && (
-            <Button
-              onClick={handleMonitor}
-              className="w-full mt-4 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 border border-cyan-600/50"
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              Monitor Progress
-            </Button>
-          )}
+          
+          <Button
+            onClick={handleMonitor}
+            className="w-full mt-4 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 border border-cyan-600/50"
+          >
+            <Eye className="w-4 h-4 mr-2" />
+            Monitor Progress
+          </Button>
+
           {showJoinButton && status !== 'closed' && (
             <Button
               onClick={handleJoinAsExplorer}
