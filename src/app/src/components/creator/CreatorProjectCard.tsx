@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { useNavigate } from '@tanstack/react-router'
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import {
   User,
   Users,
@@ -17,21 +17,32 @@ import {
   PenTool,
   Library,
   Globe,
-} from 'lucide-react'
-import { toast } from 'sonner'
+} from "lucide-react";
+import { toast } from "sonner";
 
-import type { CreatorProject, CreatorProjectStatus } from '@/types'
-import { useCreatorStore } from '@/stores/creatorStore'
-import { useAuthStore } from '@/stores/authStore'
-import { joinProject, updateProject, searchDelegateUsers, delegateProject, cloneProjectAsTemplate } from '@/server/api/projects'
-import { updateSession } from '@/server/api/sessions'
-import { safeFormatDate, getProjectTimeStatus, getProjectProgress, getProjectTimeInfo } from '@/lib/utils'
-import { Progress } from '@/components/ui/progress'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { JoinCode } from '@/components/creator/JoinCode'
+import type { CreatorProject, CreatorProjectStatus } from "@/types";
+import { useCreatorStore } from "@/stores/creatorStore";
+import { useAuthStore } from "@/stores/authStore";
+import {
+  joinProject,
+  updateProject,
+  searchDelegateUsers,
+  delegateProject,
+  cloneProjectAsTemplate,
+} from "@/server/api/projects";
+import { updateSession } from "@/server/api/sessions";
+import {
+  safeFormatDate,
+  getProjectTimeStatus,
+  getProjectProgress,
+  getProjectTimeInfo,
+} from "@/lib/utils";
+import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { JoinCode } from "@/components/creator/JoinCode";
 
 import {
   Dialog,
@@ -40,104 +51,116 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog";
 
 interface CreatorProjectCardProps {
-  project: CreatorProject
+  project: CreatorProject;
 }
 
 export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
-  const navigate = useNavigate()
-  const { deleteProject, fetchProjects } = useCreatorStore()
-  const { currentUser } = useAuthStore()
-  
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
-  const [showDelegateDialog, setShowDelegateDialog] = useState(false)
-  const [isStarting, setIsStarting] = useState(false)
-  const [isJoining, setIsJoining] = useState(false)
-  const [isDelegating, setIsDelegating] = useState(false)
-  const [isCloning, setIsCloning] = useState(false)
-  const [isPublishing, setIsPublishing] = useState(false)
-  const [, setTick] = useState(0)
+  const navigate = useNavigate();
+  const { deleteProject, fetchProjects } = useCreatorStore();
+  const { currentUser } = useAuthStore();
+
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDelegateDialog, setShowDelegateDialog] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+  const [isDelegating, setIsDelegating] = useState(false);
+  const [isCloning, setIsCloning] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [, setTick] = useState(0);
 
   // Delegate search state
-  const [delegateSearch, setDelegateSearch] = useState('')
-  const [delegateResults, setDelegateResults] = useState<Array<{
-    id: string
-    name: string
-    email: string
-    role: string[]
-    avatarUrl: string | null
-  }>>([])
-  const [selectedDelegate, setSelectedDelegate] = useState<typeof delegateResults[number] | null>(null)
-  const [isSearching, setIsSearching] = useState(false)
-  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [delegateSearch, setDelegateSearch] = useState("");
+  const [delegateResults, setDelegateResults] = useState<
+    Array<{
+      id: string;
+      name: string;
+      email: string;
+      role: string[];
+      avatarUrl: string | null;
+    }>
+  >([]);
+  const [selectedDelegate, setSelectedDelegate] = useState<
+    (typeof delegateResults)[number] | null
+  >(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const userRoles = currentUser?.role ?? []
-  const showJoinButton = userRoles.includes('explorer')
+  const userRoles = currentUser?.role ?? [];
+  const showJoinButton = userRoles.includes("explorer");
 
   // Force re-render every second to update progress and time info
   useEffect(() => {
     const timer = setInterval(() => {
-      setTick(t => t + 1)
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [])
+      setTick((t) => t + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Calculate status from dates (recalculated every second)
-  const status: CreatorProjectStatus = getProjectTimeStatus(project.startDate, project.endDate)
-  const progress = getProjectProgress(project.startDate, project.endDate)
-  const timeInfo = getProjectTimeInfo(project.startDate, project.endDate)
+  const status: CreatorProjectStatus = getProjectTimeStatus(
+    project.startDate,
+    project.endDate,
+  );
+  const progress = getProjectProgress(project.startDate, project.endDate);
+  const timeInfo = getProjectTimeInfo(project.startDate, project.endDate);
 
   const statusColors: Record<CreatorProjectStatus, string> = {
-    scheduled: 'bg-amber-500/10 text-amber-500 border-amber-500/30',
-    opened: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/30',
-    closed: 'bg-green-500/10 text-green-500 border-green-500/30',
-  }
+    scheduled: "bg-amber-500/10 text-amber-500 border-amber-500/30",
+    opened: "bg-cyan-500/10 text-cyan-500 border-cyan-500/30",
+    closed: "bg-green-500/10 text-green-500 border-green-500/30",
+  };
 
   const statusLabels: Record<CreatorProjectStatus, string> = {
-    scheduled: 'Scheduled',
-    opened: 'Opened',
-    closed: 'Closed',
-  }
+    scheduled: "Scheduled",
+    opened: "Opened",
+    closed: "Closed",
+  };
 
   const handleDelete = async () => {
-    const success = await deleteProject(project.id)
-    setShowDeleteDialog(false)
+    const success = await deleteProject(project.id);
+    setShowDeleteDialog(false);
     if (success) {
-      toast.success('Project deleted')
+      toast.success("Project deleted");
     } else {
-      toast.error('Failed to delete project')
+      toast.error("Failed to delete project");
     }
-  }
+  };
 
   const handleMonitor = () => {
-    navigate({ to: '/creator/project/$projectId/monitor', params: { projectId: project.id } })
-  }
+    navigate({
+      to: "/creator/project/$projectId/monitor",
+      params: { projectId: project.id },
+    });
+  };
 
   const handleStartNow = async () => {
-    setIsStarting(true)
+    setIsStarting(true);
     try {
-      const now = new Date()
-      
+      const now = new Date();
+
       // Compute total project duration from session durationMinutes (default 60 min per session)
       const totalDurationMs = project.sessions.reduce(
         (sum, s) => sum + (s.durationMinutes || 60) * 60 * 1000,
         0,
-      )
-      
+      );
+
       // If we have session durations, compute end date from them
       // Otherwise fall back to shifting the original dates
-      let projectEndDate: Date
+      let projectEndDate: Date;
       if (totalDurationMs > 0) {
-        projectEndDate = new Date(now.getTime() + totalDurationMs)
+        projectEndDate = new Date(now.getTime() + totalDurationMs);
       } else if (project.startDate && project.endDate) {
-        const originalDuration = new Date(project.endDate).getTime() - new Date(project.startDate).getTime()
-        projectEndDate = new Date(now.getTime() + originalDuration)
+        const originalDuration =
+          new Date(project.endDate).getTime() -
+          new Date(project.startDate).getTime();
+        projectEndDate = new Date(now.getTime() + originalDuration);
       } else {
-        projectEndDate = new Date(now.getTime() + 60 * 60 * 1000) // fallback 1 hour
+        projectEndDate = new Date(now.getTime() + 60 * 60 * 1000); // fallback 1 hour
       }
-      
+
       const result = await updateProject({
         data: {
           projectId: project.id,
@@ -146,19 +169,23 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
             endDate: projectEndDate.toISOString(),
           },
         },
-      })
-      
+      });
+
       if (result.success && project.sessions.length > 0) {
         // Compute session dates from durationMinutes, sequentially from project start
-        let cursor = now.getTime()
+        let cursor = now.getTime();
         const sessionDateUpdates = project.sessions.map((session) => {
-          const sessionDurationMs = (session.durationMinutes || 60) * 60 * 1000
-          const sessionStart = new Date(cursor)
-          const sessionEnd = new Date(cursor + sessionDurationMs)
-          cursor = sessionEnd.getTime()
-          return { sessionId: session.id, startDate: sessionStart.toISOString(), endDate: sessionEnd.toISOString() }
-        })
-        
+          const sessionDurationMs = (session.durationMinutes || 60) * 60 * 1000;
+          const sessionStart = new Date(cursor);
+          const sessionEnd = new Date(cursor + sessionDurationMs);
+          cursor = sessionEnd.getTime();
+          return {
+            sessionId: session.id,
+            startDate: sessionStart.toISOString(),
+            endDate: sessionEnd.toISOString(),
+          };
+        });
+
         await Promise.all(
           sessionDateUpdates.map(async (u) => {
             await updateSession({
@@ -169,51 +196,51 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
                   endDate: u.endDate,
                 },
               },
-            })
-          })
-        )
-        
-        toast.success('Project started!')
-        await fetchProjects(project.creatorId)
+            });
+          }),
+        );
+
+        toast.success("Project started!");
+        await fetchProjects(project.creatorId);
       } else if (result.success) {
-        toast.success('Project started!')
-        await fetchProjects(project.creatorId)
+        toast.success("Project started!");
+        await fetchProjects(project.creatorId);
       } else {
-        toast.error('Failed to start project')
+        toast.error("Failed to start project");
       }
     } catch (error) {
-      toast.error('Failed to start project')
+      toast.error("Failed to start project");
     } finally {
-      setIsStarting(false)
+      setIsStarting(false);
     }
-  }
+  };
 
   const handleAddToLibrary = async () => {
-    if (!currentUser?.id) return
-    setIsCloning(true)
+    if (!currentUser?.id) return;
+    setIsCloning(true);
     try {
       const result = await cloneProjectAsTemplate({
         data: {
           projectId: project.id,
           creatorId: currentUser.id,
         },
-      })
+      });
       if (result.success) {
-        toast.success('Project added to library as a template!')
-        navigate({ to: '/creator/library' })
+        toast.success("Project added to library as a template!");
+        navigate({ to: "/creator/library" });
       } else {
-        toast.error(result.error || 'Failed to add to library')
+        toast.error(result.error || "Failed to add to library");
       }
     } catch (error) {
-      toast.error('Failed to add to library')
+      toast.error("Failed to add to library");
     } finally {
-      setIsCloning(false)
+      setIsCloning(false);
     }
-  }
+  };
 
   const handlePublishToStore = async () => {
-    if (!currentUser?.id) return
-    setIsPublishing(true)
+    if (!currentUser?.id) return;
+    setIsPublishing(true);
     try {
       const result = await cloneProjectAsTemplate({
         data: {
@@ -221,82 +248,95 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
           creatorId: currentUser.id,
           publish: true,
         },
-      })
+      });
       if (result.success) {
-        toast.success('Project published to the template store!')
-        navigate({ to: '/creator/store' })
+        toast.success("Project published to the store!");
+        navigate({ to: "/creator/store" });
       } else {
-        toast.error(result.error || 'Failed to publish to store')
+        toast.error(result.error || "Failed to publish to store");
       }
     } catch (error) {
-      toast.error('Failed to publish to store')
+      toast.error("Failed to publish to store");
     } finally {
-      setIsPublishing(false)
+      setIsPublishing(false);
     }
-  }
+  };
 
   const handleViewDetails = () => {
-    navigate({ to: '/creator/project/$projectId', params: { projectId: project.id } })
-  }
+    navigate({
+      to: "/creator/project/$projectId",
+      params: { projectId: project.id },
+    });
+  };
 
   const handleJoinAsExplorer = async () => {
-    if (!currentUser?.id || !project.joinCode) return
-    setIsJoining(true)
+    if (!currentUser?.id || !project.joinCode) return;
+    setIsJoining(true);
     try {
-      const result = await joinProject({ data: { userId: currentUser.id, code: project.joinCode } })
+      const result = await joinProject({
+        data: { userId: currentUser.id, code: project.joinCode },
+      });
       if (result.success) {
-        const alreadyMember = 'message' in result && result.message === 'Already a member of this project'
+        const alreadyMember =
+          "message" in result &&
+          result.message === "Already a member of this project";
         if (!alreadyMember) {
-          toast.success('Joined project as explorer!')
+          toast.success("Joined project as explorer!");
         }
-        navigate({ to: '/explorer/project/$projectId', params: { projectId: result.projectId || project.id } })
+        navigate({
+          to: "/explorer/project/$projectId",
+          params: { projectId: result.projectId || project.id },
+        });
       } else {
-        toast.error(result.error || 'Failed to join project')
+        toast.error(result.error || "Failed to join project");
       }
     } catch (error) {
-      toast.error('Failed to join project')
+      toast.error("Failed to join project");
     } finally {
-      setIsJoining(false)
+      setIsJoining(false);
     }
-  }
+  };
 
   // Delegate search with debounce
-  const handleDelegateSearch = useCallback((value: string) => {
-    setDelegateSearch(value)
-    setSelectedDelegate(null)
+  const handleDelegateSearch = useCallback(
+    (value: string) => {
+      setDelegateSearch(value);
+      setSelectedDelegate(null);
 
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current)
-    }
-
-    if (value.trim().length < 2) {
-      setDelegateResults([])
-      setIsSearching(false)
-      return
-    }
-
-    setIsSearching(true)
-    debounceTimerRef.current = setTimeout(async () => {
-      try {
-        const result = await searchDelegateUsers({
-          data: { search: value.trim(), excludeUserId: currentUser?.id },
-        })
-        if (result.success) {
-          setDelegateResults(result.users)
-        } else {
-          setDelegateResults([])
-        }
-      } catch {
-        setDelegateResults([])
-      } finally {
-        setIsSearching(false)
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
       }
-    }, 300)
-  }, [currentUser?.id])
+
+      if (value.trim().length < 2) {
+        setDelegateResults([]);
+        setIsSearching(false);
+        return;
+      }
+
+      setIsSearching(true);
+      debounceTimerRef.current = setTimeout(async () => {
+        try {
+          const result = await searchDelegateUsers({
+            data: { search: value.trim(), excludeUserId: currentUser?.id },
+          });
+          if (result.success) {
+            setDelegateResults(result.users);
+          } else {
+            setDelegateResults([]);
+          }
+        } catch {
+          setDelegateResults([]);
+        } finally {
+          setIsSearching(false);
+        }
+      }, 300);
+    },
+    [currentUser?.id],
+  );
 
   const handleDelegate = async () => {
-    if (!selectedDelegate || !currentUser?.id) return
-    setIsDelegating(true)
+    if (!selectedDelegate || !currentUser?.id) return;
+    setIsDelegating(true);
     try {
       const result = await delegateProject({
         data: {
@@ -304,56 +344,58 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
           currentCreatorId: currentUser.id,
           newCreatorId: selectedDelegate.id,
         },
-      })
+      });
       if (result.success) {
-        toast.success(result.message || 'Project delegated successfully')
-        setShowDelegateDialog(false)
-        setDelegateSearch('')
-        setDelegateResults([])
-        setSelectedDelegate(null)
-        await fetchProjects(currentUser.id)
+        toast.success(result.message || "Project delegated successfully");
+        setShowDelegateDialog(false);
+        setDelegateSearch("");
+        setDelegateResults([]);
+        setSelectedDelegate(null);
+        await fetchProjects(currentUser.id);
       } else {
-        toast.error(result.error || 'Failed to delegate project')
+        toast.error(result.error || "Failed to delegate project");
       }
     } catch {
-      toast.error('Failed to delegate project')
+      toast.error("Failed to delegate project");
     } finally {
-      setIsDelegating(false)
+      setIsDelegating(false);
     }
-  }
+  };
 
   const handleCloseDelegateDialog = (open: boolean) => {
-    setShowDelegateDialog(open)
+    setShowDelegateDialog(open);
     if (!open) {
-      setDelegateSearch('')
-      setDelegateResults([])
-      setSelectedDelegate(null)
+      setDelegateSearch("");
+      setDelegateResults([]);
+      setSelectedDelegate(null);
     }
-  }
+  };
 
   const getRoleIcon = (role: string) => {
     switch (role) {
-      case 'admin':
-        return <Shield className="w-3 h-3" />
-      case 'creator':
-        return <PenTool className="w-3 h-3" />
+      case "admin":
+        return <Shield className="w-3 h-3" />;
+      case "creator":
+        return <PenTool className="w-3 h-3" />;
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case 'admin':
-        return 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-      case 'creator':
-        return 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+      case "admin":
+        return "bg-amber-500/10 text-amber-400 border-amber-500/20";
+      case "creator":
+        return "bg-purple-500/10 text-purple-400 border-purple-500/20";
       default:
-        return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20'
+        return "bg-cyan-500/10 text-cyan-400 border-cyan-500/20";
     }
-  }
+  };
 
-  const teamsWithRisk = project.teams.filter(t => t.riskLevel === 'red' || t.riskLevel === 'yellow')
+  const teamsWithRisk = project.teams.filter(
+    (t) => t.riskLevel === "red" || t.riskLevel === "yellow",
+  );
 
   return (
     <>
@@ -361,10 +403,13 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
         <CardHeader className="pb-3">
           {/* Top row: Status badge and action icons */}
           <div className="flex items-center justify-between mb-2">
-            <Badge variant="outline" className={`text-[10px] uppercase font-bold py-0 h-5 px-2 ${statusColors[status]}`}>
+            <Badge
+              variant="outline"
+              className={`text-[10px] uppercase font-bold py-0 h-5 px-2 ${statusColors[status]}`}
+            >
               {statusLabels[status]}
             </Badge>
-            
+
             {/* Right: Edit, Delegate, and Delete icons */}
             <div className="flex gap-1">
               <Button
@@ -379,7 +424,12 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate({ to: '/creator/project/$projectId/participant', params: { projectId: project.id } })}
+                onClick={() =>
+                  navigate({
+                    to: "/creator/project/$projectId/participant",
+                    params: { projectId: project.id },
+                  })
+                }
                 className="h-8 w-8 text-muted-foreground hover:text-cyan-500 hover:bg-cyan-500/10"
                 title="View participants"
               >
@@ -433,9 +483,9 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
               </Button>
             </div>
           </div>
-          
+
           {/* Title and description - full width */}
-          <h3 
+          <h3
             className="text-lg font-semibold text-foreground line-clamp-1 hover:text-cyan-500 transition-colors cursor-pointer w-full"
             onClick={handleViewDetails}
           >
@@ -470,7 +520,7 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
                 Type
               </span>
               <span className="text-foreground">
-                {project.teamSize === 1 ? 'Individual' : 'Group'}
+                {project.teamSize === 1 ? "Individual" : "Group"}
               </span>
             </div>
             <div className="flex items-center justify-between text-muted-foreground">
@@ -478,7 +528,9 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
                 <Calendar className="w-4 h-4" />
                 Sessions
               </span>
-              <span className="text-foreground">{project.sessions.length} sessions</span>
+              <span className="text-foreground">
+                {project.sessions.length} sessions
+              </span>
             </div>
             <div className="flex items-center justify-between text-muted-foreground">
               <span className="flex items-center gap-2">
@@ -486,7 +538,8 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
                 Duration
               </span>
               <span className="text-foreground">
-                {safeFormatDate(project.startDate, 'MMM d HH:mm', 'TBD')} - {safeFormatDate(project.endDate, 'MMM d HH:mm', 'TBD')}
+                {safeFormatDate(project.startDate, "MMM d HH:mm", "TBD")} -{" "}
+                {safeFormatDate(project.endDate, "MMM d HH:mm", "TBD")}
               </span>
             </div>
           </div>
@@ -501,7 +554,7 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
           </div>
 
           {/* Risk Warning */}
-          {status === 'opened' && teamsWithRisk.length > 0 && (
+          {status === "opened" && teamsWithRisk.length > 0 && (
             <div className="mt-4 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs text-yellow-400">
               {teamsWithRisk.length} team(s) need attention
             </div>
@@ -517,7 +570,7 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
               Monitor Progress
             </Button>
 
-            {showJoinButton && status !== 'closed' && (
+            {showJoinButton && status !== "closed" && (
               <Button
                 onClick={handleJoinAsExplorer}
                 disabled={isJoining}
@@ -528,18 +581,18 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
                 ) : (
                   <LogIn className="w-4 h-4 mr-2" />
                 )}
-                {isJoining ? 'Joining...' : 'Join as Explorer'}
+                {isJoining ? "Joining..." : "Join as Explorer"}
               </Button>
             )}
 
-            {status === 'scheduled' && (
+            {status === "scheduled" && (
               <Button
                 onClick={handleStartNow}
                 disabled={isStarting}
                 className="w-full mt-2 bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-600/50"
               >
                 <Play className="w-4 h-4 mr-2" />
-                {isStarting ? 'Starting...' : 'Start Now'}
+                {isStarting ? "Starting..." : "Start Now"}
               </Button>
             )}
           </div>
@@ -552,11 +605,15 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
           <DialogHeader>
             <DialogTitle>Delete Project</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{project.name}"? This action cannot be undone.
+              Are you sure you want to delete "{project.name}"? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowDeleteDialog(false)}
+            >
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDelete}>
@@ -567,12 +624,16 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
       </Dialog>
 
       {/* Delegate Project Dialog */}
-      <Dialog open={showDelegateDialog} onOpenChange={handleCloseDelegateDialog}>
+      <Dialog
+        open={showDelegateDialog}
+        onOpenChange={handleCloseDelegateDialog}
+      >
         <DialogContent className="bg-card border-border sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Delegate Project</DialogTitle>
             <DialogDescription>
-              Transfer ownership of "{project.name}" to another user. This will remove the project from your dashboard.
+              Transfer ownership of "{project.name}" to another user. This will
+              remove the project from your dashboard.
             </DialogDescription>
           </DialogHeader>
 
@@ -602,11 +663,13 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
               </div>
             )}
 
-            {!isSearching && delegateSearch.trim().length >= 2 && delegateResults.length === 0 && (
-              <div className="text-center py-8 text-sm text-muted-foreground">
-                No users found
-              </div>
-            )}
+            {!isSearching &&
+              delegateSearch.trim().length >= 2 &&
+              delegateResults.length === 0 && (
+                <div className="text-center py-8 text-sm text-muted-foreground">
+                  No users found
+                </div>
+              )}
 
             {!isSearching && delegateResults.length > 0 && (
               <div className="space-y-1">
@@ -617,8 +680,8 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
                     onClick={() => setSelectedDelegate(user)}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors ${
                       selectedDelegate?.id === user.id
-                        ? 'bg-cyan-500/10 border border-cyan-500/30'
-                        : 'hover:bg-muted/50 border border-transparent'
+                        ? "bg-cyan-500/10 border border-cyan-500/30"
+                        : "hover:bg-muted/50 border border-transparent"
                     }`}
                   >
                     <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
@@ -627,16 +690,25 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground text-sm truncate">{user.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                      <p className="font-medium text-foreground text-sm truncate">
+                        {user.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {user.email}
+                      </p>
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      {(Array.isArray(user.role) ? user.role : [user.role]).map((r: string) => (
-                        <Badge key={r} className={`${getRoleBadgeColor(r)} gap-1 text-[10px]`}>
-                          {getRoleIcon(r)}
-                          {r}
-                        </Badge>
-                      ))}
+                      {(Array.isArray(user.role) ? user.role : [user.role]).map(
+                        (r: string) => (
+                          <Badge
+                            key={r}
+                            className={`${getRoleBadgeColor(r)} gap-1 text-[10px]`}
+                          >
+                            {getRoleIcon(r)}
+                            {r}
+                          </Badge>
+                        ),
+                      )}
                     </div>
                   </button>
                 ))}
@@ -645,7 +717,10 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => handleCloseDelegateDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => handleCloseDelegateDialog(false)}
+            >
               Cancel
             </Button>
             <Button
@@ -659,13 +734,12 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
                   Delegating...
                 </>
               ) : (
-                'Delegate'
+                "Delegate"
               )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </>
-  )
+  );
 }
