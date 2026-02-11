@@ -442,13 +442,15 @@ export interface ExpertProfile {
   avatar: string | null
 }
 
-// Dip Chart Data (C.1.3)
+// Dip Chart Data (C.1.3) — per-team precheck scores over time
 export interface DipChartDataPoint {
-  date: string
-  confidence: number
-  engagement: number
-  traditionalCurve: number
-  aiSupportedCurve: number
+  date: string           // ISO timestamp of the precheck
+  teamId: string
+  teamName: string
+  sessionId: string      // which session this precheck belongs to
+  score: number          // weighted-average rubric score (0-100)
+  overallScore: 'ready' | 'needs_work' | 'critical_issues'
+  rubricScores: Record<string, number>  // individual rubric criterion -> score
 }
 
 export interface AIIntervention {

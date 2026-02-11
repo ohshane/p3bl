@@ -260,6 +260,7 @@ CREATE TABLE `artifacts` (
 	`current_version` text,
 	`last_precheck_at` integer,
 	`precheck_passed` integer,
+	`graded_score` integer,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON UPDATE no action ON DELETE no action,
@@ -282,8 +283,10 @@ CREATE TABLE `precheck_results` (
 	`id` text PRIMARY KEY NOT NULL,
 	`artifact_id` text NOT NULL,
 	`overall_score` text NOT NULL,
+	`score` integer,
 	`feedback` text,
 	`rubric_scores` text,
+	`content_snapshot` text,
 	`created_at` integer NOT NULL,
 	FOREIGN KEY (`artifact_id`) REFERENCES `artifacts`(`id`) ON UPDATE no action ON DELETE cascade
 );

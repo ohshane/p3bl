@@ -563,6 +563,30 @@ export const submitArtifact = createServerFn({ method: 'POST' })
 
       // Re-run rubric scoring on submission so Assessment AI Score is always fresh.
       const generatedPrecheck = await generateSubmissionPrecheck(artifact.content, artifact.session.rubrics)
+
+      // Compute weighted-average score at submission time so it's stored alongside the result
+      let submissionScore = 0
+      const scoreEntries = Object.entries(generatedPrecheck.rubricScores)
+      if (scoreEntries.length > 0) {
+        const weightByCriterion = new Map(artifact.session.rubrics.map(r => [r.criteria, r.weight]))
+        let weightedSum = 0
+        let totalWeight = 0
+        for (const [key, s] of scoreEntries) {
+          const w = weightByCriterion.get(key) ?? 0
+          weightedSum += s * w
+          totalWeight += w
+        }
+        submissionScore = totalWeight > 0
+          ? Math.round(weightedSum / totalWeight)
+          : Math.round(scoreEntries.reduce((sum, [, s]) => sum + s, 0) / scoreEntries.length)
+      } else {
+        switch (generatedPrecheck.overallScore) {
+          case 'ready': submissionScore = 85; break
+          case 'needs_work': submissionScore = 65; break
+          case 'critical_issues': submissionScore = 40; break
+        }
+      }
+
       const teamSessionArtifacts = await db.query.artifacts.findMany({
         where: and(
           eq(artifacts.teamId, artifact.teamId),
@@ -577,6 +601,7 @@ export const submitArtifact = createServerFn({ method: 'POST' })
           id: precheckId,
           artifactId: targetArtifact.id,
           overallScore: generatedPrecheck.overallScore,
+          score: submissionScore,
           feedback: JSON.stringify(generatedPrecheck.items),
           rubricScores: JSON.stringify(generatedPrecheck.rubricScores),
           createdAt: now,
@@ -627,6 +652,7 @@ export const storePrecheckResults = createServerFn({ method: 'POST' })
   .inputValidator((data: {
     artifactId: string
     overallScore: 'ready' | 'needs_work' | 'critical_issues'
+    score?: number
     feedback: Array<{
       severity: 'critical' | 'warning' | 'suggestion'
       message: string
@@ -634,6 +660,7 @@ export const storePrecheckResults = createServerFn({ method: 'POST' })
       lineNumber?: number
     }>
     rubricScores?: Record<string, number>
+    contentSnapshot?: string
   }) => data)
   .handler(async ({ data }) => {
     try {
@@ -645,8 +672,10 @@ export const storePrecheckResults = createServerFn({ method: 'POST' })
         id: precheckId,
         artifactId: data.artifactId,
         overallScore: data.overallScore,
+        score: data.score ?? null,
         feedback: JSON.stringify(data.feedback),
         rubricScores: data.rubricScores ? JSON.stringify(data.rubricScores) : null,
+        contentSnapshot: data.contentSnapshot || null,
         createdAt: now,
       })
 

@@ -117,7 +117,7 @@ export function VoyageNavigator({ project }: VoyageNavigatorProps) {
                   {session.title}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {safeFormatDate(session.endDate, 'MMM d HH:mm')}
+                  {safeFormatDate(session.startDate, 'MMM d HH:mm')}
                 </p>
               </div>
               {getStatusIcon(status)}

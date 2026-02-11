@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { eq, and, desc, gte, count, inArray } from 'drizzle-orm'
+import { eq, and, desc, count, inArray } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
 import { db } from '@/db'
 import {
@@ -12,13 +12,8 @@ import {
   precheckFeedbackItems,
   aiPersonas,
   learningMetrics,
-  dailyMetricsAggregate,
   aiInterventions,
   teamRiskAssessments,
-  sessionRubrics,
-  chatMessages,
-  chatRooms,
-  activityLogs,
 } from '@/db/schema'
 import { generateSubmissionPrecheck } from './artifacts'
 
@@ -264,321 +259,135 @@ export const getProjectTeamsWithProgress = createServerFn({ method: 'GET' })
   })
 
 // ============================================================================
-// LEARNING METRICS (DipChart)
+// LEARNING METRICS (DipChart) — Per-team precheck scores over time
 // ============================================================================
 
 /**
- * Get learning metrics for DipChart visualization
+ * Get precheck score history for DipChart visualization.
+ * Returns one data point per precheck event, per team, with the
+ * weighted-average rubric score and individual rubric breakdowns.
  */
 export const getLearningMetrics = createServerFn({ method: 'GET' })
   .inputValidator((data: { projectId: string; days?: number }) => data)
   .handler(async ({ data }) => {
     try {
-      const days = data.days || 30
-      const startDate = new Date()
-      startDate.setDate(startDate.getDate() - days)
-      const startDateStr = startDate.toISOString().split('T')[0]
-
-      // Try to get aggregated daily metrics first
-      const aggregatedMetrics = await db.query.dailyMetricsAggregate.findMany({
-        where: and(
-          eq(dailyMetricsAggregate.projectId, data.projectId),
-          gte(dailyMetricsAggregate.date, startDateStr)
-        ),
-        orderBy: dailyMetricsAggregate.date,
+      // Get all sessions for the project (with rubrics for weighted scoring)
+      const sessions = await db.query.projectSessions.findMany({
+        where: eq(projectSessions.projectId, data.projectId),
+        orderBy: projectSessions.order,
+        with: { rubrics: true },
       })
 
-      if (aggregatedMetrics.length > 0) {
-        return {
-          success: true,
-          metrics: aggregatedMetrics.map(m => ({
-            date: m.date,
-            confidence: m.avgConfidence || 0,
-            engagement: m.avgEngagement || 0,
-            aiSupportedCurve: m.avgAiSupported || 0,
-            traditionalCurve: m.avgTraditional || 0,
-          })),
-        }
-      }
-
-      // If no aggregated metrics, try raw metrics
-      const rawMetrics = await db.query.learningMetrics.findMany({
-        where: and(
-          eq(learningMetrics.projectId, data.projectId),
-          gte(learningMetrics.recordedAt, startDate)
-        ),
-        orderBy: learningMetrics.recordedAt,
-      })
-
-      if (rawMetrics.length > 0) {
-        // Aggregate by day
-        const metricsByDay = new Map<string, {
-          confidence: number[]
-          engagement: number[]
-          aiSupported: number[]
-          traditional: number[]
-        }>()
-
-        for (const metric of rawMetrics) {
-          const date = metric.recordedAt.toISOString().split('T')[0]
-          if (!metricsByDay.has(date)) {
-            metricsByDay.set(date, {
-              confidence: [],
-              engagement: [],
-              aiSupported: [],
-              traditional: [],
-            })
-          }
-          const dayMetrics = metricsByDay.get(date)!
-          switch (metric.metricType) {
-            case 'confidence':
-              dayMetrics.confidence.push(metric.value)
-              break
-            case 'engagement':
-              dayMetrics.engagement.push(metric.value)
-              break
-            case 'ai_supported':
-              dayMetrics.aiSupported.push(metric.value)
-              break
-            case 'traditional':
-              dayMetrics.traditional.push(metric.value)
-              break
-          }
-        }
-
-        const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0
-
-        const chartData = Array.from(metricsByDay.entries())
-          .sort((a, b) => a[0].localeCompare(b[0]))
-          .map(([date, metrics]) => ({
-            date,
-            confidence: Math.round(avg(metrics.confidence)),
-            engagement: Math.round(avg(metrics.engagement)),
-            aiSupportedCurve: Math.round(avg(metrics.aiSupported)),
-            traditionalCurve: Math.round(avg(metrics.traditional)),
-          }))
-
-        return { success: true, metrics: chartData }
-      }
-
-      // No explicit metrics found - derive from actual project activity
-      // This computes dip chart values from artifacts, chat, prechecks, and activity data
-      const project = await db.query.projects.findFirst({
-        where: eq(projects.id, data.projectId),
-        with: { sessions: true },
-      })
-
-      if (!project || !project.startDate) {
+      const sessionIds = sessions.map(s => s.id)
+      if (sessionIds.length === 0) {
         return { success: true, metrics: [] }
       }
 
-      // Get project teams
-      const projectTeams = await db.query.teams.findMany({
-        where: eq(teams.projectId, data.projectId),
+      // Get all artifacts for these sessions with team info and ALL precheck results
+      const allArtifacts = await db.query.artifacts.findMany({
+        where: inArray(artifacts.sessionId, sessionIds),
+        with: {
+          team: true,
+          precheckResults: {
+            orderBy: precheckResults.createdAt,
+          },
+        },
       })
 
-      if (projectTeams.length === 0) {
+      if (allArtifacts.length === 0) {
         return { success: true, metrics: [] }
       }
 
-      const sessionIds = project.sessions.map(s => s.id)
-
-      // ---- Gather all activity data in parallel ----
-
-      // 1. Artifacts with prechecks (confidence signal)
-      const projectArtifacts = sessionIds.length > 0
-        ? await db.query.artifacts.findMany({
-            where: inArray(artifacts.sessionId, sessionIds),
-            with: { precheckResults: true },
-          })
-        : []
-
-      // 2. Chat messages in project rooms (engagement signal)
-      const projectRooms = await db.query.chatRooms.findMany({
-        where: eq(chatRooms.projectId, data.projectId),
-      })
-      const roomIds = projectRooms.map(r => r.id)
-      const projectMessages = roomIds.length > 0
-        ? await db.query.chatMessages.findMany({
-            where: inArray(chatMessages.roomId, roomIds),
-            orderBy: chatMessages.createdAt,
-          })
-        : []
-
-      // 3. Activity logs for project entities
-      const projectActivityLogs = await db.select()
-        .from(activityLogs)
-        .where(
-          and(
-            eq(activityLogs.entityType, 'project'),
-            eq(activityLogs.entityId, data.projectId),
-          )
-        )
-        .orderBy(activityLogs.createdAt)
-
-      // ---- Build daily buckets from project start to now ----
-
-      const projectStart = new Date(project.startDate)
-      const now = new Date()
+      // Optional date range filter
+      const days = data.days || 90
       const cutoff = new Date()
       cutoff.setDate(cutoff.getDate() - days)
-      const rangeStart = projectStart > cutoff ? projectStart : cutoff
 
-      // Determine the session difficulty timeline for "expected dip" modeling
-      const sortedSessions = [...project.sessions].sort((a, b) => a.order - b.order)
-      const difficultyWeights: Record<string, number> = { easy: 0.2, medium: 0.5, hard: 0.8 }
+      // Build a rubric weight lookup per session
+      const sessionRubricMap = new Map<string, Array<{ criteria: string; weight: number }>>()
+      for (const session of sessions) {
+        sessionRubricMap.set(session.id, session.rubrics.map(r => ({
+          criteria: r.criteria,
+          weight: r.weight,
+        })))
+      }
 
-      // Helper: get the session active on a given date based on session start/end dates
-      function getSessionDifficultyForDate(date: Date): number {
-        for (const session of sortedSessions) {
-          if (session.startDate && session.endDate) {
-            const sStart = new Date(session.startDate)
-            const sEnd = new Date(session.endDate)
-            if (date >= sStart && date <= sEnd) {
-              return difficultyWeights[session.difficulty] || 0.5
+      // Transform each precheck result into a chart data point
+      const metrics: Array<{
+        date: string
+        teamId: string
+        teamName: string
+        sessionId: string
+        score: number
+        overallScore: string
+        rubricScores: Record<string, number>
+      }> = []
+
+      for (const artifact of allArtifacts) {
+        const sessionRubrics = sessionRubricMap.get(artifact.sessionId) || []
+        const weightByCriterion = new Map(sessionRubrics.map(r => [r.criteria, r.weight]))
+
+        for (const precheck of artifact.precheckResults) {
+          // Apply date filter
+          const precheckDate = precheck.createdAt instanceof Date
+            ? precheck.createdAt
+            : new Date(precheck.createdAt)
+          if (precheckDate < cutoff) continue
+
+          // Parse rubric scores for tooltip display
+          let rubricScores: Record<string, number> = {}
+          if (precheck.rubricScores) {
+            try {
+              rubricScores = JSON.parse(precheck.rubricScores) as Record<string, number>
+            } catch {
+              // ignore parse errors
             }
           }
-        }
-        // Estimate from session order / position in project timeline
-        const projectDuration = now.getTime() - projectStart.getTime()
-        const elapsed = date.getTime() - projectStart.getTime()
-        const progress = projectDuration > 0 ? elapsed / projectDuration : 0
-        const sessionIndex = Math.min(
-          Math.floor(progress * sortedSessions.length),
-          sortedSessions.length - 1
-        )
-        const session = sortedSessions[Math.max(0, sessionIndex)]
-        return session ? (difficultyWeights[session.difficulty] || 0.5) : 0.5
-      }
 
-      // Helper: format date as YYYY-MM-DD
-      function fmtDate(d: Date): string {
-        return d.toISOString().split('T')[0]
-      }
+          // Use the stored score (computed at precheck time with the correct weights).
+          // Fall back to re-derivation only for legacy rows that predate the score column.
+          let score = precheck.score ?? 0
 
-      // Helper: check if timestamp falls on a given date string
-      function isOnDate(ts: Date | number | null | undefined, dateStr: string): boolean {
-        if (!ts) return false
-        const d = ts instanceof Date ? ts : new Date(ts)
-        return fmtDate(d) === dateStr
-      }
+          if (score === 0 && Object.keys(rubricScores).length > 0) {
+            // Legacy fallback: re-derive from rubricScores + current rubric weights
+            const entries = Object.entries(rubricScores)
+            let weightedSum = 0
+            let totalWeight = 0
+            for (const [key, s] of entries) {
+              const weight = weightByCriterion.get(key) ?? 0
+              weightedSum += s * weight
+              totalWeight += weight
+            }
+            score = totalWeight > 0
+              ? Math.round(weightedSum / totalWeight)
+              : Math.round(entries.reduce((sum, [, s]) => sum + s, 0) / entries.length)
+          }
 
-      // Generate date range
-      const dateRange: string[] = []
-      const cursor = new Date(rangeStart)
-      cursor.setHours(0, 0, 0, 0)
-      while (cursor <= now) {
-        dateRange.push(fmtDate(cursor))
-        cursor.setDate(cursor.getDate() + 1)
-      }
+          // Final fallback from overallScore label
+          if (score === 0) {
+            switch (precheck.overallScore) {
+              case 'ready': score = 85; break
+              case 'needs_work': score = 65; break
+              case 'critical_issues': score = 40; break
+            }
+          }
 
-      if (dateRange.length === 0) {
-        return { success: true, metrics: [] }
-      }
-
-      // ---- Compute daily metrics ----
-
-      const totalTeams = projectTeams.length
-      const derivedMetrics = dateRange.map((dateStr) => {
-        const dateObj = new Date(dateStr)
-        const difficulty = getSessionDifficultyForDate(dateObj)
-
-        // --- Confidence: derived from artifact status & precheck results ---
-        // Artifacts that existed by this date
-        const artifactsOnDate = projectArtifacts.filter(a => isOnDate(a.createdAt, dateStr) || isOnDate(a.updatedAt, dateStr))
-        const artifactsUpToDate = projectArtifacts.filter(a => {
-          const created = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt)
-          return fmtDate(created) <= dateStr
-        })
-
-        let confidence = 65 // baseline
-        if (artifactsUpToDate.length > 0) {
-          // Count statuses: approved artifacts boost confidence, needs_revision lowers it
-          const approved = artifactsUpToDate.filter(a => a.status === 'approved').length
-          const submitted = artifactsUpToDate.filter(a => a.status === 'submitted' || a.status === 'under_review').length
-          const needsRevision = artifactsUpToDate.filter(a => a.status === 'needs_revision').length
-          const total = artifactsUpToDate.length
-          const approvalRate = total > 0 ? (approved + submitted * 0.5) / total : 0
-          const revisionPenalty = total > 0 ? needsRevision / total : 0
-
-          // Precheck quality: what % of prechecks on or before this day were 'ready'
-          const prechecksUpToDate = artifactsUpToDate.flatMap(a => a.precheckResults || []).filter(p => {
-            const created = p.createdAt instanceof Date ? p.createdAt : new Date(p.createdAt)
-            return fmtDate(created) <= dateStr
+          metrics.push({
+            date: precheckDate.toISOString(),
+            teamId: artifact.teamId,
+            teamName: artifact.team?.name || 'Unknown Team',
+            sessionId: artifact.sessionId,
+            score,
+            overallScore: precheck.overallScore,
+            rubricScores,
           })
-          const readyPrechecks = prechecksUpToDate.filter(p => p.overallScore === 'ready').length
-          const precheckRate = prechecksUpToDate.length > 0 ? readyPrechecks / prechecksUpToDate.length : 0.5
-
-          confidence = Math.round(
-            40 + // floor
-            approvalRate * 30 + // up to 30 from approvals
-            precheckRate * 20 + // up to 20 from precheck quality
-            (1 - revisionPenalty) * 10 // up to 10 from low revision rate
-          )
         }
-        // Apply difficulty dip: harder sessions depress confidence
-        confidence = Math.round(confidence * (1 - difficulty * 0.3))
+      }
 
-        // --- Engagement: derived from message volume + artifact activity ---
-        const messagesOnDate = projectMessages.filter(m => isOnDate(m.createdAt, dateStr))
-        const activityOnDate = projectActivityLogs.filter(a => isOnDate(a.createdAt, dateStr))
+      // Sort by date ascending
+      metrics.sort((a, b) => a.date.localeCompare(b.date))
 
-        // Normalize: messages per team, activity per team
-        const msgPerTeam = totalTeams > 0 ? messagesOnDate.length / totalTeams : 0
-        const actPerTeam = totalTeams > 0 ? activityOnDate.length / totalTeams : 0
-        const artifactActivityCount = artifactsOnDate.length
-
-        // Engagement score: combine message density + activity + artifact work
-        // Scale: ~5 msgs/team/day + ~3 activities + ~1 artifact = ~100%
-        let engagement = Math.round(
-          Math.min(100, 
-            (Math.min(msgPerTeam, 10) / 10) * 40 + // up to 40 from chat
-            (Math.min(actPerTeam, 6) / 6) * 30 + // up to 30 from activity
-            (Math.min(artifactActivityCount, 4) / 4) * 30 // up to 30 from artifact work
-          )
-        )
-        // Minimum engagement floor if any activity at all
-        if (messagesOnDate.length > 0 || activityOnDate.length > 0 || artifactActivityCount > 0) {
-          engagement = Math.max(engagement, 15)
-        }
-
-        // --- AI-Supported Curve: teams interacting with AI personas perform better ---
-        const aiMessages = messagesOnDate.filter(m => m.personaId !== null)
-        const humanMessages = messagesOnDate.filter(m => m.userId !== null && m.personaId === null)
-        const aiInteractionRatio = messagesOnDate.length > 0
-          ? aiMessages.length / messagesOnDate.length
-          : 0
-
-        // AI-supported learning curve starts at baseline and rises faster when AI is used
-        const baseProgress = artifactsUpToDate.length > 0
-          ? Math.min(artifactsUpToDate.filter(a => a.status === 'approved' || a.status === 'submitted').length / Math.max(sortedSessions.length, 1), 1)
-          : 0
-        const aiSupportedCurve = Math.round(
-          35 + // baseline
-          baseProgress * 35 + // up to 35 from progress
-          aiInteractionRatio * 20 + // up to 20 from AI usage
-          (confidence > 60 ? 10 : confidence > 40 ? 5 : 0) // bonus from confidence
-        )
-
-        // --- Traditional Curve: what learning would look like without AI support ---
-        // Follows similar trajectory but without the AI recovery boost, and the dip is deeper
-        const traditionalCurve = Math.round(
-          30 + // lower baseline
-          baseProgress * 30 + // slower progress
-          (humanMessages.length > 0 ? Math.min(humanMessages.length / (totalTeams * 3), 1) * 10 : 0) - // peer collaboration limited
-          difficulty * 15 // difficulty drags this curve down more
-        )
-
-        return {
-          date: dateStr,
-          confidence: Math.max(0, Math.min(100, confidence)),
-          engagement: Math.max(0, Math.min(100, engagement)),
-          aiSupportedCurve: Math.max(0, Math.min(100, aiSupportedCurve)),
-          traditionalCurve: Math.max(0, Math.min(100, traditionalCurve)),
-        }
-      })
-
-      return { success: true, metrics: derivedMetrics }
+      return { success: true, metrics }
     } catch (error) {
       console.error('Get learning metrics error:', error)
       return { success: false, error: 'Failed to get learning metrics' }
@@ -873,6 +682,7 @@ export const getProjectSubmissions = createServerFn({ method: 'GET' })
           sessionIndex: session?.order || 0,
           sessionTitle: session?.title || 'Unknown Session',
           aiScore,
+          gradedScore: artifact.gradedScore ?? null,
           status: artifact.status === 'approved' ? 'graded' as const : 'pending' as const,
           submittedAt: artifact.updatedAt.toISOString(),
           precheckPassed: artifact.precheckPassed,
@@ -904,15 +714,11 @@ export const getProjectSubmissions = createServerFn({ method: 'GET' })
   })
 
 /**
- * Grade (or re-grade) a submission.
- * Re-runs AI rubric scoring so the AI Score is always fresh, stores new
- * precheck results, then transitions the artifact to 'approved' (displayed
- * as "graded"). Accepts a single artifact ID or an array for batch grading.
- *
- * Returns the updated submissions so the client can refresh scores without
- * a full page reload.
+ * Re-grade: re-run AI rubric scoring to get a fresh AI Score.
+ * Does NOT change the artifact status – the submission stays pending or graded.
+ * Accepts a single artifact ID or an array for batch re-grading.
  */
-export const gradeSubmission = createServerFn({ method: 'POST' })
+export const regradeSubmission = createServerFn({ method: 'POST' })
   .inputValidator((data: { artifactIds: string | string[] }) => data)
   .handler(async ({ data }) => {
     try {
@@ -921,7 +727,6 @@ export const gradeSubmission = createServerFn({ method: 'POST' })
         return { success: false, error: 'No artifact IDs provided' }
       }
 
-      // Fetch the artifacts with their session rubrics so we can re-score.
       const targetArtifacts = await db.query.artifacts.findMany({
         where: inArray(artifacts.id, ids),
         with: {
@@ -943,14 +748,12 @@ export const gradeSubmission = createServerFn({ method: 'POST' })
       }> = []
 
       for (const artifact of targetArtifacts) {
-        // Re-run AI scoring using the same pipeline as submission-time scoring.
         const rubrics = artifact.session?.rubrics || []
         const content = artifact.content || ''
 
         if (content.trim() && rubrics.length > 0) {
           const generated = await generateSubmissionPrecheck(content, rubrics)
 
-          // Store new precheck results.
           const precheckId = uuidv4()
           await db.insert(precheckResults).values({
             id: precheckId,
@@ -975,7 +778,6 @@ export const gradeSubmission = createServerFn({ method: 'POST' })
             )
           }
 
-          // Compute weighted-average AI score (same algorithm as getProjectSubmissions).
           const entries = Object.entries(generated.rubricScores)
           let aiScore = 0
           if (entries.length > 0) {
@@ -1002,24 +804,40 @@ export const gradeSubmission = createServerFn({ method: 'POST' })
             })),
           })
 
-          // Update artifact status and precheck metadata.
+          // Update precheck metadata only – do NOT touch status.
           await db.update(artifacts)
             .set({
-              status: 'approved',
               lastPrecheckAt: now,
               precheckPassed: generated.overallScore !== 'critical_issues',
               updatedAt: now,
             })
             .where(eq(artifacts.id, artifact.id))
-        } else {
-          // No content or no rubrics – just approve without re-scoring.
-          await db.update(artifacts)
-            .set({ status: 'approved', updatedAt: now })
-            .where(eq(artifacts.id, artifact.id))
         }
       }
 
-      return { success: true, gradedCount: ids.length, updatedScores }
+      return { success: true, regradedCount: ids.length, updatedScores }
+    } catch (error) {
+      console.error('Regrade submission error:', error)
+      return { success: false, error: 'Failed to re-grade submission' }
+    }
+  })
+
+/**
+ * Confirm grade: human action that transitions artifacts to 'approved'
+ * (displayed as "graded"). Does not re-run AI scoring.
+ * Accepts a single artifact ID or an array for batch grading.
+ */
+export const gradeSubmission = createServerFn({ method: 'POST' })
+  .inputValidator((data: { artifactId: string; score: number }) => data)
+  .handler(async ({ data }) => {
+    try {
+      const now = new Date()
+      await db
+        .update(artifacts)
+        .set({ status: 'approved', gradedScore: data.score, updatedAt: now })
+        .where(eq(artifacts.id, data.artifactId))
+
+      return { success: true }
     } catch (error) {
       console.error('Grade submission error:', error)
       return { success: false, error: 'Failed to grade submission' }

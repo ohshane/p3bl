@@ -84,6 +84,7 @@ export {
   updateArtifact,
   submitArtifact,
   storePrecheckResults,
+  runExplorerPrecheck,
   createShowcaseLink,
   getShowcaseByToken,
   revokeShowcaseLink,
@@ -128,6 +129,8 @@ export {
   createIntervention,
   updateInterventionStatus,
   getProjectSubmissions,
+  regradeSubmission,
+  gradeSubmission,
   calculateTeamRisks,
   getAiPersonas,
 } from './creator'

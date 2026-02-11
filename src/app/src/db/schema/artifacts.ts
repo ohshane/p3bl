@@ -23,6 +23,7 @@ export const artifacts = sqliteTable('artifacts', {
   currentVersion: text('current_version'),
   lastPrecheckAt: integer('last_precheck_at', { mode: 'timestamp' }),
   precheckPassed: integer('precheck_passed', { mode: 'boolean' }),
+  gradedScore: integer('graded_score'), // Human-confirmed score set by creator when grading
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 })
@@ -42,8 +43,10 @@ export const precheckResults = sqliteTable('precheck_results', {
   id: text('id').primaryKey(),
   artifactId: text('artifact_id').notNull().references(() => artifacts.id, { onDelete: 'cascade' }),
   overallScore: text('overall_score').$type<'ready' | 'needs_work' | 'critical_issues'>().notNull(),
+  score: integer('score'), // Weighted-average rubric score (0-100), computed at precheck time
   feedback: text('feedback'), // JSON array of feedback items
   rubricScores: text('rubric_scores'), // JSON object mapping rubric criteria to scores
+  contentSnapshot: text('content_snapshot'), // Artifact content at the time of precheck
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 })
 

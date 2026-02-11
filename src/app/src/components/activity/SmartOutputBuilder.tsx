@@ -67,7 +67,7 @@ export function SmartOutputBuilder({ project: _project, session, teamId, userNam
   } = useActivityStore()
 
   // Keep a ref to the latest handleSave so auto-save always calls the current version
-  const handleSaveRef = useRef<(options?: { silent?: boolean }) => Promise<void>>(() => Promise.resolve())
+  const handleSaveRef = useRef<(options?: { silent?: boolean }) => Promise<string | null>>(() => Promise.resolve(null))
 
   // Load artifact for this session
   useEffect(() => {
@@ -115,12 +115,12 @@ export function SmartOutputBuilder({ project: _project, session, teamId, userNam
     loadArtifact()
   }, [session.id, teamId, currentUser, setEditorContent, clearPreCheck, markSaved])
 
-  const handleSave = useCallback(async (options?: { silent?: boolean }) => {
+  const handleSave = useCallback(async (options?: { silent?: boolean }): Promise<string | null> => {
     const silent = options?.silent ?? false
 
     if (!currentUser || !teamId) {
       if (!silent) toast.error('Unable to save', { description: 'Missing user or team context.' })
-      return
+      return null
     }
     
     const contentToSave = editorContent
@@ -137,8 +137,10 @@ export function SmartOutputBuilder({ project: _project, session, teamId, userNam
         if (result.success) {
           markSaved()
           if (!silent) toast.success('Saved')
+          return artifact.id
         } else {
           toast.error('Failed to save', { description: result.error })
+          return null
         }
       } else {
         // Create new artifact
@@ -164,12 +166,15 @@ export function SmartOutputBuilder({ project: _project, session, teamId, userNam
           })
           markSaved()
           if (!silent) toast.success('Saved')
+          return result.artifactId
         } else {
           toast.error('Failed to save', { description: result.error })
+          return null
         }
       }
     } catch (error) {
       toast.error('Failed to save')
+      return null
     } finally {
       setIsSaving(false)
     }
@@ -267,11 +272,16 @@ export function SmartOutputBuilder({ project: _project, session, teamId, userNam
   }, [teamId, session.id])
 
   const handleRunPreCheck = useCallback(async () => {
+    // Ensure artifact is saved first so the precheck result can be persisted.
+    // This mirrors the pattern used by submitArtifact.
+    const savedArtifactId = await handleSave({ silent: true })
+    const resolvedArtifactId = savedArtifactId || artifact?.id
+
     // Pass structured rubric items so the server function can use the exact
     // same scoring pipeline (model, prompt, key-normalization) as submission.
     const rubrics = session.rubric.length > 0 ? session.rubric : undefined
 
-    const result = await runPreCheck(artifact?.id, rubrics)
+    const result = await runPreCheck(resolvedArtifactId, rubrics)
     
     if (result.overallStatus === 'critical_issues') {
       toast.warning('Pre-check found critical issues', {
@@ -286,16 +296,16 @@ export function SmartOutputBuilder({ project: _project, session, teamId, userNam
         description: 'Your work is ready for submission.',
       })
     }
-  }, [runPreCheck, session.rubric, artifact?.id])
+  }, [runPreCheck, session.rubric, artifact?.id, handleSave])
 
   const submitArtifact = useCallback(async () => {
     if (!currentUser) return
     
     setIsSubmitting(true)
     try {
-      await handleSave({ silent: true })
+      const savedArtifactId = await handleSave({ silent: true })
       
-      const artifactId = artifact?.id
+      const artifactId = savedArtifactId || artifact?.id
       if (!artifactId) {
         toast.error('Please save your work first')
         return

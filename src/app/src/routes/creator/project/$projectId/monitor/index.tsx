@@ -138,7 +138,12 @@ function MonitoringPage() {
 
         {/* Dip Chart */}
         <div className="mb-8">
-          <DipChart projectId={project.id} />
+          <DipChart
+            projectId={project.id}
+            projectStartDate={project.startDate}
+            projectEndDate={project.endDate}
+            sessions={project.sessions}
+          />
         </div>
 
         {/* Tabs */}

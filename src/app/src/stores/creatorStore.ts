@@ -446,14 +446,16 @@ export const useCreatorStore = create<CreatorState>()(
       fetchDipChartData: async (projectId: string) => {
         set({ isLoadingMetrics: true })
         try {
-          const result = await getLearningMetrics({ data: { projectId, days: 30 } })
+          const result = await getLearningMetrics({ data: { projectId, days: 90 } })
           if (result.success && result.metrics) {
             const chartData: DipChartDataPoint[] = result.metrics.map((m: any) => ({
               date: m.date,
-              confidence: m.confidence,
-              engagement: m.engagement,
-              aiSupportedCurve: m.aiSupportedCurve,
-              traditionalCurve: m.traditionalCurve,
+              teamId: m.teamId,
+              teamName: m.teamName,
+              sessionId: m.sessionId,
+              score: m.score,
+              overallScore: m.overallScore,
+              rubricScores: m.rubricScores || {},
             }))
             
             const newCache = new Map(get().dipChartCache)

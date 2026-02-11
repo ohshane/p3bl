@@ -1,108 +1,8 @@
 import { create } from 'zustand'
-import type { VoyagePanel, PreCheckResult, PreCheckItem } from '@/types'
-import { storePrecheckResults } from '@/server/api'
+import type { VoyagePanel, PreCheckResult } from '@/types'
+import { storePrecheckResults, runExplorerPrecheck } from '@/server/api'
 import { getConfiguredAIModel } from '@/lib/ai-config'
 import { aiChatCompletion } from '@/server/api/ai'
-
-// Helper function to call AI for pre-check via server proxy
-async function callOpenRouterForPreCheck(content: string, rubricContext?: string): Promise<{
-  overallScore: 'ready' | 'needs_work' | 'critical_issues'
-  score: number
-  items: PreCheckItem[]
-  rubricScores?: Record<string, number>
-}> {
-  const rubricScoresInstruction = rubricContext
-    ? `- rubricScores: an object mapping each rubric criterion name to its score (0-100). Use the exact criterion names as keys.\n`
-    : ''
-
-  const systemPrompt = `You are an academic writing assistant that reviews student submissions. 
-Analyze the following content and provide feedback.
-
-${rubricContext ? `Rubric criteria to consider:\n${rubricContext}\n` : ''}
-
-Respond with a JSON object containing:
-- overallScore: "ready" (good to submit), "needs_work" (minor issues), or "critical_issues" (major problems)
-- score: a number from 0-100 representing overall quality${rubricContext ? ' (should reflect the weighted rubric scores)' : ''}
-${rubricScoresInstruction}- items: an array of feedback items, each with:
-  - id: unique string
-  - severity: "critical", "warning", or "suggestion"
-  - message: what the issue is
-  - suggestion: how to fix it
-
-Only return valid JSON, no other text.`
-
-  try {
-    const aiModel = await getConfiguredAIModel()
-    const result = await aiChatCompletion({
-      data: {
-        model: aiModel,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Please review this submission:\n\n${content}` },
-        ],
-        max_tokens: 1000,
-        temperature: 0.1,
-      },
-    })
-
-    if (!result.success) {
-      throw new Error(result.error)
-    }
-
-    const responseText = result.content || '{}'
-    
-    // Parse JSON from response
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/)
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0])
-    }
-    
-    throw new Error('Invalid response format')
-  } catch (error) {
-    console.error('AI pre-check error:', error)
-    // Fall back to basic analysis if API fails
-    return generateBasicPreCheck(content)
-  }
-}
-
-// Basic pre-check as fallback when API is unavailable
-function generateBasicPreCheck(content: string): {
-  overallScore: 'ready' | 'needs_work' | 'critical_issues'
-  score: number
-  items: PreCheckItem[]
-} {
-  const wordCount = content.split(/\s+/).filter(Boolean).length
-  const items: PreCheckItem[] = []
-  let score = 60
-
-  if (wordCount < 100) {
-    items.push({
-      id: 'pc_length',
-      rubricItemId: 'rub_001',
-      severity: 'critical',
-      message: 'Content is too short. Minimum 500 words recommended.',
-      suggestion: 'Expand your analysis with more detail and examples.',
-    })
-  } else if (wordCount < 300) {
-    items.push({
-      id: 'pc_length_warn',
-      rubricItemId: 'rub_001',
-      severity: 'warning',
-      message: 'Content could be more comprehensive.',
-      suggestion: 'Consider adding more supporting evidence or examples.',
-    })
-    score += 15
-  } else {
-    score += 30
-  }
-
-  const overallStatus: 'ready' | 'needs_work' | 'critical_issues' = 
-    items.some(i => i.severity === 'critical') ? 'critical_issues' :
-    items.some(i => i.severity === 'warning') ? 'needs_work' :
-    'ready'
-
-  return { overallScore: overallStatus, score: Math.min(100, score), items }
-}
 
 // Helper function to generate ghost suggestions using AI
 async function generateAIGhostSuggestion(content: string, context?: string): Promise<string> {
@@ -175,7 +75,7 @@ interface ActivityState {
   markSaved: () => void
   
   // Pre-check actions
-  runPreCheck: (artifactId?: string, rubricContext?: string) => Promise<PreCheckResult>
+  runPreCheck: (artifactId?: string, rubrics?: Array<{ id: string; criterion: string; description: string; weight: number }>) => Promise<PreCheckResult>
   clearPreCheck: () => void
   
   // Ghost typing
@@ -264,22 +164,41 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
     })
   },
   
-  runPreCheck: async (artifactId?: string, rubricContext?: string) => {
+  runPreCheck: async (artifactId?: string, rubrics?: Array<{ id: string; criterion: string; description: string; weight: number }>) => {
     set({ isRunningPreCheck: true })
     
     const { editorContent } = get()
     
     try {
-      // Use AI-powered pre-check
-      const aiResult = await callOpenRouterForPreCheck(editorContent, rubricContext)
+      // Map frontend RubricItem shape (criterion) to DB shape (criteria) so
+      // the server function uses the exact same field names as submission scoring.
+      const serverRubrics = (rubrics || []).map(r => ({
+        id: r.id,
+        criteria: r.criterion,
+        description: r.description as string | null,
+        weight: r.weight,
+      }))
+
+      // Call the same server-side scoring pipeline used at submission time.
+      // This ensures identical model, prompt, key-normalization, and fallback
+      // logic, so the explorer Pre-check score matches the creator AI Score.
+      const aiResult = await runExplorerPrecheck({
+        data: {
+          content: editorContent,
+          rubrics: serverRubrics,
+        },
+      })
       
       const result: PreCheckResult = {
         id: `pc_${Date.now()}`,
         overallStatus: aiResult.overallScore,
         score: aiResult.score,
-        items: aiResult.items.map((item, idx) => ({
-          ...item,
+        items: aiResult.items.map((item: { id?: string; severity: 'critical' | 'warning' | 'suggestion'; message: string; suggestion?: string }, idx: number) => ({
           id: item.id || `pc_item_${idx}`,
+          rubricItemId: '',
+          severity: item.severity,
+          message: item.message,
+          suggestion: item.suggestion || '',
         })),
         generatedAt: new Date().toISOString(),
       }
@@ -291,12 +210,14 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
             data: {
               artifactId,
               overallScore: result.overallStatus,
+              score: aiResult.score,
               feedback: result.items.map(item => ({
                 severity: item.severity,
                 message: item.message,
                 suggestion: item.suggestion,
               })),
               rubricScores: aiResult.rubricScores,
+              contentSnapshot: editorContent,
             },
           })
         } catch (error) {
@@ -313,13 +234,19 @@ export const useActivityStore = create<ActivityState>((set, get) => ({
     } catch (error) {
       console.error('Pre-check error:', error)
       
-      // Fallback to basic pre-check
-      const basicResult = generateBasicPreCheck(editorContent)
+      // The server function already handles fallback internally, so if we
+      // reach here it's a network/transport error. Build a minimal result.
       const result: PreCheckResult = {
         id: `pc_${Date.now()}`,
-        overallStatus: basicResult.overallScore,
-        score: basicResult.score,
-        items: basicResult.items,
+        overallStatus: 'needs_work',
+        score: 0,
+        items: [{
+          id: 'pc_error',
+          rubricItemId: '',
+          severity: 'warning',
+          message: 'Pre-check could not be completed. Please try again.',
+          suggestion: 'Check your connection and retry.',
+        }],
         generatedAt: new Date().toISOString(),
       }
       

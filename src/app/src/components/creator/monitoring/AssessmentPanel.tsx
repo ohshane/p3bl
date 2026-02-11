@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react'
-import { ClipboardCheck, Search, Loader2, CheckCheck, RotateCw } from 'lucide-react'
+import { useState, useEffect, useCallback } from 'react'
+import { ClipboardCheck, Search, Loader2, CheckCheck, Sparkles } from 'lucide-react'
 import { useCreatorStore } from '@/stores/creatorStore'
-import { getProjectSubmissions, gradeSubmission } from '@/server/api'
+import { getProjectSubmissions, gradeSubmission, regradeSubmission } from '@/server/api'
 import { getTeamSessionArtifact } from '@/server/api/artifacts'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
@@ -25,6 +25,7 @@ interface Submission {
   sessionIndex: number
   sessionTitle: string
   aiScore: number
+  gradedScore: number | null
   status: 'pending' | 'graded'
   submittedAt: string
   precheckPassed: boolean | null
@@ -58,7 +59,8 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
   const [isLoadingReview, setIsLoadingReview] = useState(false)
   const [reviewError, setReviewError] = useState<string | null>(null)
   const [gradingIds, setGradingIds] = useState<Set<string>>(new Set())
-  const [isGradingAll, setIsGradingAll] = useState(false)
+  const [regradingIds, setRegradingIds] = useState<Set<string>>(new Set())
+
 
   // Fetch submissions on mount
   useEffect(() => {
@@ -126,69 +128,91 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
     }
   }
 
-  const applyGradedState = (
-    ids: string[],
-    updatedScores?: Array<{
-      artifactId: string
-      aiScore: number
-      rubricBreakdown: Array<{ criterion: string; weight: number; score: number | null }>
-    }>
-  ) => {
-    const idSet = new Set(ids)
-    const scoreMap = new Map(updatedScores?.map(s => [s.artifactId, s]) || [])
-    setSubmissions((prev) =>
-      prev.map((s) => {
-        if (!idSet.has(s.id)) return s
-        const updated = scoreMap.get(s.id)
-        return {
-          ...s,
-          status: 'graded' as const,
-          ...(updated ? { aiScore: updated.aiScore, rubricBreakdown: updated.rubricBreakdown } : {}),
-        }
-      })
-    )
-    setStats((prev) => {
-      // Count how many were actually pending (not already graded) for stat adjustment
-      const wasAlreadyGraded = ids.filter(id => {
-        const sub = submissions.find(s => s.id === id)
-        return sub?.status === 'graded'
-      }).length
-      const newlyGraded = ids.length - wasAlreadyGraded
-      // Recompute avg score from updated submissions
-      const updatedSubmissions = submissions.map(s => {
-        if (!idSet.has(s.id)) return s
-        const updated = scoreMap.get(s.id)
-        return updated ? { ...s, aiScore: updated.aiScore } : s
-      })
-      const avgScore = updatedSubmissions.length > 0
-        ? Math.round(updatedSubmissions.reduce((sum, s) => sum + s.aiScore, 0) / updatedSubmissions.length)
-        : prev.avgScore
-      return {
-        ...prev,
-        pending: Math.max(0, prev.pending - newlyGraded),
-        graded: prev.graded + newlyGraded,
-        avgScore,
-      }
-    })
-  }
-
-  const handleGrade = async (submission: Submission) => {
-    setGradingIds((prev) => new Set(prev).add(submission.id))
-    const isRegrade = submission.status === 'graded'
+  // Re-grade: re-run AI scoring only, no status change
+  const handleRegrade = async (submission: Submission) => {
+    setRegradingIds((prev) => new Set(prev).add(submission.id))
     try {
-      const result = await gradeSubmission({ data: { artifactIds: submission.id } })
-      if (result.success) {
-        applyGradedState([submission.id], result.updatedScores)
-        const updatedScore = result.updatedScores?.find(s => s.artifactId === submission.id)
-        const scoreText = updatedScore ? `${updatedScore.aiScore}%` : `${submission.aiScore}%`
-        toast.success(isRegrade ? 'Submission re-graded' : 'Submission graded', {
-          description: `${submission.studentName} scored ${scoreText}`,
+      const result = await regradeSubmission({ data: { artifactIds: submission.id } })
+      if (result.success && result.updatedScores) {
+        const scoreMap = new Map(result.updatedScores.map((s: { artifactId: string; aiScore: number; rubricBreakdown: Array<{ criterion: string; weight: number; score: number | null }> }) => [s.artifactId, s]))
+        setSubmissions((prev) =>
+          prev.map((s) => {
+            const updated = scoreMap.get(s.id)
+            return updated ? { ...s, aiScore: updated.aiScore, rubricBreakdown: updated.rubricBreakdown } : s
+          })
+        )
+        // Keep the review dialog in sync if it's showing this submission
+        const updatedScore = result.updatedScores.find((s: { artifactId: string }) => s.artifactId === submission.id)
+        if (updatedScore && selectedSubmission?.id === submission.id) {
+          setSelectedSubmission((prev) => prev ? { ...prev, aiScore: updatedScore.aiScore, rubricBreakdown: updatedScore.rubricBreakdown } : prev)
+        }
+        toast.success('AI score refreshed', {
+          description: `${submission.studentName} scored ${updatedScore ? updatedScore.aiScore : submission.aiScore}%`,
         })
       } else {
-        toast.error(`Failed to ${isRegrade ? 're-grade' : 'grade'} submission`)
+        toast.error('Failed to re-score submission')
       }
     } catch {
-      toast.error(`Failed to ${isRegrade ? 're-grade' : 'grade'} submission`)
+      toast.error('Failed to re-score submission')
+    } finally {
+      setRegradingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(submission.id)
+        return next
+      })
+    }
+  }
+
+  // Save an edited graded score
+  const handleSaveGradedScore = useCallback(async (submissionId: string, newScore: number) => {
+    const clamped = Math.max(0, Math.min(100, Math.round(newScore)))
+    try {
+      const result = await gradeSubmission({ data: { artifactId: submissionId, score: clamped } })
+      if (result.success) {
+        setSubmissions((prev) =>
+          prev.map((s) => s.id === submissionId ? { ...s, gradedScore: clamped, status: 'graded' as const } : s)
+        )
+        if (selectedSubmission?.id === submissionId) {
+          setSelectedSubmission((prev) => prev ? { ...prev, gradedScore: clamped, status: 'graded' as const } : prev)
+        }
+        toast.success('Graded score updated', { description: `Score set to ${clamped}%` })
+      } else {
+        toast.error('Failed to update graded score')
+      }
+    } catch {
+      toast.error('Failed to update graded score')
+    }
+  }, [selectedSubmission])
+
+  // Confirm grade: human action, sets status to graded and persists the AI score as the graded score
+  const handleGrade = async (submission: Submission) => {
+    setGradingIds((prev) => new Set(prev).add(submission.id))
+    const wasPending = submission.status === 'pending'
+    try {
+      const score = submission.aiScore
+      const result = await gradeSubmission({ data: { artifactId: submission.id, score } })
+      if (result.success) {
+        setSubmissions((prev) =>
+          prev.map((s) => s.id === submission.id ? { ...s, status: 'graded' as const, gradedScore: score } : s)
+        )
+        if (selectedSubmission?.id === submission.id) {
+          setSelectedSubmission((prev) => prev ? { ...prev, status: 'graded' as const, gradedScore: score } : prev)
+        }
+        if (wasPending) {
+          setStats((prev) => ({
+            ...prev,
+            pending: Math.max(0, prev.pending - 1),
+            graded: prev.graded + 1,
+          }))
+        }
+        toast.success(wasPending ? 'Submission graded' : 'Graded score updated', {
+          description: `${submission.studentName} confirmed at ${score}%`,
+        })
+      } else {
+        toast.error('Failed to grade submission')
+      }
+    } catch {
+      toast.error('Failed to grade submission')
     } finally {
       setGradingIds((prev) => {
         const next = new Set(prev)
@@ -198,30 +222,7 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
     }
   }
 
-  const pendingSubmissions = submissions.filter((s) => s.status === 'pending')
-  const ungradedCount = pendingSubmissions.length
 
-  const handleGradeAll = async () => {
-    const targets = ungradedCount > 0 ? pendingSubmissions : submissions
-    if (targets.length === 0) return
-    setIsGradingAll(true)
-    try {
-      const ids = targets.map((s) => s.id)
-      const result = await gradeSubmission({ data: { artifactIds: ids } })
-      if (result.success) {
-        applyGradedState(ids, result.updatedScores)
-        toast.success(ungradedCount > 0
-          ? `Graded ${ids.length} submissions`
-          : `Re-graded ${ids.length} submissions`)
-      } else {
-        toast.error('Failed to grade submissions')
-      }
-    } catch {
-      toast.error('Failed to grade submissions')
-    } finally {
-      setIsGradingAll(false)
-    }
-  }
 
   // Show loading state
   if (isLoading) {
@@ -238,29 +239,6 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-foreground">AI Assessment & Grading</h2>
-        {submissions.length > 0 && (
-          <Button
-            size="sm"
-            onClick={handleGradeAll}
-            disabled={isGradingAll}
-            className={cn(
-              ungradedCount > 0
-                ? "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
-                : "border border-border bg-background hover:bg-accent text-foreground"
-            )}
-          >
-            {isGradingAll ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
-            ) : ungradedCount > 0 ? (
-              <CheckCheck className="w-3.5 h-3.5 mr-1.5" />
-            ) : (
-              <RotateCw className="w-3.5 h-3.5 mr-1.5" />
-            )}
-            {ungradedCount > 0
-              ? `Grade All (${ungradedCount})`
-              : `Re-grade All (${submissions.length})`}
-          </Button>
-        )}
       </div>
 
       {/* Filters */}
@@ -352,6 +330,9 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
                     AI Score
                   </th>
                   <th className="text-center p-3 text-muted-foreground text-sm font-medium border-b border-border">
+                    Graded Score
+                  </th>
+                  <th className="text-center p-3 text-muted-foreground text-sm font-medium border-b border-border">
                     Status
                   </th>
                   <th className="text-right p-3 text-muted-foreground text-sm font-medium border-b border-border">
@@ -384,6 +365,42 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
                       </span>
                     </td>
                     <td className="p-3 text-center">
+                      {submission.gradedScore !== null ? (
+                        <div className="inline-flex items-center gap-0.5">
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            defaultValue={submission.gradedScore}
+                            key={`${submission.id}-${submission.gradedScore}`}
+                            onBlur={(e) => {
+                              const val = parseInt(e.target.value, 10)
+                              if (!isNaN(val) && val !== submission.gradedScore) {
+                                handleSaveGradedScore(submission.id, val)
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                (e.target as HTMLInputElement).blur()
+                              }
+                            }}
+                            className={cn(
+                              'w-12 text-center font-semibold bg-transparent border-b border-transparent hover:border-border focus:border-primary focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
+                              submission.gradedScore >= 80 ? 'text-green-500' :
+                              submission.gradedScore >= 60 ? 'text-yellow-500' : 'text-red-500'
+                            )}
+                          />
+                          <span className={cn(
+                            'font-semibold',
+                            submission.gradedScore >= 80 ? 'text-green-500' :
+                            submission.gradedScore >= 60 ? 'text-yellow-500' : 'text-red-500'
+                          )}>%</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-center">
                       <Badge
                         variant="outline"
                         className={cn(
@@ -408,20 +425,31 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
                         </Button>
                         <Button
                           size="sm"
+                          onClick={() => handleRegrade(submission)}
+                          disabled={regradingIds.has(submission.id)}
+                          className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white"
+                        >
+                          {regradingIds.has(submission.id) ? (
+                            <Loader2 className="w-3 h-3 animate-spin mr-1" />
+                          ) : (
+                            <Sparkles className="w-3 h-3 mr-1" />
+                          )}
+                          {regradingIds.has(submission.id) ? 'Re-scoring...' : 'Re-score'}
+                        </Button>
+                        <Button
+                          size="sm"
                           onClick={() => handleGrade(submission)}
-                          disabled={gradingIds.has(submission.id) || isGradingAll}
+                          disabled={gradingIds.has(submission.id)}
                           className={cn(
                             submission.status === 'pending'
                               ? "bg-green-600 hover:bg-green-700 text-white"
-                              : "border border-border bg-background hover:bg-accent text-foreground"
+                              : "border border-green-600 text-green-600 hover:bg-green-600/10 bg-transparent"
                           )}
                         >
                           {gradingIds.has(submission.id) ? (
                             <Loader2 className="w-3 h-3 animate-spin mr-1" />
-                          ) : submission.status === 'pending' ? (
-                            <CheckCheck className="w-3 h-3 mr-1" />
                           ) : (
-                            <RotateCw className="w-3 h-3 mr-1" />
+                            <CheckCheck className="w-3 h-3 mr-1" />
                           )}
                           {submission.status === 'pending' ? 'Grade' : 'Re-grade'}
                         </Button>
@@ -444,7 +472,7 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
       )}
 
       <Dialog open={isReviewOpen} onOpenChange={setIsReviewOpen}>
-        <DialogContent className="sm:max-w-4xl max-h-[85vh]">
+        <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Submitted Team Content</DialogTitle>
             <DialogDescription>
@@ -454,7 +482,7 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="min-h-[320px] max-h-[60vh] overflow-auto rounded-lg border border-border bg-muted/20 p-4">
+          <div className="min-h-[320px] max-h-[60vh] overflow-auto rounded-lg border border-border bg-muted/20 p-4 flex-1">
             {selectedSubmission && selectedSubmission.rubricBreakdown.length > 0 && (
               <div className="mb-4 rounded-lg border border-border bg-background p-3">
                 <h4 className="text-sm font-medium text-foreground mb-2">Rubric Criteria Scores</h4>
@@ -464,12 +492,68 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
                       <span className="text-muted-foreground">
                         {item.criterion} <span className="text-xs">({item.weight}%)</span>
                       </span>
-                      <span className="font-medium text-foreground">
-                        {item.score !== null ? `${item.score}` : '-'}
-                      </span>
+                      <div className="inline-flex items-center gap-0.5">
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          defaultValue={item.score ?? ''}
+                          key={`${selectedSubmission.id}-${item.criterion}-${item.score}`}
+                          onBlur={(e) => {
+                            const val = parseInt(e.target.value, 10)
+                            if (!isNaN(val) && val !== item.score) {
+                              const clamped = Math.max(0, Math.min(100, Math.round(val)))
+                              const updated = selectedSubmission.rubricBreakdown.map((r, i) =>
+                                i === idx ? { ...r, score: clamped } : r
+                              )
+                              // Compute new weighted AI score
+                              let weightedSum = 0
+                              let totalWeight = 0
+                              for (const r of updated) {
+                                if (r.score !== null) {
+                                  weightedSum += r.score * r.weight
+                                  totalWeight += r.weight
+                                }
+                              }
+                              const newAiScore = totalWeight > 0 ? Math.round(weightedSum / totalWeight) : selectedSubmission.aiScore
+                              setSelectedSubmission((prev) => prev ? { ...prev, rubricBreakdown: updated, aiScore: newAiScore } : prev)
+                              setSubmissions((prev) =>
+                                prev.map((s) => s.id === selectedSubmission.id ? { ...s, rubricBreakdown: updated, aiScore: newAiScore } : s)
+                              )
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+                          }}
+                          className="w-12 text-right font-medium bg-transparent border-b border-transparent hover:border-border focus:border-primary focus:outline-none text-foreground [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
+                {/* AI Score summary */}
+                <div className="mt-3 pt-3 border-t border-border flex items-center justify-between text-sm">
+                  <span className="font-medium text-foreground">AI Score</span>
+                  <span className={cn(
+                    'font-semibold',
+                    selectedSubmission.aiScore >= 80 ? 'text-green-500' :
+                    selectedSubmission.aiScore >= 60 ? 'text-yellow-500' : 'text-red-500'
+                  )}>
+                    {selectedSubmission.aiScore}%
+                  </span>
+                </div>
+                {selectedSubmission.gradedScore !== null && (
+                  <div className="mt-1 flex items-center justify-between text-sm">
+                    <span className="font-medium text-foreground">Graded Score</span>
+                    <span className={cn(
+                      'font-semibold',
+                      selectedSubmission.gradedScore >= 80 ? 'text-green-500' :
+                      selectedSubmission.gradedScore >= 60 ? 'text-yellow-500' : 'text-red-500'
+                    )}>
+                      {selectedSubmission.gradedScore}%
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 
@@ -493,6 +577,41 @@ export function AssessmentPanel({ projectId }: AssessmentPanelProps) {
               </div>
             )}
           </div>
+
+          {selectedSubmission && (
+            <DialogFooter className="gap-2 sm:gap-2">
+              <Button
+                size="sm"
+                onClick={() => handleRegrade(selectedSubmission)}
+                disabled={regradingIds.has(selectedSubmission.id)}
+                className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white"
+              >
+                {regradingIds.has(selectedSubmission.id) ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                ) : (
+                  <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+                )}
+                {regradingIds.has(selectedSubmission.id) ? 'Re-scoring...' : 'Re-score'}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => handleGrade(selectedSubmission)}
+                disabled={gradingIds.has(selectedSubmission.id)}
+                className={cn(
+                  selectedSubmission.status === 'pending'
+                    ? "bg-green-600 hover:bg-green-700 text-white"
+                    : "border border-green-600 text-green-600 hover:bg-green-600/10 bg-transparent"
+                )}
+              >
+                {gradingIds.has(selectedSubmission.id) ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                ) : (
+                  <CheckCheck className="w-3.5 h-3.5 mr-1.5" />
+                )}
+                {selectedSubmission.status === 'pending' ? 'Grade' : 'Re-grade'}
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </div>

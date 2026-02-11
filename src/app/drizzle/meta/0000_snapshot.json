@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "ffc53119-4cd6-40d8-80ac-2e2f41a74cf2",
+  "id": "ef05743e-24f0-4cc1-98bb-4c0d8ec065fc",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "intervention_logs": {
@@ -1806,6 +1806,13 @@
           "notNull": false,
           "autoincrement": false
         },
+        "graded_score": {
+          "name": "graded_score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "integer",
@@ -1964,6 +1971,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "score": {
+          "name": "score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "feedback": {
           "name": "feedback",
           "type": "text",
@@ -1973,6 +1987,13 @@
         },
         "rubric_scores": {
           "name": "rubric_scores",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "content_snapshot": {
+          "name": "content_snapshot",
           "type": "text",
           "primaryKey": false,
           "notNull": false,
