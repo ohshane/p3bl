@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Install dependencies and rebuild native modules (better-sqlite3) for this machine
+pnpm install
+pnpm rebuild better-sqlite3
+
 # Ensure data directory exists
 mkdir -p ./data
 
