@@ -1,0 +1,1 @@
+import{u as s,a as n,r as o,j as u,O as i}from"./main-oBfCarfk.js";function c(){const r=s(),{isAuthenticated:t,currentUser:e}=n();return o.useEffect(()=>{t||r({to:"/signin"})},[t,r]),o.useEffect(()=>{e&&!e.role.includes("explorer")&&e.role.includes("creator")&&r({to:"/creator"})},[e,r]),!e||!e.role.includes("explorer")?null:u.jsx(i,{})}export{c as component};
