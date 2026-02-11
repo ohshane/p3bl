@@ -14,7 +14,7 @@ if (!existsSync(dbDir)) {
   mkdirSync(dbDir, { recursive: true })
 }
 
-// Create libsql client (pure JS, no native compilation needed)
+// Create libsql client (no native dependencies)
 export const client = createClient({
   url: `file:${DB_PATH}`,
 })
