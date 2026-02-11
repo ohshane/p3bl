@@ -9,7 +9,7 @@ import { getConfiguredAIModel } from '@/lib/ai-config'
 import { aiChatCompletion } from '@/server/api/ai'
 
 // System prompt for project generation
-const PROJECT_GENERATION_PROMPT = `You are an expert educational project designer for a project-based learning platform.
+const PROJECT_GENERATION_PROMPT = `You are an expert educational project designer for Peabee.
 Your task is to generate a compelling project title, background context, and driving question based on keywords provided by educators.
 
 Guidelines:

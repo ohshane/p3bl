@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from '@tanstack/react-router'
-import { Library, Plus, Search, Loader2, BookOpen, Trash2, Calendar, Clock, Rocket } from 'lucide-react'
+import { Library, Plus, Search, Loader2, BookOpen, Trash2, Calendar, Clock, Rocket, Globe, GlobeLock } from 'lucide-react'
 import { toast } from 'sonner'
 import { format, addMinutes } from 'date-fns'
 import { useAuthStore } from '@/stores/authStore'
-import { getLibraryTemplates, deleteProject, deployTemplate } from '@/server/api/projects'
+import { getLibraryTemplates, deleteProject, deployTemplate, publishTemplate, unpublishTemplate } from '@/server/api/projects'
 import { useCreatorStore } from '@/stores/creatorStore'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -46,6 +46,8 @@ export function CreatorLibrary() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null)
+
+  const [publishingId, setPublishingId] = useState<string | null>(null)
 
   // Deploy modal state
   const [deployTarget, setDeployTarget] = useState<any | null>(null)
@@ -158,6 +160,30 @@ export function CreatorLibrary() {
     }
   }
 
+  const handleTogglePublish = async (template: any) => {
+    if (!currentUser?.id) return
+    setPublishingId(template.id)
+    try {
+      const isCurrentlyPublished = template.isPublished
+      const result = isCurrentlyPublished
+        ? await unpublishTemplate({ data: { templateId: template.id, creatorId: currentUser.id } })
+        : await publishTemplate({ data: { templateId: template.id, creatorId: currentUser.id } })
+      if (result.success) {
+        setTemplates(prev => prev.map(t =>
+          t.id === template.id ? { ...t, isPublished: !isCurrentlyPublished } : t
+        ))
+        toast.success(isCurrentlyPublished ? 'Template unpublished from store' : 'Template published to store!')
+      } else {
+        toast.error(result.error || 'Failed to update publish status')
+      }
+    } catch (error) {
+      console.error('Toggle publish error:', error)
+      toast.error('Failed to update publish status')
+    } finally {
+      setPublishingId(null)
+    }
+  }
+
   return (
     <div className="container max-w-7xl mx-auto py-8 px-4">
       {/* Header */}
@@ -212,13 +238,40 @@ export function CreatorLibrary() {
             <Card key={template.id} className="bg-card border-border hover:border-cyan-500/50 transition-all group">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between mb-2">
-                  <Badge variant="secondary" className="bg-cyan-500/10 text-cyan-500 border-none">
-                    Template
-                  </Badge>
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="secondary" className="bg-cyan-500/10 text-cyan-500 border-none">
+                      Template
+                    </Badge>
+                    {template.isPublished && (
+                      <Badge variant="secondary" className="bg-violet-500/10 text-violet-500 border-none">
+                        Published
+                      </Badge>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">
                       {template.sessionCount} sessions
                     </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleTogglePublish(template)}
+                      disabled={publishingId === template.id}
+                      className={`h-7 w-7 ${
+                        template.isPublished
+                          ? 'text-violet-500 hover:text-violet-400 hover:bg-violet-500/10'
+                          : 'text-muted-foreground hover:text-violet-500 hover:bg-violet-500/10'
+                      }`}
+                      title={template.isPublished ? 'Unpublish from store' : 'Publish to store'}
+                    >
+                      {publishingId === template.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : template.isPublished ? (
+                        <GlobeLock className="w-4 h-4" />
+                      ) : (
+                        <Globe className="w-4 h-4" />
+                      )}
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"

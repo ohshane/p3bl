@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from '@tanstack/react-router'
-import { Bell, LogOut, User, ChevronDown, Settings, LayoutDashboard, FolderPlus, Briefcase, Calendar, Shield, PenTool, Compass, Library } from 'lucide-react'
+import { Bell, LogOut, User, ChevronDown, Settings, LayoutDashboard, FolderPlus, Briefcase, Calendar, Shield, PenTool, Compass, Library, Store } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { ThemeToggle } from '@/components/shared/ThemeToggle'
 import { Button } from '@/components/ui/button'
@@ -192,6 +192,14 @@ export function AppHeader() {
             >
               <Library className="w-4 h-4 inline mr-1" />
               Library
+            </Link>
+            <Link
+              to="/creator/store"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              activeProps={{ className: 'text-sm font-medium text-foreground' }}
+            >
+              <Store className="w-4 h-4 inline mr-1" />
+              Store
             </Link>
             <Link
               to="/creator/project/new"

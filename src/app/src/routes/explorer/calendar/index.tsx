@@ -139,7 +139,8 @@ function ExplorerCalendarPage() {
 
   const selectedDateProjects = useMemo(() => {
     const dateKey = format(selectedDate, 'yyyy-MM-dd')
-    return projectsByDate[dateKey] || []
+    const projects = projectsByDate[dateKey] || []
+    return [...projects].sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
   }, [selectedDate, projectsByDate])
 
   // Current time line calculation
@@ -158,16 +159,7 @@ function ExplorerCalendarPage() {
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Scroll to current time on mount/view change
-  useEffect(() => {
-    if (viewMode === 'week' && scrollRef.current && isMounted) {
-      const totalHeight = 1536 // min-h-[1536px]
-      const scrollPosition = (currentTimeTop / 100) * totalHeight
-      const containerHeight = scrollRef.current.clientHeight
-      
-      scrollRef.current.scrollTop = scrollPosition - containerHeight / 2
-    }
-  }, [viewMode, isMounted, currentTimeTop])
+  // No scroll needed - grid fills full visible height
 
   const weekProjects = useMemo(() => {
     const start = startOfWeek(currentDate)
@@ -409,19 +401,19 @@ function ExplorerCalendarPage() {
           )}
 
           {/* Scrollable Grid */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto relative scrollbar-none">
-            <div className="flex h-[1536px] relative">
+          <div ref={scrollRef} className="flex-1 overflow-hidden relative">
+            <div className="flex h-full relative">
               {/* Time Axis */}
-              <div className="w-16 flex-shrink-0 border-r border-border bg-muted/5 text-[10px] text-muted-foreground select-none relative z-20 h-[1536px]">
+              <div className="w-16 flex-shrink-0 border-r border-border bg-muted/5 text-[10px] text-muted-foreground select-none relative z-20 h-full flex flex-col">
                 {hours.map(h => (
-                  <div key={h} className="h-16 border-b border-border/50 text-right pr-2 relative">
+                  <div key={h} className="flex-1 border-b border-border/50 text-right pr-2 relative">
                     <span className="-top-2 absolute right-2">{format(new Date().setHours(h, 0, 0, 0), 'ha')}</span>
                   </div>
                 ))}
               </div>
 
               {/* Columns */}
-              <div className="flex-1 grid grid-cols-7 relative h-[1536px]">
+              <div className="flex-1 grid grid-cols-7 relative h-full">
                 {/* Current Time Line */}
                 <div 
                   className="absolute left-0 right-0 z-40 pointer-events-none flex items-center"
@@ -434,7 +426,7 @@ function ExplorerCalendarPage() {
                 {/* Horizontal Background Lines */}
                 <div className="absolute inset-0 flex flex-col pointer-events-none">
                   {hours.map(h => (
-                    <div key={h} className="h-16 border-b border-border/50 w-full" />
+                    <div key={h} className="flex-1 border-b border-border/50 w-full" />
                   ))}
                 </div>
 
@@ -443,7 +435,7 @@ function ExplorerCalendarPage() {
                     <div 
                       key={day.toISOString()} 
                       className={cn(
-                        "relative h-[1536px] transition-colors cursor-pointer hover:bg-muted/5", 
+                        "relative h-full transition-colors cursor-pointer hover:bg-muted/5", 
                         idx < 6 && "border-r border-border"
                       )}
                       onClick={() => setSelectedDate(day)}
@@ -538,6 +530,16 @@ function ExplorerCalendarPage() {
                         <span className="flex items-center gap-1">
                           <CalendarIcon className="w-3.5 h-3.5" />
                           {project.startDate ? format(new Date(project.startDate), 'MMM d, HH:mm') : 'N/A'} - {project.endDate ? format(new Date(project.endDate), 'MMM d, HH:mm') : 'N/A'}
+                          {project.startDate && project.endDate && (() => {
+                            const mins = differenceInMinutes(new Date(project.endDate), new Date(project.startDate))
+                            if (mins < 60) return <span className="text-xs text-muted-foreground/70">({mins}m)</span>
+                            const h = Math.floor(mins / 60)
+                            const m = mins % 60
+                            if (h < 24) return <span className="text-xs text-muted-foreground/70">({m > 0 ? `${h}h ${m}m` : `${h}h`})</span>
+                            const d = Math.floor(h / 24)
+                            const rh = h % 24
+                            return <span className="text-xs text-muted-foreground/70">({rh > 0 ? `${d}d ${rh}h` : `${d}d`})</span>
+                          })()}
                         </span>
                         <span className="flex items-center gap-1">
                           <ListChecks className="w-3.5 h-3.5" />

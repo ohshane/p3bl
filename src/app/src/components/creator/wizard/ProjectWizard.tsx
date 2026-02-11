@@ -229,7 +229,7 @@ export function ProjectWizard() {
   // Reset wizard on mount
   useEffect(() => {
     resetWizard();
-    const minStart = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+    const minStart = new Date(Date.now() + 10 * 60 * 1000).toISOString();
     setTimeline({ startDate: minStart, endDate: "" });
   }, []);
 

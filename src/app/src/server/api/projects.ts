@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { eq, and, or, desc, gt, count, like, ne } from 'drizzle-orm'
+import { eq, and, or, desc, asc, gt, count, like, ne } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
 import { db } from '@/db'
 import {
@@ -38,6 +38,54 @@ const joinProjectSchema = z.object({
   code: z.string().length(6),
   ipAddress: z.string().optional(),
 })
+
+/**
+ * Recompute session startDate/endDate from project startDate + cumulative durationMinutes.
+ * Also updates project endDate to match the last session's endDate.
+ * Skips templates (projects without a startDate).
+ */
+async function recomputeSessionDates(projectId: string) {
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.id, projectId),
+    columns: { startDate: true, isTemplate: true },
+  })
+
+  // Skip templates or projects without a start date
+  if (!project || project.isTemplate || !project.startDate) return
+
+  const sessions = await db.query.projectSessions.findMany({
+    where: eq(projectSessions.projectId, projectId),
+    orderBy: asc(projectSessions.order),
+    columns: { id: true, durationMinutes: true },
+  })
+
+  if (sessions.length === 0) return
+
+  let cursor = project.startDate.getTime()
+
+  for (const session of sessions) {
+    const durationMs = (session.durationMinutes || 60) * 60 * 1000
+    const sessionStart = new Date(cursor)
+    const sessionEnd = new Date(cursor + durationMs)
+    cursor = sessionEnd.getTime()
+
+    await db.update(projectSessions)
+      .set({
+        startDate: sessionStart,
+        endDate: sessionEnd,
+        updatedAt: new Date(),
+      })
+      .where(eq(projectSessions.id, session.id))
+  }
+
+  // Update project endDate to match last session's endDate
+  await db.update(projects)
+    .set({
+      endDate: new Date(cursor),
+      updatedAt: new Date(),
+    })
+    .where(eq(projects.id, projectId))
+}
 
 // Generate a 6-character join code
 function generateJoinCodeString(): string {
@@ -514,6 +562,11 @@ export const updateProject = createServerFn({ method: 'POST' })
           updatedAt: new Date(),
         })
         .where(eq(projects.id, data.projectId))
+
+      // If startDate changed, recompute all session dates
+      if (data.updates.startDate) {
+        await recomputeSessionDates(data.projectId)
+      }
 
       return { success: true }
     } catch (error) {
@@ -1352,7 +1405,7 @@ export const delegateProject = createServerFn({ method: 'POST' })
  * Clone a project as a template in the creator's library
  */
 export const cloneProjectAsTemplate = createServerFn({ method: 'POST' })
-  .inputValidator((data: { projectId: string; creatorId: string }) => data)
+  .inputValidator((data: { projectId: string; creatorId: string; publish?: boolean }) => data)
   .handler(async ({ data }) => {
     try {
       // 1. Get the source project with all details
@@ -1388,6 +1441,7 @@ export const cloneProjectAsTemplate = createServerFn({ method: 'POST' })
         teamSize: sourceProject.teamSize,
         maxParticipants: sourceProject.maxParticipants,
         isTemplate: true,
+        isPublished: data.publish ?? false,
         createdAt: now,
         updatedAt: now,
       })
@@ -1501,6 +1555,7 @@ export const getLibraryTemplates = createServerFn({ method: 'GET' })
         templates: templateList.map(t => ({
           ...t,
           sessionCount: t.sessions.length,
+          isPublished: t.isPublished,
           createdAt: t.createdAt.toISOString(),
           updatedAt: t.updatedAt.toISOString(),
         }))
@@ -1638,5 +1693,268 @@ export const deployTemplate = createServerFn({ method: 'POST' })
     } catch (error) {
       console.error('Deploy template error:', error)
       return { success: false, error: 'Failed to deploy template' }
+    }
+  })
+
+/**
+ * Publish a template to the store (make it available to all creators)
+ */
+export const publishTemplate = createServerFn({ method: 'POST' })
+  .inputValidator((data: { templateId: string; creatorId: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      const template = await db.query.projects.findFirst({
+        where: and(
+          eq(projects.id, data.templateId),
+          eq(projects.creatorId, data.creatorId),
+          eq(projects.isTemplate, true)
+        ),
+      })
+
+      if (!template) {
+        return { success: false, error: 'Template not found or you do not own it' }
+      }
+
+      await db.update(projects)
+        .set({ isPublished: true, updatedAt: new Date() })
+        .where(eq(projects.id, data.templateId))
+
+      return { success: true }
+    } catch (error) {
+      console.error('Publish template error:', error)
+      return { success: false, error: 'Failed to publish template' }
+    }
+  })
+
+/**
+ * Unpublish a template from the store
+ */
+export const unpublishTemplate = createServerFn({ method: 'POST' })
+  .inputValidator((data: { templateId: string; creatorId: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      const template = await db.query.projects.findFirst({
+        where: and(
+          eq(projects.id, data.templateId),
+          eq(projects.creatorId, data.creatorId),
+          eq(projects.isTemplate, true)
+        ),
+      })
+
+      if (!template) {
+        return { success: false, error: 'Template not found or you do not own it' }
+      }
+
+      await db.update(projects)
+        .set({ isPublished: false, updatedAt: new Date() })
+        .where(eq(projects.id, data.templateId))
+
+      return { success: true }
+    } catch (error) {
+      console.error('Unpublish template error:', error)
+      return { success: false, error: 'Failed to unpublish template' }
+    }
+  })
+
+/**
+ * Get all published templates for the store (from all creators)
+ */
+export const getStoreTemplates = createServerFn({ method: 'GET' })
+  .inputValidator((data: { creatorId: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      const templateList = await db.query.projects.findMany({
+        where: and(
+          eq(projects.isTemplate, true),
+          eq(projects.isPublished, true)
+        ),
+        orderBy: desc(projects.updatedAt),
+        with: {
+          creator: true,
+          sessions: {
+            orderBy: (sessions, { asc }) => [asc(sessions.order)],
+          },
+        },
+      })
+
+      return {
+        success: true,
+        templates: templateList.map(t => ({
+          ...t,
+          sessionCount: t.sessions.length,
+          creatorName: t.creator.name,
+          isOwn: t.creatorId === data.creatorId,
+          createdAt: t.createdAt.toISOString(),
+          updatedAt: t.updatedAt.toISOString(),
+        }))
+      }
+    } catch (error) {
+      console.error('Get store templates error:', error)
+      return { success: false, error: 'Failed to get store templates' }
+    }
+  })
+
+/**
+ * Get a single published template by ID (for the store detail page)
+ */
+export const getStoreTemplate = createServerFn({ method: 'GET' })
+  .inputValidator((data: { templateId: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      const template = await db.query.projects.findFirst({
+        where: and(
+          eq(projects.id, data.templateId),
+          eq(projects.isTemplate, true),
+          eq(projects.isPublished, true)
+        ),
+        with: {
+          creator: true,
+          sessions: {
+            orderBy: (sessions, { asc }) => [asc(sessions.order)],
+            with: {
+              resources: true,
+              rubrics: true,
+            },
+          },
+        },
+      })
+
+      if (!template) {
+        return { success: false, error: 'Published template not found' }
+      }
+
+      return {
+        success: true,
+        template: {
+          ...template,
+          sessionCount: template.sessions.length,
+          creatorName: template.creator.name,
+          createdAt: template.createdAt.toISOString(),
+          updatedAt: template.updatedAt.toISOString(),
+        }
+      }
+    } catch (error) {
+      console.error('Get store template error:', error)
+      return { success: false, error: 'Failed to get template' }
+    }
+  })
+
+/**
+ * Clone a store template into the requesting creator's personal library
+ */
+export const cloneStoreTemplate = createServerFn({ method: 'POST' })
+  .inputValidator((data: { templateId: string; creatorId: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      // 1. Get the source published template with all details
+      const sourceTemplate = await db.query.projects.findFirst({
+        where: and(
+          eq(projects.id, data.templateId),
+          eq(projects.isTemplate, true),
+          eq(projects.isPublished, true)
+        ),
+        with: {
+          sessions: {
+            orderBy: (sessions, { asc }) => [asc(sessions.order)],
+            with: {
+              resources: true,
+              rubrics: true,
+              templates: true,
+            },
+          },
+        },
+      })
+
+      if (!sourceTemplate) {
+        return { success: false, error: 'Published template not found' }
+      }
+
+      // 2. Create the cloned template in the requesting creator's library
+      const newTemplateId = uuidv4()
+      const now = new Date()
+
+      await db.insert(projects).values({
+        id: newTemplateId,
+        creatorId: data.creatorId,
+        orgId: sourceTemplate.orgId,
+        title: sourceTemplate.title,
+        description: sourceTemplate.description,
+        background: sourceTemplate.background,
+        drivingQuestion: sourceTemplate.drivingQuestion,
+        teamSize: sourceTemplate.teamSize,
+        maxParticipants: sourceTemplate.maxParticipants,
+        isTemplate: true,
+        isPublished: false,
+        createdAt: now,
+        updatedAt: now,
+      })
+
+      // 3. Clone sessions and their children
+      for (const session of sourceTemplate.sessions) {
+        const newSessionId = uuidv4()
+
+        await db.insert(projectSessions).values({
+          id: newSessionId,
+          projectId: newTemplateId,
+          order: session.order,
+          title: session.title,
+          topic: session.topic,
+          guide: session.guide,
+          weight: session.weight,
+          durationMinutes: session.durationMinutes || null,
+          difficulty: session.difficulty,
+          deliverableType: session.deliverableType,
+          deliverableTitle: session.deliverableTitle,
+          deliverableDescription: session.deliverableDescription,
+          llmModel: session.llmModel,
+          createdAt: now,
+          updatedAt: now,
+        })
+
+        // Clone resources
+        for (const resource of session.resources) {
+          await db.insert(sessionResources).values({
+            id: uuidv4(),
+            sessionId: newSessionId,
+            type: resource.type,
+            title: resource.title,
+            url: resource.url,
+            filePath: resource.filePath,
+            order: resource.order,
+            createdAt: now,
+          })
+        }
+
+        // Clone rubrics
+        for (const rubric of session.rubrics) {
+          await db.insert(sessionRubrics).values({
+            id: uuidv4(),
+            sessionId: newSessionId,
+            criteria: rubric.criteria,
+            description: rubric.description,
+            weight: rubric.weight,
+            order: rubric.order,
+            createdAt: now,
+          })
+        }
+
+        // Clone templates
+        for (const template of session.templates) {
+          await db.insert(sessionTemplates).values({
+            id: uuidv4(),
+            sessionId: newSessionId,
+            name: template.name,
+            content: template.content,
+            type: template.type,
+            order: template.order,
+            createdAt: now,
+          })
+        }
+      }
+
+      return { success: true, templateId: newTemplateId }
+    } catch (error) {
+      console.error('Clone store template error:', error)
+      return { success: false, error: 'Failed to clone template from store' }
     }
   })

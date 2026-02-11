@@ -141,7 +141,8 @@ function CreatorCalendarPage() {
 
   const selectedDateProjects = useMemo(() => {
     const dateKey = format(selectedDate, 'yyyy-MM-dd')
-    return projectsByDate[dateKey] || []
+    const projects = projectsByDate[dateKey] || []
+    return [...projects].sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
   }, [selectedDate, projectsByDate])
 
   // Current time line calculation
@@ -160,16 +161,7 @@ function CreatorCalendarPage() {
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  // Scroll to current time on mount/view change
-  useEffect(() => {
-    if (viewMode === 'week' && scrollRef.current && isMounted) {
-      const totalHeight = 1536 // min-h-[1536px]
-      const scrollPosition = (currentTimeTop / 100) * totalHeight
-      const containerHeight = scrollRef.current.clientHeight
-      
-      scrollRef.current.scrollTop = scrollPosition - containerHeight / 2
-    }
-  }, [viewMode, isMounted, currentTimeTop])
+  // No scroll needed - grid fills full visible height
 
   const weekProjects = useMemo(() => {
     const start = startOfWeek(currentDate)
@@ -417,97 +409,101 @@ function CreatorCalendarPage() {
                       )}
             
                       {/* Scrollable Grid */}
-                      <div ref={scrollRef} className="flex-1 overflow-y-auto relative scrollbar-none">
-                        <div className="flex h-[1536px] relative">
+                      <div ref={scrollRef} className="flex-1 overflow-hidden relative">
+                        <div className="flex h-full relative">
                           {/* Time Axis */}
-                          <div className="w-16 flex-shrink-0 border-r border-border bg-muted/5 text-[10px] text-muted-foreground select-none relative z-20 h-[1536px]">
+                          <div className="w-16 flex-shrink-0 border-r border-border bg-muted/5 text-[10px] text-muted-foreground select-none relative z-20 h-full flex flex-col">
                             {hours.map(h => (
-                              <div key={h} className="h-16 border-b border-border/50 text-right pr-2 relative">
+                              <div key={h} className="flex-1 border-b border-border/50 text-right pr-2 relative">
                                 <span className="-top-2 absolute right-2">{format(new Date().setHours(h, 0, 0, 0), 'ha')}</span>
                               </div>
                             ))}
                           </div>
             
-                                        {/* Columns */}
-                                        <div className="flex-1 grid grid-cols-7 relative h-[1536px]">
-                                                                                                          {/* Current Time Line */}
-                                                                                                          <div 
-                                                                                                            className="absolute left-0 right-0 z-40 pointer-events-none flex items-center"
-                                                                                                            style={{ top: `${currentTimeTop}%` }}
-                                                                                                          >
-                                                                                                            <div className="absolute -left-1 w-2 h-2 rounded-full bg-red-500 z-50" />
-                                                                                                            <div className="w-full h-0.5 bg-red-500" />
-                                                                                                          </div>                                          {/* Horizontal Background Lines */}                            <div className="absolute inset-0 flex flex-col pointer-events-none">
-                              {hours.map(h => (
-                                <div key={h} className="h-16 border-b border-border/50 w-full" />
-                              ))}
+              {/* Columns */}
+              <div className="flex-1 grid grid-cols-7 relative h-full">
+                {/* Current Time Line */}
+                <div 
+                  className="absolute left-0 right-0 z-40 pointer-events-none flex items-center"
+                  style={{ top: `${currentTimeTop}%` }}
+                >
+                  <div className="absolute -left-1 w-2 h-2 rounded-full bg-red-500 z-50" />
+                  <div className="w-full h-0.5 bg-red-500" />
+                </div>
+
+                {/* Horizontal Background Lines */}
+                <div className="absolute inset-0 flex flex-col pointer-events-none">
+                  {hours.map(h => (
+                    <div key={h} className="flex-1 border-b border-border/50 w-full" />
+                  ))}
+                </div>
+
+                {weekDays.map((day, idx) => {
+                  return (
+                    <div 
+                      key={day.toISOString()} 
+                      className={cn(
+                        "relative h-full transition-colors cursor-pointer hover:bg-muted/5", 
+                        idx < 6 && "border-r border-border"
+                      )}
+                      onClick={() => setSelectedDate(day)}
+                    >
+                      {/* Render Project Blocks */}
+                      {weekProjects.timed
+                        .filter(p => {
+                          const pStart = new Date(p.startDate)
+                          const pEnd = new Date(p.endDate)
+                          const dayStart = startOfDay(day)
+                          const dayEnd = addDays(dayStart, 1)
+                          return pStart < dayEnd && pEnd > dayStart
+                        })
+                        .map(project => {
+                          const pStart = new Date(project.startDate)
+                          const pEnd = new Date(project.endDate)
+                          const dayStart = startOfDay(day)
+                          const dayEnd = addDays(dayStart, 1)
+                          
+                          const visibleStart = pStart < dayStart ? dayStart : pStart
+                          const visibleEnd = pEnd > dayEnd ? dayEnd : pEnd
+                          
+                          const startMin = visibleStart.getHours() * 60 + visibleStart.getMinutes()
+                          const duration = differenceInMinutes(visibleEnd, visibleStart)
+                          
+                          const isStartDay = isSameDay(pStart, day)
+                          const isEndDay = isSameDay(pEnd, day)
+                          
+                          return (
+                            <div 
+                              key={`project-${project.id}-${day.toISOString()}`}
+                              style={{
+                                top: `${(startMin / 1440) * 100}%`,
+                                height: `${Math.max((duration / 1440) * 100, 2)}%`,
+                                minHeight: '32px'
+                              }}
+                              className={cn(
+                                "absolute inset-x-1 bg-purple-500/10 text-purple-600 text-[10px] p-1.5 overflow-hidden shadow-sm border border-purple-500/20 z-10 cursor-pointer hover:bg-purple-500 hover:text-white transition-all group",
+                                isStartDay && isEndDay && "rounded",
+                                isStartDay && !isEndDay && "rounded-t",
+                                !isStartDay && isEndDay && "rounded-b",
+                                !isStartDay && !isEndDay && "rounded-none"
+                              )}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                navigate({ to: `/creator/project/${project.id}` })
+                              }}
+                            >
+                              <div className="font-bold truncate uppercase tracking-tighter group-hover:text-white">
+                                {project.name}
+                              </div>
+                              <div className="text-[9px] opacity-90 truncate group-hover:text-white">
+                                {project.sessions?.length || 0} sessions
+                              </div>
                             </div>
-            
-                            {weekDays.map((day, idx) => {
-                              return (
-                                                    <div 
-                                                      key={day.toISOString()} 
-                                                      className={cn(
-                                                        "relative h-[1536px] transition-colors cursor-pointer hover:bg-muted/5", 
-                                                        idx < 6 && "border-r border-border"
-                                                      )}
-                                                      onClick={() => setSelectedDate(day)}
-                                                    >
-                                                      {/* Render Project Blocks */}
-                                                      {weekProjects.timed
-                                                        .filter(p => {
-                                                          const pStart = new Date(p.startDate)
-                                                          const pEnd = new Date(p.endDate)
-                                                          const dayStart = startOfDay(day)
-                                                          const dayEnd = addDays(dayStart, 1)
-                                                          return pStart < dayEnd && pEnd > dayStart
-                                                        })
-                                                        .map(project => {
-                                                          const pStart = new Date(project.startDate)
-                                                          const pEnd = new Date(project.endDate)
-                                                          const dayStart = startOfDay(day)
-                                                          const dayEnd = addDays(dayStart, 1)
-                                                          
-                                                          const visibleStart = pStart < dayStart ? dayStart : pStart
-                                                          const visibleEnd = pEnd > dayEnd ? dayEnd : pEnd
-                                                          
-                                                          const startMin = visibleStart.getHours() * 60 + visibleStart.getMinutes()
-                                                          const duration = differenceInMinutes(visibleEnd, visibleStart)
-                                                          
-                                                          const isStartDay = isSameDay(pStart, day)
-                                                          const isEndDay = isSameDay(pEnd, day)
-                                                          
-                                                          return (
-                                                            <div 
-                                                              key={`project-${project.id}-${day.toISOString()}`}
-                                                              style={{
-                                                                top: `${(startMin / 1440) * 100}%`,
-                                                                height: `${Math.max((duration / 1440) * 100, 2)}%`,
-                                                                minHeight: '32px'
-                                                              }}
-                                                              className={cn(
-                                                                "absolute inset-x-1 bg-purple-500/10 text-purple-600 text-[10px] p-1.5 overflow-hidden shadow-sm border border-purple-500/20 z-10 cursor-pointer hover:bg-purple-500 hover:text-white transition-all group",
-                                                                isStartDay && isEndDay && "rounded",
-                                                                isStartDay && !isEndDay && "rounded-t",
-                                                                !isStartDay && isEndDay && "rounded-b",
-                                                                !isStartDay && !isEndDay && "rounded-none"
-                                                              )}
-                                                              onClick={(e) => {
-                                                                e.stopPropagation()
-                                                                navigate({ to: `/creator/project/${project.id}` })
-                                                              }}
-                                                            >
-                                                              <div className="font-bold truncate uppercase tracking-tighter group-hover:text-white">
-                                                                {project.name}
-                                                              </div>
-                                                              <div className="text-[9px] opacity-90 truncate group-hover:text-white">
-                                                                {project.sessions?.length || 0} sessions
-                                                              </div>
-                                                            </div>
-                                                          )
-                                                        })
-                                                      }
-                                                    </div>                  )
+                          )
+                        })
+                      }
+                    </div>
+                  )
                 })}
               </div>
             </div>
@@ -542,6 +538,16 @@ function CreatorCalendarPage() {
                         <span className="flex items-center gap-1">
                           <CalendarIcon className="w-3.5 h-3.5" />
                           {project.startDate ? format(new Date(project.startDate), 'MMM d, HH:mm') : 'N/A'} - {project.endDate ? format(new Date(project.endDate), 'MMM d, HH:mm') : 'N/A'}
+                          {project.startDate && project.endDate && (() => {
+                            const mins = differenceInMinutes(new Date(project.endDate), new Date(project.startDate))
+                            if (mins < 60) return <span className="text-xs text-muted-foreground/70">({mins}m)</span>
+                            const h = Math.floor(mins / 60)
+                            const m = mins % 60
+                            if (h < 24) return <span className="text-xs text-muted-foreground/70">({m > 0 ? `${h}h ${m}m` : `${h}h`})</span>
+                            const d = Math.floor(h / 24)
+                            const rh = h % 24
+                            return <span className="text-xs text-muted-foreground/70">({rh > 0 ? `${d}d ${rh}h` : `${d}d`})</span>
+                          })()}
                         </span>
                         <span className="flex items-center gap-1">
                           <ListChecks className="w-3.5 h-3.5" />

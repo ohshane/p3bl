@@ -20,6 +20,7 @@ import { Route as CreatorIndexRouteImport } from './routes/creator/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ExplorerPortfolioIndexRouteImport } from './routes/explorer/portfolio/index'
 import { Route as ExplorerCalendarIndexRouteImport } from './routes/explorer/calendar/index'
+import { Route as CreatorStoreIndexRouteImport } from './routes/creator/store/index'
 import { Route as CreatorLibraryIndexRouteImport } from './routes/creator/library/index'
 import { Route as CreatorCalendarIndexRouteImport } from './routes/creator/calendar/index'
 import { Route as AdminUsersIndexRouteImport } from './routes/admin/users/index'
@@ -30,6 +31,7 @@ import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
 import { Route as CreatorProjectProjectIdRouteRouteImport } from './routes/creator/project/$projectId/route'
 import { Route as ExplorerProjectProjectIdIndexRouteImport } from './routes/explorer/project/$projectId/index'
 import { Route as DemoStartSsrIndexRouteImport } from './routes/demo/start.ssr.index'
+import { Route as CreatorStoreIdIndexRouteImport } from './routes/creator/store/$id/index'
 import { Route as CreatorProjectNewIndexRouteImport } from './routes/creator/project/new/index'
 import { Route as CreatorProjectProjectIdIndexRouteImport } from './routes/creator/project/$projectId/index'
 import { Route as CreatorLibraryIdIndexRouteImport } from './routes/creator/library/$id/index'
@@ -94,6 +96,11 @@ const ExplorerCalendarIndexRoute = ExplorerCalendarIndexRouteImport.update({
   path: '/calendar/',
   getParentRoute: () => ExplorerRouteRoute,
 } as any)
+const CreatorStoreIndexRoute = CreatorStoreIndexRouteImport.update({
+  id: '/store/',
+  path: '/store/',
+  getParentRoute: () => CreatorRouteRoute,
+} as any)
 const CreatorLibraryIndexRoute = CreatorLibraryIndexRouteImport.update({
   id: '/library/',
   path: '/library/',
@@ -145,6 +152,11 @@ const DemoStartSsrIndexRoute = DemoStartSsrIndexRouteImport.update({
   id: '/demo/start/ssr/',
   path: '/demo/start/ssr/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const CreatorStoreIdIndexRoute = CreatorStoreIdIndexRouteImport.update({
+  id: '/store/$id/',
+  path: '/store/$id/',
+  getParentRoute: () => CreatorRouteRoute,
 } as any)
 const CreatorProjectNewIndexRoute = CreatorProjectNewIndexRouteImport.update({
   id: '/project/new/',
@@ -208,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/admin/users/': typeof AdminUsersIndexRoute
   '/creator/calendar/': typeof CreatorCalendarIndexRoute
   '/creator/library/': typeof CreatorLibraryIndexRoute
+  '/creator/store/': typeof CreatorStoreIndexRoute
   '/explorer/calendar/': typeof ExplorerCalendarIndexRoute
   '/explorer/portfolio/': typeof ExplorerPortfolioIndexRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
@@ -216,6 +229,7 @@ export interface FileRoutesByFullPath {
   '/creator/library/$id/': typeof CreatorLibraryIdIndexRoute
   '/creator/project/$projectId/': typeof CreatorProjectProjectIdIndexRoute
   '/creator/project/new/': typeof CreatorProjectNewIndexRoute
+  '/creator/store/$id/': typeof CreatorStoreIdIndexRoute
   '/demo/start/ssr/': typeof DemoStartSsrIndexRoute
   '/explorer/project/$projectId/': typeof ExplorerProjectProjectIdIndexRoute
   '/creator/project/$projectId/monitor/': typeof CreatorProjectProjectIdMonitorIndexRoute
@@ -235,6 +249,7 @@ export interface FileRoutesByTo {
   '/admin/users': typeof AdminUsersIndexRoute
   '/creator/calendar': typeof CreatorCalendarIndexRoute
   '/creator/library': typeof CreatorLibraryIndexRoute
+  '/creator/store': typeof CreatorStoreIndexRoute
   '/explorer/calendar': typeof ExplorerCalendarIndexRoute
   '/explorer/portfolio': typeof ExplorerPortfolioIndexRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
@@ -243,6 +258,7 @@ export interface FileRoutesByTo {
   '/creator/library/$id': typeof CreatorLibraryIdIndexRoute
   '/creator/project/$projectId': typeof CreatorProjectProjectIdIndexRoute
   '/creator/project/new': typeof CreatorProjectNewIndexRoute
+  '/creator/store/$id': typeof CreatorStoreIdIndexRoute
   '/demo/start/ssr': typeof DemoStartSsrIndexRoute
   '/explorer/project/$projectId': typeof ExplorerProjectProjectIdIndexRoute
   '/creator/project/$projectId/monitor': typeof CreatorProjectProjectIdMonitorIndexRoute
@@ -267,6 +283,7 @@ export interface FileRoutesById {
   '/admin/users/': typeof AdminUsersIndexRoute
   '/creator/calendar/': typeof CreatorCalendarIndexRoute
   '/creator/library/': typeof CreatorLibraryIndexRoute
+  '/creator/store/': typeof CreatorStoreIndexRoute
   '/explorer/calendar/': typeof ExplorerCalendarIndexRoute
   '/explorer/portfolio/': typeof ExplorerPortfolioIndexRoute
   '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
@@ -275,6 +292,7 @@ export interface FileRoutesById {
   '/creator/library/$id/': typeof CreatorLibraryIdIndexRoute
   '/creator/project/$projectId/': typeof CreatorProjectProjectIdIndexRoute
   '/creator/project/new/': typeof CreatorProjectNewIndexRoute
+  '/creator/store/$id/': typeof CreatorStoreIdIndexRoute
   '/demo/start/ssr/': typeof DemoStartSsrIndexRoute
   '/explorer/project/$projectId/': typeof ExplorerProjectProjectIdIndexRoute
   '/creator/project/$projectId/monitor/': typeof CreatorProjectProjectIdMonitorIndexRoute
@@ -300,6 +318,7 @@ export interface FileRouteTypes {
     | '/admin/users/'
     | '/creator/calendar/'
     | '/creator/library/'
+    | '/creator/store/'
     | '/explorer/calendar/'
     | '/explorer/portfolio/'
     | '/demo/start/ssr/data-only'
@@ -308,6 +327,7 @@ export interface FileRouteTypes {
     | '/creator/library/$id/'
     | '/creator/project/$projectId/'
     | '/creator/project/new/'
+    | '/creator/store/$id/'
     | '/demo/start/ssr/'
     | '/explorer/project/$projectId/'
     | '/creator/project/$projectId/monitor/'
@@ -327,6 +347,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/creator/calendar'
     | '/creator/library'
+    | '/creator/store'
     | '/explorer/calendar'
     | '/explorer/portfolio'
     | '/demo/start/ssr/data-only'
@@ -335,6 +356,7 @@ export interface FileRouteTypes {
     | '/creator/library/$id'
     | '/creator/project/$projectId'
     | '/creator/project/new'
+    | '/creator/store/$id'
     | '/demo/start/ssr'
     | '/explorer/project/$projectId'
     | '/creator/project/$projectId/monitor'
@@ -358,6 +380,7 @@ export interface FileRouteTypes {
     | '/admin/users/'
     | '/creator/calendar/'
     | '/creator/library/'
+    | '/creator/store/'
     | '/explorer/calendar/'
     | '/explorer/portfolio/'
     | '/demo/start/ssr/data-only'
@@ -366,6 +389,7 @@ export interface FileRouteTypes {
     | '/creator/library/$id/'
     | '/creator/project/$projectId/'
     | '/creator/project/new/'
+    | '/creator/store/$id/'
     | '/demo/start/ssr/'
     | '/explorer/project/$projectId/'
     | '/creator/project/$projectId/monitor/'
@@ -467,6 +491,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExplorerCalendarIndexRouteImport
       parentRoute: typeof ExplorerRouteRoute
     }
+    '/creator/store/': {
+      id: '/creator/store/'
+      path: '/store'
+      fullPath: '/creator/store/'
+      preLoaderRoute: typeof CreatorStoreIndexRouteImport
+      parentRoute: typeof CreatorRouteRoute
+    }
     '/creator/library/': {
       id: '/creator/library/'
       path: '/library'
@@ -536,6 +567,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/demo/start/ssr/'
       preLoaderRoute: typeof DemoStartSsrIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/creator/store/$id/': {
+      id: '/creator/store/$id/'
+      path: '/store/$id'
+      fullPath: '/creator/store/$id/'
+      preLoaderRoute: typeof CreatorStoreIdIndexRouteImport
+      parentRoute: typeof CreatorRouteRoute
     }
     '/creator/project/new/': {
       id: '/creator/project/new/'
@@ -637,8 +675,10 @@ interface CreatorRouteRouteChildren {
   CreatorProjectProjectIdRouteRoute: typeof CreatorProjectProjectIdRouteRouteWithChildren
   CreatorCalendarIndexRoute: typeof CreatorCalendarIndexRoute
   CreatorLibraryIndexRoute: typeof CreatorLibraryIndexRoute
+  CreatorStoreIndexRoute: typeof CreatorStoreIndexRoute
   CreatorLibraryIdIndexRoute: typeof CreatorLibraryIdIndexRoute
   CreatorProjectNewIndexRoute: typeof CreatorProjectNewIndexRoute
+  CreatorStoreIdIndexRoute: typeof CreatorStoreIdIndexRoute
 }
 
 const CreatorRouteRouteChildren: CreatorRouteRouteChildren = {
@@ -647,8 +687,10 @@ const CreatorRouteRouteChildren: CreatorRouteRouteChildren = {
     CreatorProjectProjectIdRouteRouteWithChildren,
   CreatorCalendarIndexRoute: CreatorCalendarIndexRoute,
   CreatorLibraryIndexRoute: CreatorLibraryIndexRoute,
+  CreatorStoreIndexRoute: CreatorStoreIndexRoute,
   CreatorLibraryIdIndexRoute: CreatorLibraryIdIndexRoute,
   CreatorProjectNewIndexRoute: CreatorProjectNewIndexRoute,
+  CreatorStoreIdIndexRoute: CreatorStoreIdIndexRoute,
 }
 
 const CreatorRouteRouteWithChildren = CreatorRouteRoute._addFileChildren(

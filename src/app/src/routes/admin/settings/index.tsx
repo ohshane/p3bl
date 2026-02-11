@@ -49,6 +49,7 @@ function AdminSettings() {
   
   // Settings state
   const [aiModel, setAiModel] = useState('')
+  const [savedModel, setSavedModel] = useState('')
   const [lastUpdated, setLastUpdated] = useState<string | null>(null)
   
   // Models from API
@@ -83,6 +84,7 @@ function AdminSettings() {
           const modelSetting = result.settings.find(s => s.key === SETTING_KEYS.AI_MODEL)
           if (modelSetting) {
             setAiModel(modelSetting.value)
+            setSavedModel(modelSetting.value)
             setLastUpdated(modelSetting.updatedAt)
           }
         } else {
@@ -117,6 +119,7 @@ function AdminSettings() {
       })
 
       if (result.success) {
+        setSavedModel(aiModel)
         setLastUpdated(result.setting.updatedAt)
         toast.success('Settings saved successfully')
       } else {
@@ -182,7 +185,7 @@ function AdminSettings() {
               <div>
                 <p className="text-sm text-muted-foreground">Current Model</p>
                 <p className="font-mono text-foreground text-lg">
-                  {aiModel || '(not set)'}
+                  {savedModel || '(not set)'}
                 </p>
               </div>
               {lastUpdated && (

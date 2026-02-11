@@ -55,7 +55,7 @@ function RegisterPage() {
         
         {/* Footer */}
         <p className="text-center text-xs text-muted-foreground mt-8">
-          Peabee - Project-Based Learning Platform
+          Peabee
         </p>
       </div>
     </div>

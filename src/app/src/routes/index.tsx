@@ -32,24 +32,24 @@ function LandingPage() {
 
   const features = [
     {
-      icon: <Compass className="w-5 h-5" />,
-      title: 'Structured Sessions',
-      description: 'Follow guided learning paths designed by educators with built-in AI assistance.',
+      icon: <Sparkles className="w-5 h-5" />,
+      title: 'AI Creator Wizard',
+      description: 'Design comprehensive project-based learning experiences in minutes with our AI-powered design assistant.',
     },
     {
-      icon: <Users className="w-5 h-5" />,
-      title: 'Team Collaboration',
-      description: 'Work with peers and AI personas in group discussions and project work.',
+      icon: <Target className="w-5 h-5" />,
+      title: 'Smart Output Builder',
+      description: 'Construct complex outputs with real-time, rubric-aligned feedback from AI to ensure high-quality submissions.',
+    },
+    {
+      icon: <MessageSquare className="w-5 h-5" />,
+      title: 'Collaborative Group Chat',
+      description: 'Work with peers and interactive AI personas that guide discussions and provide specialized support.',
     },
     {
       icon: <Trophy className="w-5 h-5" />,
-      title: 'Progress Tracking',
-      description: 'Earn badges, track competencies, and build a portfolio of completed work.',
-    },
-    {
-      icon: <Sparkles className="w-5 h-5" />,
-      title: 'AI Feedback',
-      description: 'Get rubric-aligned feedback to improve submissions before final review.',
+      title: 'Competency Portfolio',
+      description: 'Track progress across specific skills and earn digital badges that showcase your real-world achievements.',
     },
   ]
 
@@ -88,11 +88,11 @@ function LandingPage() {
           </div>
           
           <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">
-            Project-Based Learning Platform
+            Peabee
           </h1>
           
           <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Collaborative projects with AI-powered feedback. Join teams, complete structured sessions, and build demonstrable skills.
+            The next generation of Project-Based Learning. Collaborative projects with AI-powered guidance, real-time feedback, and competency-based tracking.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">

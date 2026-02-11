@@ -51,6 +51,11 @@ export {
   cloneProjectAsTemplate,
   getLibraryTemplates,
   deployTemplate,
+  publishTemplate,
+  unpublishTemplate,
+  getStoreTemplates,
+  getStoreTemplate,
+  cloneStoreTemplate,
 } from './projects'
 
 // Session functions

@@ -1,1 +1,0 @@
-ALTER TABLE `project_sessions` ADD `duration_minutes` integer;

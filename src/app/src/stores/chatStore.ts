@@ -14,7 +14,7 @@ import { aiChatCompletion } from '@/server/api/ai'
 import { initWebSocket, joinRoom, leaveRoom, broadcastMessage } from '@/lib/websocket'
 
 // System prompt for the learning assistant
-const BASE_SYSTEM_PROMPT = `You are a friendly and supportive Assistant for a project-based learning platform called Peabee. 
+const BASE_SYSTEM_PROMPT = `You are a friendly and supportive Assistant for the Peabee platform. 
 Your role is to help students navigate the platform, understand their projects, and provide guidance.
 
 Key responsibilities:

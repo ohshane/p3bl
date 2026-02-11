@@ -125,7 +125,7 @@ function formatSessionDuration(
 const getSessionGenerationPrompt = (
   divergenceLevel: number,
   toneLevel: number,
-) => `You are an expert educational project designer for a project-based learning platform.
+) => `You are an expert educational project designer for Peabee.
 Your task is to generate appropriate learning sessions based on the project information provided.
 
 Guidelines:

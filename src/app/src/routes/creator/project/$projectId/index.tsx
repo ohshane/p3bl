@@ -1118,7 +1118,23 @@ function TimelineEditor({
               session={sessionsWithDates[expandedSession]}
               durationMinutes={durationMinutes}
               onSessionDateChange={(startIso, endIso) => {
+                // If first session start changes, update project start date
+                if (expandedSession === 0) {
+                  setDraftStartDate(startIso);
+                }
+                // If last session end changes, update project end date
+                if (expandedSession === sessions.length - 1) {
+                  setDraftEndDate(endIso);
+                }
+
                 // Recalculate weight for this session based on new duration
+                const effectiveStartIso = expandedSession === 0 ? startIso : draftStartDate;
+                const effectiveEndIso = expandedSession === sessions.length - 1 ? endIso : draftEndDate;
+                const effectiveDuration = Math.max(
+                  0,
+                  differenceInMinutes(new Date(effectiveEndIso), new Date(effectiveStartIso)),
+                );
+
                 const newSessionMinutes = Math.max(
                   1,
                   differenceInMinutes(new Date(endIso), new Date(startIso)),
@@ -1127,7 +1143,7 @@ function TimelineEditor({
                   (sum, w, i) => (i === expandedSession ? sum : sum + w),
                   0,
                 );
-                const otherMinutes = durationMinutes - newSessionMinutes;
+                const otherMinutes = effectiveDuration - newSessionMinutes;
                 // weight / otherWeightsTotal = newSessionMinutes / otherMinutes
                 const newWeight =
                   otherMinutes > 0 && otherWeightsTotal > 0
@@ -1275,112 +1291,118 @@ interface DurationEditorProps {
 }
 
 function DurationEditor({ value, onSave }: DurationEditorProps) {
-  // Determine best unit for display
-  const getUnitAndAmount = (
-    minutes: number,
-  ): { amount: number; unit: "min" | "hr" | "day" } => {
-    if (minutes >= 1440 && minutes % 1440 === 0)
-      return { amount: minutes / 1440, unit: "day" };
-    if (minutes >= 60 && minutes % 60 === 0)
-      return { amount: minutes / 60, unit: "hr" };
-    return { amount: minutes, unit: "min" };
-  };
+  const decompose = (totalMinutes: number) => ({
+    days: Math.floor(totalMinutes / 1440),
+    hours: Math.floor((totalMinutes % 1440) / 60),
+    minutes: totalMinutes % 60,
+  });
 
-  const initial = getUnitAndAmount(value);
-  const [amount, setAmount] = useState(String(initial.amount));
-  const [unit, setUnit] = useState<"min" | "hr" | "day">(initial.unit);
+  const initial = decompose(value);
+  const [days, setDays] = useState(String(initial.days));
+  const [hours, setHours] = useState(String(initial.hours));
+  const [minutes, setMinutes] = useState(String(initial.minutes));
   const [saving, setSaving] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestRef = useRef(value);
 
+  // Sync from prop when value changes externally
   useEffect(() => {
-    if (document.activeElement !== inputRef.current) {
-      const u = getUnitAndAmount(value);
-      setAmount(String(u.amount));
-      setUnit(u.unit);
-    }
+    latestRef.current = value;
+    const d = decompose(value);
+    setDays(String(d.days));
+    setHours(String(d.hours));
+    setMinutes(String(d.minutes));
   }, [value]);
 
-  const toMinutes = (amt: number, u: "min" | "hr" | "day"): number => {
-    if (u === "hr") return amt * 60;
-    if (u === "day") return amt * 1440;
-    return amt;
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const saveTotal = useCallback(
+    (d: string, h: string, m: string) => {
+      const total =
+        (parseInt(d) || 0) * 1440 +
+        (parseInt(h) || 0) * 60 +
+        (parseInt(m) || 0);
+      if (total <= 0 || total === latestRef.current) return;
+      latestRef.current = total;
+
+      // Debounce: wait 500ms after the last change before saving
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(async () => {
+        setSaving(true);
+        try {
+          await onSave(total);
+        } catch {
+          const prev = decompose(value);
+          setDays(String(prev.days));
+          setHours(String(prev.hours));
+          setMinutes(String(prev.minutes));
+        } finally {
+          setSaving(false);
+        }
+      }, 500);
+    },
+    [onSave, value],
+  );
+
+  const handleChange = (
+    field: "days" | "hours" | "minutes",
+    val: string,
+  ) => {
+    const newDays = field === "days" ? val : days;
+    const newHours = field === "hours" ? val : hours;
+    const newMinutes = field === "minutes" ? val : minutes;
+    if (field === "days") setDays(val);
+    if (field === "hours") setHours(val);
+    if (field === "minutes") setMinutes(val);
+    saveTotal(newDays, newHours, newMinutes);
   };
 
-  const commitValue = async () => {
-    const num = parseFloat(amount);
-    if (isNaN(num) || num <= 0) {
-      const u = getUnitAndAmount(value);
-      setAmount(String(u.amount));
-      return;
-    }
-    const newMinutes = Math.round(toMinutes(num, unit));
-    if (newMinutes === value) return;
-    setSaving(true);
-    try {
-      await onSave(newMinutes);
-    } catch {
-      const u = getUnitAndAmount(value);
-      setAmount(String(u.amount));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleUnitChange = (newUnit: "min" | "hr" | "day") => {
-    // Derive display from the saved value (not from display state) to avoid rounding drift
-    setUnit(newUnit);
-    if (newUnit === "hr") setAmount(String(Math.round((value / 60) * 100) / 100));
-    else if (newUnit === "day")
-      setAmount(String(Math.round((value / 1440) * 100) / 100));
-    else setAmount(String(value));
-  };
+  const inputClass = cn(
+    "w-8 text-center text-xs font-medium tabular-nums bg-transparent border-none outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]",
+    saving && "opacity-50",
+  );
 
   return (
-    <div className="flex items-center gap-1">
-      <div className="flex items-center h-6 rounded border border-border bg-muted/30">
+    <div className="flex items-center gap-0.5">
+      <div className="flex items-center h-6 rounded border border-border bg-muted/30 px-0.5">
         <input
-          ref={inputRef}
           type="number"
-          min={1}
-          step="any"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-          onBlur={commitValue}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              commitValue();
-            }
-            if (e.key === "Escape") {
-              const u = getUnitAndAmount(value);
-              setAmount(String(u.amount));
-              inputRef.current?.blur();
-            }
-          }}
+          min={0}
+          value={days}
+          onChange={(e) => handleChange("days", e.target.value)}
           disabled={saving}
-          className={cn(
-            "w-12 text-center text-xs font-medium tabular-nums bg-transparent border-none outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]",
-            saving && "opacity-50",
-          )}
+          className={inputClass}
         />
+        <span className="text-[10px] text-muted-foreground pr-1">d</span>
       </div>
-      <div className="flex items-center h-6 rounded border border-border bg-muted/30 overflow-hidden">
-        {(["min", "hr", "day"] as const).map((u) => (
-          <button
-            key={u}
-            type="button"
-            onClick={() => handleUnitChange(u)}
-            disabled={saving}
-            className={cn(
-              "px-1.5 h-full text-[10px] font-medium transition-colors",
-              unit === u
-                ? "bg-cyan-500/20 text-cyan-400"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted",
-            )}
-          >
-            {u}
-          </button>
-        ))}
+      <div className="flex items-center h-6 rounded border border-border bg-muted/30 px-0.5">
+        <input
+          type="number"
+          min={0}
+          max={23}
+          value={hours}
+          onChange={(e) => handleChange("hours", e.target.value)}
+          disabled={saving}
+          className={inputClass}
+        />
+        <span className="text-[10px] text-muted-foreground pr-1">h</span>
+      </div>
+      <div className="flex items-center h-6 rounded border border-border bg-muted/30 px-0.5">
+        <input
+          type="number"
+          min={0}
+          max={59}
+          value={minutes}
+          onChange={(e) => handleChange("minutes", e.target.value)}
+          disabled={saving}
+          className={inputClass}
+        />
+        <span className="text-[10px] text-muted-foreground pr-1">m</span>
       </div>
     </div>
   );
@@ -1645,39 +1667,40 @@ export function ProjectDetailPage() {
               )}
             </div>
 
-            {/* Timeline */}
-            <div className="bg-card border border-border rounded-lg p-5">
-              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">
-                Timeline
-              </h3>
-              {isEditable && project.sessions.length > 0 ? (
-                <TimelineEditor
-                  projectId={project.id}
-                  startDate={project.startDate}
-                  endDate={project.endDate}
-                  sessions={project.sessions}
-                  isTemplateView={isTemplateView}
-                  onSaved={handleTimelineSaved}
-                />
-              ) : (
-                <div className="flex items-center gap-3 px-3 py-2 bg-muted/30 rounded-lg border border-border text-sm">
-                  <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <span className="text-foreground">
-                    {safeFormatDate(
-                      project.startDate,
-                      "MMM d, yyyy HH:mm",
-                      "-",
-                    )}
-                    {" - "}
-                    {safeFormatDate(
-                      project.endDate,
-                      "MMM d, yyyy HH:mm",
-                      "-",
-                    )}
-                  </span>
-                </div>
-              )}
-            </div>
+            {/* Timeline - hidden for templates (durations are edited per-session) */}
+            {!isTemplateView && (
+              <div className="bg-card border border-border rounded-lg p-5">
+                <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">
+                  Timeline
+                </h3>
+                {isEditable && project.sessions.length > 0 ? (
+                  <TimelineEditor
+                    projectId={project.id}
+                    startDate={project.startDate}
+                    endDate={project.endDate}
+                    sessions={project.sessions}
+                    onSaved={handleTimelineSaved}
+                  />
+                ) : (
+                  <div className="flex items-center gap-3 px-3 py-2 bg-muted/30 rounded-lg border border-border text-sm">
+                    <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-foreground">
+                      {safeFormatDate(
+                        project.startDate,
+                        "MMM d, yyyy HH:mm",
+                        "-",
+                      )}
+                      {" - "}
+                      {safeFormatDate(
+                        project.endDate,
+                        "MMM d, yyyy HH:mm",
+                        "-",
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Sessions */}
             <div className="bg-card border border-border rounded-lg p-5">
@@ -1880,8 +1903,11 @@ export function ProjectDetailPage() {
                                   value={session.difficulty}
                                   onValueChange={async (val: string) => {
                                     try {
+                                      const diff = val as SessionDifficulty;
                                       await saveSessionField(session.id, {
-                                        difficulty: val as SessionDifficulty,
+                                        difficulty: diff,
+                                        weight: DIFFICULTY_WEIGHTS[diff],
+                                        durationMinutes: DIFFICULTY_DURATIONS[diff],
                                       });
                                     } catch {
                                       toast.error("Failed to save difficulty");

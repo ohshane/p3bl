@@ -16,6 +16,7 @@ import {
   Shield,
   PenTool,
   Library,
+  Globe,
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -56,6 +57,7 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
   const [isJoining, setIsJoining] = useState(false)
   const [isDelegating, setIsDelegating] = useState(false)
   const [isCloning, setIsCloning] = useState(false)
+  const [isPublishing, setIsPublishing] = useState(false)
   const [, setTick] = useState(0)
 
   // Delegate search state
@@ -209,6 +211,30 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
     }
   }
 
+  const handlePublishToStore = async () => {
+    if (!currentUser?.id) return
+    setIsPublishing(true)
+    try {
+      const result = await cloneProjectAsTemplate({
+        data: {
+          projectId: project.id,
+          creatorId: currentUser.id,
+          publish: true,
+        },
+      })
+      if (result.success) {
+        toast.success('Project published to the template store!')
+        navigate({ to: '/creator/store' })
+      } else {
+        toast.error(result.error || 'Failed to publish to store')
+      }
+    } catch (error) {
+      toast.error('Failed to publish to store')
+    } finally {
+      setIsPublishing(false)
+    }
+  }
+
   const handleViewDetails = () => {
     navigate({ to: '/creator/project/$projectId', params: { projectId: project.id } })
   }
@@ -331,7 +357,7 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
 
   return (
     <>
-      <Card className="bg-card border-border transition-all">
+      <Card className="bg-card border-border transition-all flex flex-col h-full">
         <CardHeader className="pb-3">
           {/* Top row: Status badge and action icons */}
           <div className="flex items-center justify-between mb-2">
@@ -376,6 +402,20 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
               <Button
                 variant="ghost"
                 size="icon"
+                onClick={handlePublishToStore}
+                disabled={isPublishing}
+                className="h-8 w-8 text-muted-foreground hover:text-violet-500 hover:bg-violet-500/10"
+                title="Publish to store"
+              >
+                {isPublishing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Globe className="w-4 h-4" />
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setShowDelegateDialog(true)}
                 className="h-8 w-8 text-muted-foreground hover:text-orange-400 hover:bg-orange-500/10"
                 title="Delegate project"
@@ -406,7 +446,7 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
           </p>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="flex flex-col flex-1">
           {/* Join Code Section */}
           <div className="mb-4">
             <JoinCode
@@ -467,40 +507,42 @@ export function CreatorProjectCard({ project }: CreatorProjectCardProps) {
             </div>
           )}
 
-          {/* Action Buttons */}
-          {status === 'scheduled' && (
+          {/* Action Buttons - pushed to bottom */}
+          <div className="mt-auto pt-4">
             <Button
-              onClick={handleStartNow}
-              disabled={isStarting}
-              className="w-full mt-4 bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-600/50"
+              onClick={handleMonitor}
+              className="w-full bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 border border-cyan-600/50"
             >
-              <Play className="w-4 h-4 mr-2" />
-              {isStarting ? 'Starting...' : 'Start Now'}
+              <Eye className="w-4 h-4 mr-2" />
+              Monitor Progress
             </Button>
-          )}
-          
-          <Button
-            onClick={handleMonitor}
-            className="w-full mt-4 bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 border border-cyan-600/50"
-          >
-            <Eye className="w-4 h-4 mr-2" />
-            Monitor Progress
-          </Button>
 
-          {showJoinButton && status !== 'closed' && (
-            <Button
-              onClick={handleJoinAsExplorer}
-              disabled={isJoining}
-              className="w-full mt-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-600/50"
-            >
-              {isJoining ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <LogIn className="w-4 h-4 mr-2" />
-              )}
-              {isJoining ? 'Joining...' : 'Join as Explorer'}
-            </Button>
-          )}
+            {showJoinButton && status !== 'closed' && (
+              <Button
+                onClick={handleJoinAsExplorer}
+                disabled={isJoining}
+                className="w-full mt-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 border border-purple-600/50"
+              >
+                {isJoining ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <LogIn className="w-4 h-4 mr-2" />
+                )}
+                {isJoining ? 'Joining...' : 'Join as Explorer'}
+              </Button>
+            )}
+
+            {status === 'scheduled' && (
+              <Button
+                onClick={handleStartNow}
+                disabled={isStarting}
+                className="w-full mt-2 bg-green-600/20 hover:bg-green-600/30 text-green-400 border border-green-600/50"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                {isStarting ? 'Starting...' : 'Start Now'}
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 

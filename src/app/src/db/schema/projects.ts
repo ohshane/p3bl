@@ -22,6 +22,7 @@ export const projects = sqliteTable('projects', {
   maxParticipants: integer('max_participants'),
   teamSize: integer('team_size').default(2),
   isTemplate: integer('is_template', { mode: 'boolean' }).notNull().default(false),
+  isPublished: integer('is_published', { mode: 'boolean' }).notNull().default(false),
   startDate: integer('start_date', { mode: 'timestamp' }),
   endDate: integer('end_date', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),

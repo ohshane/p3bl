@@ -69,7 +69,7 @@ export function TimelineSetup() {
     if (!isValidDate(timeline.startDate) || !isValidDate(timeline.endDate)) {
       const now = new Date()
       now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15, 0, 0)
-      const start = now
+      const start = addMinutes(now, 10)
       const end = addMinutes(start, 5)
       setTimeline({
         startDate: start.toISOString(),
@@ -83,17 +83,16 @@ export function TimelineSetup() {
     if (isValidDate(timeline.startDate)) {
       return new Date(timeline.startDate)
     }
-    // Default to now, rounded to nearest 15 minutes
+    // Default to 10 minutes from now, rounded to nearest 15 minutes
     const now = new Date()
     now.setMinutes(Math.ceil(now.getMinutes() / 15) * 15, 0, 0)
-    return now
+    return addMinutes(now, 10)
   }, [timeline.startDate])
 
   const endDateTime = useMemo(() => {
     if (isValidDate(timeline.endDate)) {
       return new Date(timeline.endDate)
     }
-    // Default to 5 minutes from start
     return addMinutes(startDateTime, 5)
   }, [timeline.endDate, startDateTime])
 

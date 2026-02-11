@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "bb263570-e8e4-40cd-874b-c2769058861c",
+  "id": "5849b598-1306-432c-9088-eafb7bbbf61f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "intervention_logs": {
@@ -627,6 +627,13 @@
           "autoincrement": false,
           "default": 1
         },
+        "duration_minutes": {
+          "name": "duration_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
         "difficulty": {
           "name": "difficulty",
           "type": "text",
@@ -796,6 +803,14 @@
         },
         "is_template": {
           "name": "is_template",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "is_published": {
+          "name": "is_published",
           "type": "integer",
           "primaryKey": false,
           "notNull": true,

@@ -3,6 +3,7 @@ import { eq, and, asc } from 'drizzle-orm'
 import { v4 as uuidv4 } from 'uuid'
 import { db } from '@/db'
 import {
+  projects,
   projectSessions,
   sessionResources,
   sessionRubrics,
@@ -10,6 +11,54 @@ import {
   teamMembers,
 } from '@/db/schema'
 import { z } from 'zod'
+
+/**
+ * Recompute session startDate/endDate from project startDate + cumulative durationMinutes.
+ * Also updates project endDate to match the last session's endDate.
+ * Skips templates (projects without a startDate).
+ */
+async function recomputeSessionDates(projectId: string) {
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.id, projectId),
+    columns: { startDate: true, isTemplate: true },
+  })
+
+  // Skip templates or projects without a start date
+  if (!project || project.isTemplate || !project.startDate) return
+
+  const sessions = await db.query.projectSessions.findMany({
+    where: eq(projectSessions.projectId, projectId),
+    orderBy: asc(projectSessions.order),
+    columns: { id: true, durationMinutes: true },
+  })
+
+  if (sessions.length === 0) return
+
+  let cursor = project.startDate.getTime()
+
+  for (const session of sessions) {
+    const durationMs = (session.durationMinutes || 60) * 60 * 1000
+    const sessionStart = new Date(cursor)
+    const sessionEnd = new Date(cursor + durationMs)
+    cursor = sessionEnd.getTime()
+
+    await db.update(projectSessions)
+      .set({
+        startDate: sessionStart,
+        endDate: sessionEnd,
+        updatedAt: new Date(),
+      })
+      .where(eq(projectSessions.id, session.id))
+  }
+
+  // Update project endDate to match last session's endDate
+  await db.update(projects)
+    .set({
+      endDate: new Date(cursor),
+      updatedAt: new Date(),
+    })
+    .where(eq(projects.id, projectId))
+}
 
 // Validation schemas
 const createSessionSchema = z.object({
@@ -156,6 +205,9 @@ export const createSession = createServerFn({ method: 'POST' })
         updatedAt: now,
       })
 
+      // Recompute all session dates to keep them in sync
+      await recomputeSessionDates(data.projectId)
+
       return { success: true, sessionId }
     } catch (error) {
       console.error('Create session error:', error)
@@ -188,6 +240,17 @@ export const updateSession = createServerFn({ method: 'POST' })
       await db.update(projectSessions)
         .set(updates)
         .where(eq(projectSessions.id, data.sessionId))
+
+      // Recompute all session dates when durationMinutes changes
+      if (data.updates.durationMinutes !== undefined) {
+        const session = await db.query.projectSessions.findFirst({
+          where: eq(projectSessions.id, data.sessionId),
+          columns: { projectId: true },
+        })
+        if (session) {
+          await recomputeSessionDates(session.projectId)
+        }
+      }
 
       return { success: true }
     } catch (error) {
@@ -228,6 +291,9 @@ export const deleteSession = createServerFn({ method: 'POST' })
           .where(eq(projectSessions.id, remainingSessions[i].id))
       }
 
+      // Recompute session dates after deletion
+      await recomputeSessionDates(session.projectId)
+
       return { success: true }
     } catch (error) {
       console.error('Delete session error:', error)
@@ -246,6 +312,17 @@ export const reorderSessions = createServerFn({ method: 'POST' })
         await db.update(projectSessions)
           .set({ order: i + 1, updatedAt: new Date() })
           .where(eq(projectSessions.id, data.sessionIds[i]))
+      }
+
+      // Recompute session dates after reorder
+      if (data.sessionIds.length > 0) {
+        const first = await db.query.projectSessions.findFirst({
+          where: eq(projectSessions.id, data.sessionIds[0]),
+          columns: { projectId: true },
+        })
+        if (first) {
+          await recomputeSessionDates(first.projectId)
+        }
       }
 
       return { success: true }
