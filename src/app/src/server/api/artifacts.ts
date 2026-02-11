@@ -76,7 +76,7 @@ function generateFallbackPrecheck(
   }
 }
 
-async function generateSubmissionPrecheck(
+export async function generateSubmissionPrecheck(
   content: string,
   rubrics: Array<{ id: string; criteria: string; description: string | null; weight: number }>
 ): Promise<GeneratedPrecheckResult> {
@@ -179,6 +179,64 @@ Output schema:
     return generateFallbackPrecheck(content, rubrics)
   }
 }
+
+/**
+ * Explorer pre-check: uses the same model, prompt structure, and normalization
+ * as generateSubmissionPrecheck so that scores are consistent with the creator
+ * monitor's AI Score (which computes a weighted average from rubricScores).
+ */
+export const runExplorerPrecheck = createServerFn({ method: 'POST' })
+  .inputValidator(
+    (data: {
+      content: string
+      rubrics: Array<{ id: string; criteria: string; description: string | null; weight: number }>
+    }) => data
+  )
+  .handler(async ({ data }) => {
+    const result = await generateSubmissionPrecheck(data.content, data.rubrics)
+
+    // Compute a weighted-average score from rubricScores — identical algorithm
+    // to getProjectSubmissions in creator.ts so the explorer Pre-check score
+    // matches the AI Score the creator sees on the monitor page.
+    let score = 0
+    const entries = Object.entries(result.rubricScores)
+    if (entries.length > 0) {
+      const weightByCriterion = new Map(data.rubrics.map((r) => [r.criteria, r.weight]))
+      let weightedSum = 0
+      let totalWeight = 0
+      for (const [key, s] of entries) {
+        const weight = weightByCriterion.get(key) ?? 0
+        weightedSum += s * weight
+        totalWeight += weight
+      }
+      score =
+        totalWeight > 0
+          ? Math.round(weightedSum / totalWeight)
+          : Math.round(entries.reduce((sum, [, s]) => sum + s, 0) / entries.length)
+    } else {
+      // Fallback from overallScore
+      switch (result.overallScore) {
+        case 'ready':
+          score = 85
+          break
+        case 'needs_work':
+          score = 65
+          break
+        case 'critical_issues':
+          score = 40
+          break
+        default:
+          score = 0
+      }
+    }
+
+    return {
+      overallScore: result.overallScore,
+      score,
+      rubricScores: result.rubricScores,
+      items: result.items,
+    }
+  })
 
 // Validation schemas
 const createArtifactSchema = z.object({
@@ -607,12 +665,21 @@ export const storePrecheckResults = createServerFn({ method: 'POST' })
         )
       }
 
-      // Update artifact
+      // Update artifact – only set status to precheck_complete if the artifact
+      // hasn't already reached a terminal state (submitted, under_review, approved, needs_revision).
+      // Otherwise we'd regress a submitted artifact back to in_progress in the live matrix.
+      const currentArtifact = await db.query.artifacts.findFirst({
+        where: eq(artifacts.id, data.artifactId),
+        columns: { status: true },
+      })
+      const terminalStatuses: string[] = ['submitted', 'under_review', 'approved', 'needs_revision']
+      const shouldUpdateStatus = !currentArtifact || !terminalStatuses.includes(currentArtifact.status)
+
       await db.update(artifacts)
         .set({
           lastPrecheckAt: now,
           precheckPassed: data.overallScore !== 'critical_issues',
-          status: 'precheck_complete',
+          ...(shouldUpdateStatus ? { status: 'precheck_complete' as const } : {}),
           updatedAt: now,
         })
         .where(eq(artifacts.id, data.artifactId))

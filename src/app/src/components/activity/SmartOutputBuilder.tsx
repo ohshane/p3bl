@@ -267,12 +267,11 @@ export function SmartOutputBuilder({ project: _project, session, teamId, userNam
   }, [teamId, session.id])
 
   const handleRunPreCheck = useCallback(async () => {
-    // Build rubric context string from session rubric criteria
-    const rubricContext = session.rubric.length > 0
-      ? session.rubric.map(r => `- ${r.criterion} (${r.weight}%): ${r.description}`).join('\n')
-      : undefined
+    // Pass structured rubric items so the server function can use the exact
+    // same scoring pipeline (model, prompt, key-normalization) as submission.
+    const rubrics = session.rubric.length > 0 ? session.rubric : undefined
 
-    const result = await runPreCheck(artifact?.id, rubricContext)
+    const result = await runPreCheck(artifact?.id, rubrics)
     
     if (result.overallStatus === 'critical_issues') {
       toast.warning('Pre-check found critical issues', {
