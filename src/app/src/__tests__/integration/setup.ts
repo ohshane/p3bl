@@ -5,23 +5,23 @@
  * It creates tables directly and provides utilities for test data management.
  */
 
-import Database from 'better-sqlite3'
-import { drizzle, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import type { Client } from '@libsql/client'
+import type { LibSQLDatabase } from 'drizzle-orm/libsql'
 import { sql } from 'drizzle-orm'
 import * as schema from '@/db/schema'
 import { v4 as uuidv4 } from 'uuid'
 import { hashPassword } from '@/server/auth'
-import { sqlite as appSqlite, db as appDb } from '@/db'
+import { client as appClient, db as appDb } from '@/db'
 
 // Use app database for tests to ensure server functions usage works
-let sqlite: Database.Database
-let testDb: BetterSQLite3Database<typeof schema>
+let client: Client
+let testDb: LibSQLDatabase<typeof schema>
 
 export function setupTestDb() {
-  sqlite = appSqlite
-  sqlite.pragma('foreign_keys = OFF') // Disable during table creation
+  client = appClient
+  client.execute('PRAGMA foreign_keys = OFF') // Disable during table creation
 
-  testDb = appDb as unknown as BetterSQLite3Database<typeof schema>
+  testDb = appDb as unknown as LibSQLDatabase<typeof schema>
 
   // Create tables individually to avoid bulk execution errors masking issues
   const tables = [
@@ -419,10 +419,10 @@ export function setupTestDb() {
     );`
   ]
 
-  tables.forEach(sql => sqlite.exec(sql))
+  tables.forEach(stmt => client.execute(stmt))
 
   // Re-enable foreign keys
-  sqlite.pragma('foreign_keys = ON')
+  client.execute('PRAGMA foreign_keys = ON')
 
   return testDb
 }
@@ -436,8 +436,8 @@ export function getTestDb() {
 
 export function closeTestDb() {
   // Do not close shared connection
-  // if (sqlite) {
-  //   sqlite.close()
+  // if (client) {
+  //   client.close()
   // }
 }
 
@@ -445,7 +445,7 @@ export function clearTestDb() {
   if (!testDb) return
 
   // Clear tables in reverse dependency order using raw SQL to avoid schema mismatches
-  sqlite.exec(`
+  client.executeMultiple(`
     DELETE FROM precheck_feedback_items;
     DELETE FROM precheck_results;
     DELETE FROM showcase_links;
